@@ -11,7 +11,8 @@ const routes = [
       { path: 'consult/:id?', name: 'consult', component: () => import('../views/Chat.vue') },
       { path: 'records', name: 'records', component: () => import('../views/Records.vue') },
       { path: 'knowledge', name: 'knowledge', component: () => import('../views/Knowledge.vue') },
-      { path: 'formulas', name: 'formulas', component: () => import('../views/Formulas.vue') }
+      { path: 'formulas', name: 'formulas', component: () => import('../views/Formulas.vue') },
+      { path: 'shanghan', name: 'shanghan', component: () => import('../views/Shanghan.vue') }
     ]
   }
 ]

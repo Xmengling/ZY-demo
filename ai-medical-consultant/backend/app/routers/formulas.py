@@ -6,12 +6,13 @@ from __future__ import annotations
 import mimetypes
 from urllib.parse import unquote
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Query, status
 from fastapi.responses import FileResponse
 
 from ..deps import get_current_user
 from ..models import User
 from ..services import jingfang_store
+from ..services.formula_pdf_export import export_formula_cards_pdf
 
 router = APIRouter(prefix="/api/v1/formulas", tags=["formulas"])
 
@@ -46,6 +47,27 @@ def remove_formula(formula_id: str, _user: User = Depends(get_current_user)):
     if not deleted:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "formula not found")
     return {"ok": True, "id": formula_id}
+
+
+@router.post("/export/pdf")
+def export_all_cards_pdf(
+    mode: str = Query(default="searchable", pattern="^(searchable|web-hd)$"),
+):
+    """批量导出全部方剂卡片 PDF（与 ZY-Study 网页预览一致的可搜索版）。"""
+    try:
+        pdf_path = export_formula_cards_pdf(mode=mode)
+    except ValueError as exc:
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, str(exc)) from exc
+    except FileNotFoundError as exc:
+        raise HTTPException(status.HTTP_500_INTERNAL_SERVER_ERROR, str(exc)) from exc
+    except RuntimeError as exc:
+        raise HTTPException(status.HTTP_500_INTERNAL_SERVER_ERROR, str(exc)) from exc
+
+    return FileResponse(
+        pdf_path,
+        media_type="application/pdf",
+        filename=pdf_path.name,
+    )
 
 
 @router.get("/herbs/{filename}")

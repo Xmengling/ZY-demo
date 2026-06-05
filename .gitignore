@@ -40,6 +40,9 @@ lark-doc-comments-auth-qr*.png
 # Office temporary lock files
 ~$*
 
+# Debug scratch (regenerable)
+scratch/
+
 # OS/editor noise
 .DS_Store
 Thumbs.db

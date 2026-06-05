@@ -1,0 +1,159 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>伤寒论条文解读</title>
+  <link rel="stylesheet" href="styles.css?v=20260605aa" />
+</head>
+<body>
+  <main class="app-shell app-shell-embedded">
+    <div class="main-workspace">
+      <button id="toggle-list-panel" class="workspace-toggle" type="button" aria-label="收起左侧栏" title="收起左侧栏">
+        <span aria-hidden="true"></span>
+      </button>
+
+      <aside class="list-panel">
+        <section class="panel-card">
+          <div class="section-title">
+            <div>
+              <p class="eyebrow">SHANG HAN LUN</p>
+              <h1>伤寒论条文解读</h1>
+            </div>
+            <button id="new-article" class="primary small" type="button">新增</button>
+          </div>
+          <label class="field">
+            <span>搜索</span>
+            <input id="search" type="search" placeholder="条文 / 病名 / 辨证要点" />
+          </label>
+          <div id="article-list" class="article-list" aria-label="条文列表"></div>
+        </section>
+      </aside>
+
+      <section class="editor-panel">
+        <section class="editor-card">
+          <div class="section-title">
+            <div class="section-title-top">
+              <p class="eyebrow">NOTE EDITOR</p>
+              <div class="toolbar-actions">
+                <button id="delete-article" class="danger small" type="button">删除</button>
+                <button id="save-article" class="primary small" type="button">保存</button>
+              </div>
+            </div>
+            <h2 id="editor-title" class="editor-article-headline">
+              <span class="editor-headline-no">第1条</span>
+              <span class="level-badge level-1 level-badge--sm" aria-label="一级条文"><span class="level-badge-digit">1</span></span>
+              <span class="editor-headline-text">太阳之为病，脉浮，头项强痛而恶寒</span>
+            </h2>
+          </div>
+
+          <form id="article-form" class="article-form">
+            <input id="field-id" type="hidden" />
+            <div class="field-row">
+              <label class="field field-number">
+                <span>条文序号</span>
+                <input id="field-number" placeholder="1" />
+              </label>
+              <div class="field field-level">
+                <span>条文等级</span>
+                <div class="level-segment" role="radiogroup" aria-label="条文等级">
+                  <label class="level-segment-item" title="一级条文">
+                    <input type="radio" name="article-level" value="一级" checked />
+                    <span class="level-badge level-1 level-badge--md"><span class="level-badge-digit">1</span></span>
+                  </label>
+                  <label class="level-segment-item" title="二级条文">
+                    <input type="radio" name="article-level" value="二级" />
+                    <span class="level-badge level-2 level-badge--md"><span class="level-badge-digit">2</span></span>
+                  </label>
+                  <label class="level-segment-item" title="三级条文">
+                    <input type="radio" name="article-level" value="三级" />
+                    <span class="level-badge level-3 level-badge--md"><span class="level-badge-digit">3</span></span>
+                  </label>
+                </div>
+              </div>
+            </div>
+            <label class="field">
+              <span>原文</span>
+              <textarea id="field-original" class="textarea-auto" rows="2" placeholder="顶格条文：太阳之为病，脉浮，头项强痛而恶寒。"></textarea>
+            </label>
+            <label class="field field-terms">
+              <div class="field-label-row">
+                <span>词语解析</span>
+                <button id="add-term" class="primary small" type="button">+ 添加词语</button>
+              </div>
+              <div id="field-terms" class="term-panel"></div>
+            </label>
+            <label class="field">
+              <span>胡希恕讲解</span>
+              <textarea id="field-hu" class="textarea-auto" rows="4"></textarea>
+            </label>
+            <label class="field">
+              <span>李冠杰讲解</span>
+              <textarea id="field-li" class="textarea-auto" rows="4"></textarea>
+            </label>
+            <label class="field">
+              <span>要点总结</span>
+              <textarea id="field-summary" class="textarea-auto" rows="5" placeholder="一行一个要点；支持 [[红字]]、**粗体**、[[**红色加粗**]]"></textarea>
+            </label>
+          </form>
+        </section>
+      </section>
+
+      <section class="preview-panel">
+        <div class="preview-card-area">
+          <div class="article-card-viewport">
+            <article id="article-card" class="article-card" aria-label="条文卡片">
+              <div class="card-corners" aria-hidden="true"><span></span><span></span><span></span></div>
+              <header class="card-head">
+                <div class="chapter-badge">伤寒论</div>
+                <div>
+                  <p id="card-number" class="card-number">第1条</p>
+                  <h3 id="card-title" class="card-article-title">
+                    <span class="level-badge level-1 level-badge--lg" aria-label="一级条文"><span class="level-badge-digit">1</span></span>
+                    <span class="card-title-text">太阳之为病，脉浮，头项强痛而恶寒。</span>
+                  </h3>
+                </div>
+              </header>
+
+              <div class="card-body">
+                <div class="card-overview">
+                  <section class="side-block terms-block">
+                    <h4 class="ribbon">词语解析</h4>
+                    <div id="card-terms" class="term-list"></div>
+                  </section>
+                  <section class="logic-map summary-map">
+                    <div class="logic-title">要点总结</div>
+                    <div class="logic-branch">
+                      <svg class="logic-lines" aria-hidden="true"></svg>
+                      <div id="card-summary" class="logic-list"></div>
+                    </div>
+                  </section>
+                </div>
+
+                <section class="card-main">
+                  <section class="callout">
+                    <h4>胡希恕讲解</h4>
+                    <div id="card-hu"></div>
+                  </section>
+                  <section class="callout">
+                    <h4>李冠杰讲解</h4>
+                    <div id="card-li"></div>
+                  </section>
+                </section>
+              </div>
+
+              <footer class="card-footer">学习资料，仅供中医学习交流，不作为诊疗依据。</footer>
+            </article>
+          </div>
+          <div class="card-side-actions" aria-label="卡片操作">
+            <button id="download-card" class="side-action-btn" type="button">下载</button>
+          </div>
+        </div>
+      </section>
+    </div>
+  </main>
+
+  <div id="toast" class="toast" role="status"></div>
+  <script src="app.js?v=20260605x"></script>
+</body>
+</html>

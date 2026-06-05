@@ -37,8 +37,8 @@ class Settings(BaseSettings):
 
     # 100 首方剂解读（SQLite + 中药图片）
     jingfang_db_path: str = str(BASE_DIR / "data" / "jingfang.sqlite3")
-    jingfang_source_db: str = r"D:\AI\ZY-Study\web\db\jingfang.sqlite3"
-    jingfang_herb_dir: str = r"D:\AI\ZY-Study\img\伤寒金匮方剂思维导图"
+    jingfang_source_db: str = "/Users/qingling/梦玲/ZY-Study/web/db/jingfang.sqlite3"
+    jingfang_herb_dir: str = str(BASE_DIR / "data" / "herbs")
 
     @property
     def cors_origin_list(self) -> List[str]:

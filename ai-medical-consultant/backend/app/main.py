@@ -12,8 +12,8 @@ from .config import settings
 from .seed import run_seed
 from .services.knowledge_base import knowledge_base
 from .services.llm_service import llm_service
-from .routers import consult, formulas, knowledge, users, ws
-from .services import jingfang_store
+from .routers import consult, formulas, knowledge, shanghan, users, ws
+from .services import jingfang_store, shanghan_store
 
 
 @asynccontextmanager
@@ -21,6 +21,7 @@ async def lifespan(app: FastAPI):
     run_seed()
     knowledge_base.ensure_ready()
     jingfang_store.ensure_ready()
+    shanghan_store.ensure_ready()
     yield
 
 
@@ -43,6 +44,7 @@ app.include_router(users.router)
 app.include_router(consult.router)
 app.include_router(knowledge.router)
 app.include_router(formulas.router)
+app.include_router(shanghan.router)
 app.include_router(ws.router)
 
 

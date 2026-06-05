@@ -635,27 +635,41 @@ function renderFormulaList() {
   });
 }
 
+function getFormulaPreviewMaxWidth(collapsed) {
+  const actions = document.querySelector(".preview-card-area .card-side-actions");
+  const actionsWidth = (actions?.offsetWidth || 52) + 8;
+  const workspace = document.querySelector(".main-workspace");
+  const workspacePadding = workspace
+    ? parseFloat(getComputedStyle(workspace).paddingLeft) + parseFloat(getComputedStyle(workspace).paddingRight)
+    : 24;
+  const listWidth = collapsed ? 0 : 280;
+  const editorWidth = 460;
+  const gap = collapsed ? 12 : 24;
+  const shellPadding = 12;
+  return Math.max(
+    240,
+    window.innerWidth - listWidth - editorWidth - gap - workspacePadding - actionsWidth - shellPadding,
+  );
+}
+
 function fitFormulaCardPreview() {
   const viewport = $(".formula-card-viewport");
   const card = $("#formula-card");
   if (!viewport || !card) return;
   const workspace = document.querySelector(".main-workspace");
   const collapsed = workspace?.classList.contains("list-collapsed");
-  const actions = viewport.parentElement?.querySelector(".card-side-actions");
-  const actionsWidth = (actions?.offsetWidth || 52) + 8;
 
   card.style.transform = "none";
   viewport.style.height = "auto";
   viewport.style.width = "auto";
   const naturalHeight = Math.max(card.offsetHeight, card.scrollHeight, CARD_EXPORT_HEIGHT);
   const naturalWidth = CARD_EXPORT_WIDTH;
-  const previewPanel = document.querySelector(".preview-panel");
-  const panelWidth = previewPanel?.clientWidth || naturalWidth;
-  const maxWidth = Math.max(280, panelWidth - actionsWidth - 18);
+  const maxWidth = getFormulaPreviewMaxWidth(collapsed);
   const scaleByWidth = maxWidth / naturalWidth;
+  const scaleByHeight = (window.innerHeight - 112) / naturalHeight;
   const scale = collapsed
-    ? Math.min(scaleByWidth, 1)
-    : Math.min((window.innerHeight - 112) / naturalHeight, scaleByWidth, 1);
+    ? scaleByWidth
+    : Math.min(scaleByWidth, scaleByHeight, 1);
   card.style.transform = `scale(${scale})`;
   viewport.style.height = `${naturalHeight * scale}px`;
   viewport.style.width = `${naturalWidth * scale}px`;
@@ -1392,6 +1406,49 @@ function syncPathologyTagWidths() {
   cardSide.style.setProperty("--pathology-tag-width", `${maxWidth}px`);
 }
 
+async function downloadAllPdf() {
+  const btn = $("#export-all-pdf");
+  if (!btn || btn.disabled) return;
+  btn.disabled = true;
+  toast("正在导出全部方剂 PDF，请稍候（约 10–30 秒）…");
+  try {
+    const res = await fetch(`${API_BASE}/export/pdf?mode=searchable`, {
+      method: "POST",
+      headers: authHeaders(),
+    });
+    if (!res.ok) {
+      let message = `导出失败 (${res.status})`;
+      try {
+        const data = await res.json();
+        if (data?.detail) message = typeof data.detail === "string" ? data.detail : JSON.stringify(data.detail);
+      } catch (_) {
+        const text = await res.text();
+        if (text) message = text.slice(0, 240);
+      }
+      throw new Error(message);
+    }
+    const blob = await res.blob();
+    const disposition = res.headers.get("Content-Disposition") || "";
+    const utfMatch = disposition.match(/filename\*=UTF-8''([^;]+)/i);
+    const plainMatch = disposition.match(/filename="?([^";]+)"?/i);
+    const filename = utfMatch
+      ? decodeURIComponent(utfMatch[1])
+      : (plainMatch?.[1] || `方剂卡片合集_${state.formulas.length || 0}首.pdf`);
+    const link = document.createElement("a");
+    link.href = URL.createObjectURL(blob);
+    link.download = filename;
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    URL.revokeObjectURL(link.href);
+    toast("全部方剂 PDF 已生成");
+  } catch (error) {
+    toast(error.message || "PDF 导出失败");
+  } finally {
+    btn.disabled = false;
+  }
+}
+
 async function downloadCardPng(mode = "partial") {
   try {
     const formula = normalizeFormulaFromForm();
@@ -1719,6 +1776,7 @@ $("#field-pathology").addEventListener("change", () => {
 });
 $("#field-pathology-symptoms").addEventListener("input", () => renderPreview(normalizeFormulaFromForm()));
 $("#search").addEventListener("input", renderFormulaList);
+$("#export-all-pdf")?.addEventListener("click", downloadAllPdf);
 $("#new-formula").addEventListener("click", newFormula);
 $("#toggle-list-panel")?.addEventListener("click", () => setListPanelCollapsed(!state.listCollapsed));
 $("#save-formula").addEventListener("click", saveCurrentFormula);

@@ -11,6 +11,7 @@
         <el-menu-item index="/records"><el-icon><Tickets /></el-icon><span>问诊记录</span></el-menu-item>
         <el-menu-item index="/knowledge"><el-icon><Reading /></el-icon><span>知识库</span></el-menu-item>
         <el-menu-item index="/formulas"><el-icon><Collection /></el-icon><span>100首方剂解读</span></el-menu-item>
+        <el-menu-item index="/shanghan"><el-icon><Reading /></el-icon><span>伤寒论条文解读</span></el-menu-item>
       </el-menu>
     </el-aside>
 
@@ -47,7 +48,7 @@ const route = useRoute()
 const router = useRouter()
 const auth = useAuthStore()
 
-const titles = { home: '首页', consult: '智能问诊', records: '问诊记录', knowledge: '医学知识库', formulas: '100首方剂解读' }
+const titles = { home: '首页', consult: '智能问诊', records: '问诊记录', knowledge: '医学知识库', formulas: '100首方剂解读', shanghan: '伤寒论条文解读' }
 const pageTitle = computed(() => titles[route.name] || '')
 const activeMenu = computed(() => {
   if (route.path.startsWith('/consult')) return '/consult'
