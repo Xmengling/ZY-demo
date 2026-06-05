@@ -1,0 +1,144 @@
+<hr/>
+<h2><span text-color="blue"><b>【Codex补充】实现逻辑补充：智能问诊功能落地清单</b></span></h2>
+
+<callout emoji="📝" background-color="light-blue" border-color="blue" text-color="blue">
+  <p><b>【Codex补充说明】</b>以下内容是我基于当前文档补充的实现建议，所有带有“【Codex补充】”前缀的段落、表格和待办项都属于新增标注，方便你和原文区分。</p>
+</callout>
+
+<h3><span text-color="blue"><b>【Codex补充】一、当前文档已有内容与缺口</b></span></h3>
+<table>
+  <colgroup><col width="160"/><col width="260"/><col width="360"/></colgroup>
+  <thead>
+    <tr><th background-color="light-gray">模块</th><th background-color="light-gray">当前已有</th><th background-color="light-gray">还需要补充的实现逻辑</th></tr>
+  </thead>
+  <tbody>
+    <tr><td>问诊采集</td><td>已有基本信息、症状信息、舌脉腹诊等表格</td><td><b>【Codex补充】</b>需要拆成可交互的分步问答状态机，定义必填项、跳题规则、保存草稿、回退修改。</td></tr>
+    <tr><td>分析过程</td><td>已有症状归属、病理打分、选方思路、份数计算</td><td><b>【Codex补充】</b>需要把“症状到病理标签”的规则结构化，避免只靠大模型自由发挥。</td></tr>
+    <tr><td>追问环节</td><td>目前文档没有独立设计</td><td><b>【Codex补充】</b>需要在初步分析后生成 3 到 5 个追问，并限制追问必须服务于辨证分歧。</td></tr>
+    <tr><td>治疗辅助</td><td>已有选方、合方和目标药量示例</td><td><b>【Codex补充】</b>需要增加安全边界、禁忌提醒、就医提示、剂量来源说明和“仅供学习参考”的输出模板。</td></tr>
+    <tr><td>系统落地</td><td>当前偏流程文档</td><td><b>【Codex补充】</b>需要补接口、数据表、前端页面状态、日志留痕、异常处理和验收标准。</td></tr>
+  </tbody>
+</table>
+
+<h3><span text-color="blue"><b>【Codex补充】二、建议的完整问答流程</b></span></h3>
+<ol>
+  <li seq="auto"><b>基础信息采集：</b>姓名、性别、年龄、联系方式、主诉、现代诊断、既往史、用药史、过敏史。</li>
+  <li seq="auto"><b>顺序问诊采集：</b>按极阴、极阳、里、半、表、水、血、气、妇科、望闻切、腹诊依次提问。</li>
+  <li seq="auto"><b>完整性检查：</b>用户提交后，先判断关键字段是否缺失；缺失时不进入治疗分析，而是提示补问。</li>
+  <li seq="auto"><b>初步分析：</b>输出“症状摘要、病理标签、证据、初步方证方向、仍不确定的问题”。</li>
+  <li seq="auto"><b>追问 3 到 5 题：</b>只围绕分歧点追问，例如寒热真假、汗出与恶寒、二便、口渴饮水、舌脉、腹诊。</li>
+  <li seq="auto"><b>二次归纳：</b>把追问答案合并进原始问诊，重新计算病理分数和方证候选。</li>
+  <li seq="auto"><b>治疗辅助输出：</b>给出治疗方向、候选方剂、合方逻辑、调护建议、风险提示和建议就医边界。</li>
+</ol>
+
+<callout emoji="⚠️" background-color="light-yellow" border-color="yellow">
+  <p><b>【Codex补充】关键边界：</b>系统页面上应避免直接写“确诊”“处方已定”“保证有效”。建议统一写成“初步辨证参考”“方剂学习参考”“需结合医师面诊”。</p>
+</callout>
+
+<h3><span text-color="blue"><b>【Codex补充】三、前端需要新增的页面状态</b></span></h3>
+<table>
+  <colgroup><col width="140"/><col width="250"/><col width="360"/></colgroup>
+  <thead>
+    <tr><th background-color="light-gray">状态</th><th background-color="light-gray">页面表现</th><th background-color="light-gray">需要的逻辑</th></tr>
+  </thead>
+  <tbody>
+    <tr><td>collecting</td><td>分步问诊卡片</td><td><b>【Codex补充】</b>每一步保存答案，支持上一步、下一步、暂存草稿。</td></tr>
+    <tr><td>review</td><td>提交前总览</td><td><b>【Codex补充】</b>按“基本信息、症状、舌脉、腹诊”汇总，让用户确认和修改。</td></tr>
+    <tr><td>analyzing</td><td>生成初步分析</td><td><b>【Codex补充】</b>显示分析进度，不允许重复点击提交。</td></tr>
+    <tr><td>followup</td><td>追问问答</td><td><b>【Codex补充】</b>展示 3 到 5 个追问，每题必须带“为什么问”。</td></tr>
+    <tr><td>result</td><td>最终辨证与治疗辅助结果</td><td><b>【Codex补充】</b>展示证据链、病理分数、候选方剂、风险提示、保存记录按钮。</td></tr>
+    <tr><td>history</td><td>历史问诊记录</td><td><b>【Codex补充】</b>支持重新查看、复制、继续追问、导出。</td></tr>
+  </tbody>
+</table>
+
+<h3><span text-color="blue"><b>【Codex补充】四、后端接口建议</b></span></h3>
+<table>
+  <colgroup><col width="220"/><col width="120"/><col width="420"/></colgroup>
+  <thead>
+    <tr><th background-color="light-gray">接口</th><th background-color="light-gray">方法</th><th background-color="light-gray">用途</th></tr>
+  </thead>
+  <tbody>
+    <tr><td>/api/consultations</td><td>POST</td><td><b>【Codex补充】</b>创建问诊会话，保存基础信息和初始状态。</td></tr>
+    <tr><td>/api/consultations/{id}</td><td>GET</td><td><b>【Codex补充】</b>读取单个问诊记录，包括问诊、追问、分析结果。</td></tr>
+    <tr><td>/api/consultations/{id}/answers</td><td>PATCH</td><td><b>【Codex补充】</b>分步保存用户答案，避免刷新页面丢失。</td></tr>
+    <tr><td>/api/consultations/{id}/analyze</td><td>POST</td><td><b>【Codex补充】</b>触发初步分析，返回病理标签、证据和追问建议。</td></tr>
+    <tr><td>/api/consultations/{id}/followups</td><td>POST</td><td><b>【Codex补充】</b>提交追问答案，重新归纳辨证。</td></tr>
+    <tr><td>/api/consultations/{id}/finalize</td><td>POST</td><td><b>【Codex补充】</b>生成最终治疗辅助建议和保存结果快照。</td></tr>
+  </tbody>
+</table>
+
+<h3><span text-color="blue"><b>【Codex补充】五、数据库建议</b></span></h3>
+<table>
+  <colgroup><col width="180"/><col width="420"/></colgroup>
+  <thead>
+    <tr><th background-color="light-gray">表</th><th background-color="light-gray">字段建议</th></tr>
+  </thead>
+  <tbody>
+    <tr><td>consultations</td><td><b>【Codex补充】</b>id、patient_name、gender、age、chief_complaint、modern_diagnosis、status、created_at、updated_at。</td></tr>
+    <tr><td>consultation_answers</td><td><b>【Codex补充】</b>consultation_id、section_key、question_key、answer_text、evidence_level、updated_at。</td></tr>
+    <tr><td>consultation_analysis</td><td><b>【Codex补充】</b>consultation_id、pathology_scores_json、evidence_json、candidate_formulas_json、uncertainties_json、created_at。</td></tr>
+    <tr><td>consultation_followups</td><td><b>【Codex补充】</b>consultation_id、question、reason、answer、target_pathology、created_at。</td></tr>
+    <tr><td>consultation_results</td><td><b>【Codex补充】</b>consultation_id、final_summary、formula_suggestions_json、care_advice、risk_warnings、created_at。</td></tr>
+  </tbody>
+</table>
+
+<h3><span text-color="blue"><b>【Codex补充】六、AI 分析逻辑需要拆成三层</b></span></h3>
+<grid>
+  <column width-ratio="0.33">
+    <callout emoji="1️⃣" background-color="light-gray">
+      <p><b>规则层</b></p>
+      <p><b>【Codex补充】</b>把常见症状映射到十二字病理标签，例如浮脉、恶寒、头痛偏表；脓涕、蹬被、数脉偏热。</p>
+    </callout>
+  </column>
+  <column width-ratio="0.34">
+    <callout emoji="2️⃣" background-color="light-gray">
+      <p><b>模型层</b></p>
+      <p><b>【Codex补充】</b>让大模型做语言归纳、冲突识别、追问生成，但不要让它直接凭空决定剂量。</p>
+    </callout>
+  </column>
+  <column width-ratio="0.33">
+    <callout emoji="3️⃣" background-color="light-gray">
+      <p><b>校验层</b></p>
+      <p><b>【Codex补充】</b>检查证据是否对应原始问诊，检查禁忌和危险症状，检查输出是否含过度承诺。</p>
+    </callout>
+  </column>
+</grid>
+
+<h3><span text-color="blue"><b>【Codex补充】七、追问生成规则</b></span></h3>
+<ul>
+  <li><b>【Codex补充】追问数量：</b>默认 3 到 5 题，不超过 5 题。</li>
+  <li><b>【Codex补充】追问来源：</b>只从“分数接近、证据冲突、关键缺项、危险信号”四类里生成。</li>
+  <li><b>【Codex补充】每题格式：</b>问题、选项或自由输入、为什么问、影响哪个病理标签。</li>
+  <li><b>【Codex补充】禁止追问：</b>已经明确回答过的问题不要重复问；与当前辨证无关的问题不要问。</li>
+  <li><b>【Codex补充】追问结束条件：</b>用户答完全部追问，或剩余不确定性不影响主要治疗方向。</li>
+</ul>
+
+<h3><span text-color="blue"><b>【Codex补充】八、安全与风控逻辑</b></span></h3>
+<callout emoji="⚠️" background-color="light-red" border-color="red">
+  <p><b>【Codex补充】必须增加危险症状拦截：</b>胸痛、呼吸困难、昏迷、持续高热、便血呕血、剧烈腹痛、孕产相关急症、儿童老人严重脱水等，应优先提示及时就医，不进入普通方剂推荐流程。</p>
+</callout>
+<ul>
+  <li><b>【Codex补充】剂量边界：</b>如果输出克数，必须标注来源、计算方式和“需医师确认”。</li>
+  <li><b>【Codex补充】人群边界：</b>孕妇、儿童、老人、慢病长期用药者、肝肾功能异常者需要单独提示。</li>
+  <li><b>【Codex补充】药物边界：</b>涉及峻下、毒性、强烈发汗、妊娠慎用药时，应触发风险提示。</li>
+  <li><b>【Codex补充】表达边界：</b>避免“必愈、根治、直接服用”等强承诺表达。</li>
+</ul>
+
+<h3><span text-color="blue"><b>【Codex补充】九、最终结果页建议结构</b></span></h3>
+<ol>
+  <li seq="auto"><b>问诊摘要：</b>主诉、主要症状、舌脉腹诊、病程。</li>
+  <li seq="auto"><b>病理归纳：</b>十二字病理标签、分数、对应证据。</li>
+  <li seq="auto"><b>追问修正：</b>追问答案如何改变原分析。</li>
+  <li seq="auto"><b>方证候选：</b>候选方剂、支持证据、反对证据、适用边界。</li>
+  <li seq="auto"><b>治疗辅助：</b>治疗方向、方剂参考、调护建议、复诊观察点。</li>
+  <li seq="auto"><b>安全提示：</b>就医边界、禁忌和不确定性。</li>
+</ol>
+
+<h3><span text-color="blue"><b>【Codex补充】十、开发验收清单</b></span></h3>
+<checkbox done="false">【Codex补充】前端能按固定顺序完成问诊，并支持保存、返回、修改。</checkbox>
+<checkbox done="false">【Codex补充】提交前有完整性检查，缺少主诉、年龄、舌脉等关键项时能提示补充。</checkbox>
+<checkbox done="false">【Codex补充】初步分析能输出“症状证据到病理标签”的对应关系。</checkbox>
+<checkbox done="false">【Codex补充】系统能自动生成 3 到 5 个追问，且每个追问都有原因。</checkbox>
+<checkbox done="false">【Codex补充】追问后能重新计算病理分数，并保留分析前后的变化。</checkbox>
+<checkbox done="false">【Codex补充】最终结果包含安全提示和就医边界，不直接替代医生处方。</checkbox>
+<checkbox done="false">【Codex补充】所有问诊、追问、分析和结果都能保存到数据库，历史记录可回看。</checkbox>

@@ -1,0 +1,48 @@
+# Dependencies
+node_modules/
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+env/
+
+# Build and runtime output
+dist/
+build/
+.cache/
+.pytest_cache/
+*.log
+*.timestamp-*.mjs
+
+# Local agent/tooling state
+.agents/
+.codex/
+skills-lock.json
+
+# Secrets and local config
+.env
+.env.*
+*.pem
+*.key
+*.p12
+*.pfx
+*.sqlite
+*.sqlite3
+*.sqlite3.*
+*.db
+*.db.*
+
+# Temporary auth artifacts
+feishu-auth-qrcode.png
+lark-cli-login-qr.png
+lark-doc-comments-auth-qr*.png
+
+# Office temporary lock files
+~$*
+
+# OS/editor noise
+.DS_Store
+Thumbs.db
+desktop.ini
+.idea/
+.vscode/

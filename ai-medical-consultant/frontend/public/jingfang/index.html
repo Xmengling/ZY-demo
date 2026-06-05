@@ -1,0 +1,185 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>100首方剂解读</title>
+  <link rel="stylesheet" href="styles.css?v=integrated" />
+</head>
+<body>
+  <main class="app-shell app-shell-embedded">
+    <div class="main-workspace">
+    <button id="toggle-list-panel" class="workspace-toggle" type="button" aria-label="收起左侧栏" title="收起左侧栏">
+      <span aria-hidden="true"></span>
+    </button>
+    <aside class="list-panel">
+      <section class="filter-card">
+        <div class="section-title">
+          <h1>100首方剂解读</h1>
+          <div class="toolbar-actions">
+            <button id="new-formula" class="primary small" type="button">新增</button>
+          </div>
+        </div>
+        <label class="field">
+          <span>搜索</span>
+          <input id="search" type="search" placeholder="方名 / 药味 / 症状 / 现代病" />
+        </label>
+        <div id="sidebar-accordion" class="sidebar-accordion" aria-label="方剂分类折叠列表">
+          <div id="category-formula-accordions" class="category-formula-accordions"></div>
+        </div>
+      </section>
+
+    </aside>
+
+    <section class="editor-panel">
+      <section class="editor-card">
+        <div class="section-title">
+          <h2 id="editor-title">编辑方剂</h2>
+          <div class="toolbar-actions">
+            <button id="delete-formula" class="danger small" type="button">删除</button>
+            <button id="save-formula" class="primary small" type="button">保存</button>
+          </div>
+        </div>
+
+        <form id="formula-form" class="formula-form">
+          <input id="field-id" type="hidden" />
+          <label class="field">
+            <span>方剂名</span>
+            <input id="field-name" required />
+          </label>
+          <label class="field">
+            <span>组成</span>
+            <input id="field-composition" />
+          </label>
+          <label class="field">
+            <span>相关条文</span>
+            <textarea id="field-classics" class="textarea-auto" rows="1" data-min-rows="2" placeholder="一行一条；语法：[[红字]]、**粗体**、[[**红色加粗**]]；加紫为系统自动"></textarea>
+          </label>
+          <label class="field">
+            <span>归类</span>
+            <div id="field-categories" class="checkbox-grid"></div>
+          </label>
+          <label class="field">
+            <span>病理</span>
+            <div id="field-pathology" class="pathology-choice-panel"></div>
+          </label>
+          <label class="field">
+            <span>病理症状</span>
+            <div id="field-pathology-symptoms" class="pathology-symptom-panel"></div>
+          </label>
+          <label class="field">
+            <span>胡希恕解析</span>
+            <textarea id="field-hu" class="textarea-auto" rows="1" data-min-rows="2"></textarea>
+          </label>
+          <label class="field">
+            <span>李冠杰解析</span>
+            <textarea id="field-li" class="textarea-auto" rows="1" data-min-rows="2"></textarea>
+          </label>
+          <label class="field">
+            <span>辩证要点</span>
+            <textarea id="field-points" class="textarea-auto" rows="1" data-min-rows="2" placeholder="一行一个要点；语法：[[红字]]、**粗体**、[[**红色加粗**]]；加紫为系统自动"></textarea>
+          </label>
+          <label class="field">
+            <span>临床症状</span>
+            <textarea id="field-clinical" class="textarea-auto" rows="1" data-min-rows="2" placeholder="食少纳呆、浮肿、咳喘"></textarea>
+          </label>
+          <label class="field">
+            <span>现代疾病</span>
+            <textarea id="field-modern" class="textarea-auto" rows="1" data-min-rows="2"></textarea>
+          </label>
+          <label class="field field-cases">
+            <div class="field-label-row">
+              <span>医案</span>
+              <button id="add-case" class="primary small" type="button">+ 添加医案</button>
+            </div>
+            <div id="field-cases" class="cases-panel"></div>
+          </label>
+          <label class="field">
+            <span>腹诊</span>
+            <textarea id="field-abdominal" class="textarea-auto" rows="1" data-min-rows="1"></textarea>
+          </label>
+          <label class="field">
+            <span>慎用人群</span>
+            <textarea id="field-caution" class="textarea-auto" rows="1" data-min-rows="2" data-max-rows="3" placeholder="留空则不显示；语法：[[红字]]、**粗体**、[[**红色加粗**]]；加紫为系统自动"></textarea>
+          </label>
+        </form>
+      </section>
+    </section>
+
+    <section class="preview-panel">
+      <div class="preview-card-area">
+      <div class="formula-card-viewport">
+      <article id="formula-card" class="formula-card" aria-label="方剂卡片">
+        <div class="card-corners" aria-hidden="true"><span></span><span></span><span></span></div>
+        <header class="card-head">
+          <div id="herb-gallery" class="herb-gallery"></div>
+          <div class="card-head-main">
+            <h3 id="card-title" class="title-box">真武汤</h3>
+            <div class="formula-row">
+              <strong>组成</strong>
+              <span id="card-composition"></span>
+            </div>
+          </div>
+        </header>
+
+        <div class="card-body">
+          <aside class="card-side">
+            <section class="card-side-block">
+              <h4 class="ribbon">病理</h4>
+              <div id="card-pathology-tags" class="pathology-tags"></div>
+            </section>
+            <section class="card-side-block">
+              <h4 class="ribbon">病理症状</h4>
+              <div id="card-pathology-list"></div>
+            </section>
+            <section id="card-caution-section" class="card-side-block card-side-section" hidden>
+              <h4 class="ribbon">慎用人群</h4>
+              <p id="card-caution" class="caution"></p>
+            </section>
+          </aside>
+
+          <section class="card-main">
+            <div class="logic-map">
+              <div class="logic-title">辨证要点</div>
+              <div class="logic-branch">
+                <svg class="logic-lines" aria-hidden="true"></svg>
+                <div id="card-points" class="logic-list"></div>
+              </div>
+            </div>
+
+            <section class="callout">
+              <h4>相关原文</h4>
+              <div id="card-classics"></div>
+            </section>
+
+            <section class="callout">
+              <h4>医案</h4>
+              <div id="card-cases"></div>
+            </section>
+
+            <section class="callout analysis-callout">
+              <h4>胡希恕解析</h4>
+              <div id="card-hu"></div>
+            </section>
+
+            <section class="callout analysis-callout">
+              <h4>李冠杰解析</h4>
+              <div id="card-li"></div>
+            </section>
+          </section>
+        </div>
+      </article>
+      </div>
+      <div class="card-side-actions" aria-label="卡片操作">
+        <button id="download-card-partial" class="side-action-btn" type="button">下载部分</button>
+        <button id="download-card-full" class="side-action-btn" type="button">下载</button>
+      </div>
+      </div>
+    </section>
+    </div>
+  </main>
+
+  <div id="toast" class="toast" role="status"></div>
+  <script src="app.js?v=integrated"></script>
+</body>
+</html>

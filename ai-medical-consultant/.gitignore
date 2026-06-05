@@ -1,0 +1,19 @@
+# Python
+__pycache__/
+*.pyc
+.venv/
+venv/
+*.db
+backend/vectorstore/
+backend/server.log
+.env
+
+# Node
+node_modules/
+frontend/dist/
+frontend/vite.log
+
+# IDE / OS
+.idea/
+.vscode/
+.DS_Store

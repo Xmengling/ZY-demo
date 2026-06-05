@@ -1,0 +1,21 @@
+<h3>3.3 病理覆盖验算（占比 × 份数）</h3>
+<p>按「方内病理占比 × 份数」估算各病理在合方中的覆盖量（草稿验算，供调整份数参考）。</p>
+<table>
+<colgroup><col width="80"/><col width="360"/><col width="80"/></colgroup>
+<thead>
+<tr>
+<th vertical-align="top"><p>病理</p></th>
+<th vertical-align="top"><p>验算式</p></th>
+<th vertical-align="top"><p>合计</p></th>
+</tr>
+</thead>
+<tbody>
+<tr><td vertical-align="top"><p>里虚0.5</p></td><td vertical-align="top"><p>小柴胡汤 0.4 × 3份</p></td><td vertical-align="top"><p>1.2</p></td></tr>
+<tr><td vertical-align="top"><p>里实1</p></td><td vertical-align="top"><p>四逆散 0.4 × 2份</p></td><td vertical-align="top"><p>0.8</p></td></tr>
+<tr><td vertical-align="top"><p>里热2</p></td><td vertical-align="top"><p>麻杏石甘汤 0.5 × 4份</p></td><td vertical-align="top"><p>2.0</p></td></tr>
+<tr><td vertical-align="top"><p>半热2</p></td><td vertical-align="top"><p>四逆散 0.2×2 + 小柴胡汤 0.4×3 + 葶苈 0.5×5</p></td><td vertical-align="top"><p>4.1</p></td></tr>
+<tr><td vertical-align="top"><p>水实2</p></td><td vertical-align="top"><p>小柴胡汤 0.2×3 + 半夏厚朴汤 0.7×2 + 葶苈 0.5×5</p></td><td vertical-align="top"><p>3.9</p></td></tr>
+<tr><td vertical-align="top"><p>气实1</p></td><td vertical-align="top"><p>四逆散 0.2×2 + 半夏厚朴汤 0.2×2</p></td><td vertical-align="top"><p>0.8</p></td></tr>
+<tr><td vertical-align="top"><p>表实1</p></td><td vertical-align="top"><p>半夏厚朴汤 0.4 × 3份</p></td><td vertical-align="top"><p>1.2</p></td></tr>
+</tbody>
+</table>

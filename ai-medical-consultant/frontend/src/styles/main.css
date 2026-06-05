@@ -1,0 +1,91 @@
+:root {
+  --brand: #18a058;
+  --brand-dark: #0f7c43;
+  --bg: #f3f6fb;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#app {
+  height: 100%;
+  margin: 0;
+}
+
+body {
+  font-family: -apple-system, 'Segoe UI', 'Microsoft YaHei', Roboto, Helvetica, Arial, sans-serif;
+  color: #1f2933;
+  background: var(--bg);
+}
+
+.page {
+  padding: 24px;
+  max-width: 1180px;
+  margin: 0 auto;
+}
+
+.text-muted {
+  color: #8a94a6;
+}
+
+.gradient-hero {
+  background: linear-gradient(135deg, #18a058 0%, #36c08c 100%);
+  color: #fff;
+}
+
+/* 聊天气泡 */
+.bubble {
+  max-width: 78%;
+  padding: 12px 16px;
+  border-radius: 14px;
+  line-height: 1.7;
+  white-space: pre-wrap;
+  word-break: break-word;
+  box-shadow: 0 2px 8px rgba(15, 23, 42, 0.06);
+}
+
+.bubble-user {
+  background: var(--brand);
+  color: #fff;
+  border-bottom-right-radius: 4px;
+}
+
+.bubble-ai {
+  background: #fff;
+  color: #1f2933;
+  border-bottom-left-radius: 4px;
+}
+
+.msg-row {
+  display: flex;
+  margin-bottom: 18px;
+  gap: 10px;
+}
+
+.msg-row.user {
+  flex-direction: row-reverse;
+}
+
+.avatar {
+  width: 38px;
+  height: 38px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  font-size: 18px;
+}
+
+.avatar-ai {
+  background: #e6f7ef;
+  color: var(--brand-dark);
+}
+
+.avatar-user {
+  background: #dbeafe;
+  color: #1d4ed8;
+}

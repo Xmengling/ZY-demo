@@ -1,0 +1,229 @@
+<title>经方散剂份数计算方式</title>
+
+<callout emoji="💡" background-color="light-blue" border-color="blue">
+<p><b>文档说明</b>：本页汇总经方散剂合方时的份数换算方法，涵盖「各一份」「多份合方」两种算法、份数选取经验，以及临床打分定份数的完整示例。</p>
+</callout>
+
+<h1>一、通用计算原理</h1>
+
+<h2>1.1 各一份（等量合方）</h2>
+
+<p><b>适用场景</b>：合方中每首方剂的份数相同（均为 1 份）。</p>
+
+<p><b>计算步骤</b></p>
+<ol>
+<li seq="auto">单方：各味药重量相加，得该方药物总量</li>
+<li seq="auto">合方：各单方药物总量相加，得合方药物总量</li>
+<li seq="auto">系数 = 目标药量 ÷ 合方药物总量</li>
+<li seq="auto">各单方实际用药量 = 系数 × 该单方药物总量</li>
+<li seq="auto">取各单方对应粉剂混合，即为目标药量的实物</li>
+</ol>
+
+<p><b>核心公式</b>：k = 目标药量 / Σ(各单方总量)；单方实际量 = k × 单方总量</p>
+
+<h3>示例：七方各 1 份，目标 220 g</h3>
+
+<p>合方：小柴胡汤 + 当归芍药散 + 桂枝茯苓丸 + 吴茱萸汤 + 半夏泻心汤 + 五苓散 + 黄连解毒丸（各 1 份）</p>
+
+<table>
+<colgroup><col width="140"/><col width="340"/><col width="80"/></colgroup>
+<thead>
+<tr>
+<th background-color="light-gray">方剂</th>
+<th background-color="light-gray">药物组成（克）</th>
+<th background-color="light-gray">单方总量</th>
+</tr>
+</thead>
+<tbody>
+<tr><td>小柴胡汤</td><td>柴胡8+半夏3+黄芩3+人参3+甘草3+生姜3+大枣5</td><td>28</td></tr>
+<tr><td>当归芍药散</td><td>当归3+芍药16+川芎3+茯苓3+白术6+泽泻8</td><td>31</td></tr>
+<tr><td>桂枝茯苓丸</td><td>桂枝3+芍药3+茯苓3+丹皮3+桃仁3</td><td>15</td></tr>
+<tr><td>吴茱萸汤</td><td>吴茱萸6+人参3+生姜6+大枣5</td><td>20</td></tr>
+<tr><td>半夏泻心汤</td><td>半夏3+黄芩3+人参3+甘草3+干姜3+黄连1+大枣5</td><td>21</td></tr>
+<tr><td>五苓散</td><td>猪苓3+茯苓3+白术3+泽泻5+桂枝2</td><td>16</td></tr>
+<tr><td>黄连解毒丸</td><td>黄连3+黄柏3+黄芩3+栀子3</td><td>12</td></tr>
+<tr><td background-color="light-yellow"><b>合方总量</b></td><td></td><td background-color="light-yellow"><b>143</b></td></tr>
+</tbody>
+</table>
+
+<p><b>换算</b>：k = 220 ÷ 143 = 1.54</p>
+
+<table>
+<colgroup><col width="160"/><col width="140"/><col width="120"/></colgroup>
+<thead>
+<tr>
+<th background-color="light-gray">方剂</th>
+<th background-color="light-gray">计算</th>
+<th background-color="light-gray">实际用药量（g）</th>
+</tr>
+</thead>
+<tbody>
+<tr><td>小柴胡汤</td><td>28 × 1.54</td><td>43.1</td></tr>
+<tr><td>当归芍药散</td><td>31 × 1.54</td><td>47.7</td></tr>
+<tr><td>桂枝茯苓丸</td><td>15 × 1.54</td><td>23.1</td></tr>
+<tr><td>吴茱萸汤</td><td>20 × 1.54</td><td>30.8</td></tr>
+<tr><td>半夏泻心汤</td><td>21 × 1.54</td><td>32.3</td></tr>
+<tr><td>五苓散</td><td>16 × 1.54</td><td>24.6</td></tr>
+<tr><td>黄连解毒丸</td><td>12 × 1.54</td><td>18.5</td></tr>
+<tr><td background-color="light-yellow"><b>合计</b></td><td></td><td background-color="light-yellow"><b>220.1</b></td></tr>
+</tbody>
+</table>
+
+<hr/>
+
+<h2>1.2 多份（不同份数合方）</h2>
+
+<p><b>适用场景</b>：合方中各首方剂的份数不同。</p>
+
+<p><b>计算步骤</b></p>
+<ol>
+<li seq="auto">各单方：单方总量 × 份数 → 得该方在合方中的加权总量</li>
+<li seq="auto">合方药物总量 = Σ(各单方加权总量)</li>
+<li seq="auto">系数 = 目标药量 ÷ 合方药物总量</li>
+<li seq="auto">各单方最终用量 = 系数 × 该单方加权总量</li>
+</ol>
+
+<h3>示例：目标 200 g</h3>
+
+<p>处方：小柴胡汤 2 份 + 五苓散 5 份 + 吴茱萸汤 1 份 + 黄连解毒丸 3 份</p>
+
+<table>
+<colgroup><col width="140"/><col width="80"/><col width="80"/><col width="100"/><col width="120"/></colgroup>
+<thead>
+<tr>
+<th background-color="light-gray">方剂</th>
+<th background-color="light-gray">单方总量</th>
+<th background-color="light-gray">份数</th>
+<th background-color="light-gray">加权总量</th>
+<th background-color="light-gray">计算式</th>
+</tr>
+</thead>
+<tbody>
+<tr><td>小柴胡汤</td><td>28</td><td>2</td><td>56</td><td>28 × 2</td></tr>
+<tr><td>五苓散</td><td>16</td><td>5</td><td>80</td><td>16 × 5</td></tr>
+<tr><td>吴茱萸汤</td><td>20</td><td>1</td><td>20</td><td>20 × 1</td></tr>
+<tr><td>黄连解毒丸</td><td>12</td><td>3</td><td>36</td><td>12 × 3</td></tr>
+<tr><td background-color="light-yellow"><b>合方总量</b></td><td></td><td></td><td background-color="light-yellow"><b>192</b></td><td></td></tr>
+</tbody>
+</table>
+
+<p><b>换算</b>：k = 200 ÷ 192 = 1.04</p>
+
+<table>
+<colgroup><col width="160"/><col width="200"/><col width="120"/></colgroup>
+<thead>
+<tr>
+<th background-color="light-gray">方剂</th>
+<th background-color="light-gray">计算</th>
+<th background-color="light-gray">最终用量（g）</th>
+</tr>
+</thead>
+<tbody>
+<tr><td>小柴胡汤</td><td>200 ÷ 192 × 56</td><td>58.3</td></tr>
+<tr><td>五苓散</td><td>200 ÷ 192 × 80</td><td>83.3</td></tr>
+<tr><td>吴茱萸汤</td><td>200 ÷ 192 × 20</td><td>20.8</td></tr>
+<tr><td>黄连解毒丸</td><td>200 ÷ 192 × 36</td><td>37.5</td></tr>
+</tbody>
+</table>
+
+<hr/>
+
+<h1>二、份数选取经验</h1>
+
+<p><b>原则</b>：方剂组成量少的，份数一般要给得大一些；组成量大的，份数可以相对小一些。</p>
+
+<table>
+<colgroup><col width="120"/><col width="360"/><col width="80"/><col width="280"/></colgroup>
+<thead>
+<tr>
+<th background-color="light-gray">方剂</th>
+<th background-color="light-gray">药物组成（克）</th>
+<th background-color="light-gray">单方总量</th>
+<th background-color="light-gray">份数特点</th>
+</tr>
+</thead>
+<tbody>
+<tr><td>泽泻汤</td><td>泽泻5 + 白术2</td><td>7</td><td>常用 8 份等较大份数</td></tr>
+<tr><td>炙甘草汤</td><td>炙甘草4+生姜3+人参2+生地黄16+桂枝3+阿胶2+麦冬4+麻仁4+大枣13</td><td>51</td><td>常用 1 份即可占较大比例</td></tr>
+</tbody>
+</table>
+
+<callout emoji="📝" background-color="light-yellow" border-color="yellow">
+<p><b>理解要点</b>：泽泻汤单方总量仅 7，份数给少了在合方中占比过低，难以发挥作用；炙甘草汤总量 51，即使用 1 份也能占合方中较大比例，故份数通常较小。</p>
+</callout>
+
+<hr/>
+
+<h1>三、临床打分定份数</h1>
+
+<p><b>方法</b>：根据症状轻重为各方剂打分（确定份数），再按「多份合方」算法换算至目标药量。</p>
+
+<p><b>示例处方与份数</b></p>
+
+<img name="image.png" href="https://api3-eeft-drive.feishu.cn/space/api/box/stream/download/authcode/?code=YThlY2JkMjU1MDk3MGMzODRjMGZkYzhmMTAzNWZiMjJfMGUzZjE4M2I1OWVjZjJmMzBlZDk3OGJmZGM3MzliOTFfSUQ6NzY0NzA4NjYwOTMwNjAxMjkyMF8xNzgwNDc3Mzk3OjE3ODA0ODA5OTdfVjM" mime="image/png" scale="1.000000" src="I8bFbRtRPodARNxWM1GcBXzsne5"/>
+
+<table>
+<colgroup><col width="160"/><col width="320"/><col width="80"/><col width="80"/></colgroup>
+<thead>
+<tr>
+<th background-color="light-gray">方剂</th>
+<th background-color="light-gray">药物组成（克）</th>
+<th background-color="light-gray">单方总量</th>
+<th background-color="light-gray">份数</th>
+</tr>
+</thead>
+<tbody>
+<tr><td>四逆散</td><td>炙甘草3+枳实3+柴胡3+芍药3</td><td>12</td><td>2</td></tr>
+<tr><td>小柴胡汤</td><td>柴胡8+黄芩3+人参3+半夏4+炙甘草3+生姜3+大枣5</td><td>29</td><td>3</td></tr>
+<tr><td>半夏厚朴汤</td><td>半夏8+厚朴3+茯苓4+生姜5+苏叶2</td><td>22</td><td>2</td></tr>
+<tr><td>葶苈大枣泻肺汤</td><td>葶苈5+大枣5</td><td>10</td><td>5</td></tr>
+<tr><td>麻杏石甘汤</td><td>麻黄4+杏仁2+炙甘草2+石膏8</td><td>16</td><td>3</td></tr>
+</tbody>
+</table>
+
+<p><b>加权总量计算</b></p>
+
+<table>
+<colgroup><col width="160"/><col width="160"/><col width="100"/><col width="120"/></colgroup>
+<thead>
+<tr>
+<th background-color="light-gray">方剂</th>
+<th background-color="light-gray">计算式</th>
+<th background-color="light-gray">加权总量</th>
+<th background-color="light-gray">说明</th>
+</tr>
+</thead>
+<tbody>
+<tr><td>四逆散</td><td>12 × 2</td><td>24</td><td></td></tr>
+<tr><td>小柴胡汤</td><td>29 × 3</td><td>87</td><td></td></tr>
+<tr><td>半夏厚朴汤</td><td>22 × 2</td><td>44</td><td></td></tr>
+<tr><td>葶苈大枣泻肺汤</td><td>10 × 5</td><td>50</td><td></td></tr>
+<tr><td>麻杏石甘汤</td><td>16 × 3</td><td>48</td><td></td></tr>
+<tr><td background-color="light-yellow"><b>合方总量</b></td><td></td><td background-color="light-yellow"><b>253</b></td><td></td></tr>
+</tbody>
+</table>
+
+<p><b>目标 200 g 时的最终用量</b>：k = 200 ÷ 253 = 0.7905</p>
+
+<table>
+<colgroup><col width="180"/><col width="200"/><col width="120"/></colgroup>
+<thead>
+<tr>
+<th background-color="light-gray">方剂</th>
+<th background-color="light-gray">计算</th>
+<th background-color="light-gray">最终用量（g）</th>
+</tr>
+</thead>
+<tbody>
+<tr><td>四逆散</td><td>24 × 0.7905</td><td>19.0</td></tr>
+<tr><td>小柴胡汤</td><td>87 × 0.7905</td><td>68.8</td></tr>
+<tr><td>半夏厚朴汤</td><td>44 × 0.7905</td><td>34.8</td></tr>
+<tr><td>葶苈大枣泻肺汤</td><td>50 × 0.7905</td><td>39.5</td></tr>
+<tr><td>麻杏石甘汤</td><td>48 × 0.7905</td><td>37.9</td></tr>
+<tr><td background-color="light-yellow"><b>合计</b></td><td></td><td background-color="light-yellow"><b>≈200</b></td></tr>
+</tbody>
+</table>
+
+<p><b>附：打分参考表（嵌入电子表格）</b></p>
+
+<sheet sheet-id="0W4qea" token="Spizs67tShvbsct6Lvhcjskvn6g"></sheet>

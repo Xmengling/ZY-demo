@@ -1,0 +1,136 @@
+<p><b>结论</b>：病理打分不能直接用单一公式算出份数，但可按「病理匹配分 + 单方总量校正 + 主辅分工」逐步确定。份数定好后，再按本文 1.2 节「多份合方」换算至目标药量。</p>
+
+<p><b>本例病理打分</b>：表实1　里热2　半热2　水实2　气实1　里实1　里虚0.5（合计 9.5 分）</p>
+<p><b>本例处方份数</b>：四逆散2　小柴胡汤3　半夏厚朴汤2　葶苈大枣泻肺汤5　麻杏石甘汤3</p>
+
+<p><b>核心公式：病理匹配分</b></p>
+<p>对每一首已选方，计算：</p>
+<p><b>匹配分 = Σ（患者某病理分 × 该方内此病理占比）</b></p>
+<p>方内病理占比见下表「病理」列；占比来自各药按病理属性累加分值后的百分比。</p>
+
+<table>
+<colgroup><col width="120"/><col width="60"/><col width="50"/><col width="220"/><col width="70"/></colgroup>
+<thead>
+<tr>
+<th vertical-align="top"><p>方剂</p></th>
+<th vertical-align="top"><p>单方总量</p></th>
+<th vertical-align="top"><p>份数</p></th>
+<th vertical-align="top"><p>方内病理占比</p></th>
+<th vertical-align="top"><p>匹配分</p></th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td vertical-align="top"><p>四逆散</p></td>
+<td vertical-align="top"><p>12</p></td>
+<td vertical-align="top"><p>2</p></td>
+<td vertical-align="top"><p>半热20%　里实40%　气实20%</p></td>
+<td vertical-align="top"><p>1.00</p></td>
+</tr>
+<tr>
+<td vertical-align="top"><p>小柴胡汤</p></td>
+<td vertical-align="top"><p>29</p></td>
+<td vertical-align="top"><p>3</p></td>
+<td vertical-align="top"><p>半热37.9%　里虚37.9%　水实24%</p></td>
+<td vertical-align="top"><p>1.43</p></td>
+</tr>
+<tr>
+<td vertical-align="top"><p>半夏厚朴汤</p></td>
+<td vertical-align="top"><p>22</p></td>
+<td vertical-align="top"><p>2</p></td>
+<td vertical-align="top"><p>水实77.2%　气实22.7%</p></td>
+<td vertical-align="top"><p>1.77</p></td>
+</tr>
+<tr>
+<td vertical-align="top"><p>葶苈大枣泻肺汤</p></td>
+<td vertical-align="top"><p>10</p></td>
+<td vertical-align="top"><p>5</p></td>
+<td vertical-align="top"><p>水实50%　半热50%</p></td>
+<td vertical-align="top"><p>2.00</p></td>
+</tr>
+<tr>
+<td vertical-align="top"><p>麻杏石甘汤</p></td>
+<td vertical-align="top"><p>16</p></td>
+<td vertical-align="top"><p>3</p></td>
+<td vertical-align="top"><p>表实37.5%　里热50%</p></td>
+<td vertical-align="top"><p>1.38</p></td>
+</tr>
+</tbody>
+</table>
+
+<p><b>临床定份数五步</b></p>
+<ol>
+<li seq="auto"><b>病理打分</b>：把症状反应群落到十二病理，分清 2 分 / 1 分 / 0.5 分。</li>
+<li seq="auto"><b>选方</b>：每个 ≥1 分的病理至少有一首主方覆盖（靠方证辨证，非纯算术）。</li>
+<li seq="auto"><b>定基准</b>：匹配分最低的那首方，一般从 <b>2 份</b> 起。</li>
+<li seq="auto"><b>按比例上浮</b>：初步份数 ≈ round( 2 × 该方匹配分 ÷ 基准匹配分 )。</li>
+<li seq="auto"><b>校正</b>：① 单方总量 &lt;15 的，加 1～2 份（如葶苈）；② 同一病理已被主方覆盖的，辅方减份（如半夏厚朴汤）。</li>
+</ol>
+
+<p><b>本例校正对照</b></p>
+<table>
+<colgroup><col width="120"/><col width="80"/><col width="80"/><col width="280"/></colgroup>
+<thead>
+<tr>
+<th vertical-align="top"><p>方剂</p></th>
+<th vertical-align="top"><p>初步份数</p></th>
+<th vertical-align="top"><p>实际份数</p></th>
+<th vertical-align="top"><p>校正原因</p></th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td vertical-align="top"><p>四逆散</p></td>
+<td vertical-align="top"><p>2</p></td>
+<td vertical-align="top"><p>2</p></td>
+<td vertical-align="top"><p>基准方，兼里实、气实、半热</p></td>
+</tr>
+<tr>
+<td vertical-align="top"><p>小柴胡汤</p></td>
+<td vertical-align="top"><p>3</p></td>
+<td vertical-align="top"><p>3</p></td>
+<td vertical-align="top"><p>半热、里虚、水实兼方</p></td>
+</tr>
+<tr>
+<td vertical-align="top"><p>半夏厚朴汤</p></td>
+<td vertical-align="top"><p>4</p></td>
+<td vertical-align="top"><p>2</p></td>
+<td vertical-align="top"><p>水实已由葶苈、小柴胡主覆盖，降为辅方</p></td>
+</tr>
+<tr>
+<td vertical-align="top"><p>葶苈大枣泻肺汤</p></td>
+<td vertical-align="top"><p>4</p></td>
+<td vertical-align="top"><p>5</p></td>
+<td vertical-align="top"><p>匹配分最高且单方总量仅 10，再加 1 份</p></td>
+</tr>
+<tr>
+<td vertical-align="top"><p>麻杏石甘汤</p></td>
+<td vertical-align="top"><p>3</p></td>
+<td vertical-align="top"><p>3</p></td>
+<td vertical-align="top"><p>里热、表实专方</p></td>
+</tr>
+</tbody>
+</table>
+
+<p><b>决定份数的五个因素</b></p>
+<ol>
+<li seq="auto"><b>单方总量</b>：组成量小的方，份数要给大（见本文第二节泽泻汤 vs 炙甘草汤）。</li>
+<li seq="auto"><b>方内病理比重</b>：患者高分病理在该方占比越高，份数越大。</li>
+<li seq="auto"><b>病理主辅</b>：同一病理多方可治时，主方多加、辅方少加。</li>
+<li seq="auto"><b>专方 vs 兼方</b>：专病专方（如麻杏治里热表实）份数适中；兼方按次要病理减量。</li>
+<li seq="auto"><b>临床主次</b>：打分高且症状突出的病理，对应主方优先加份。</li>
+</ol>
+
+<callout emoji="📝">
+<p><b>临床口诀</b>：先打分 → 再选方 → 算匹配 → 定基准 2 份 → 方小加份、主方多加、辅方减份 → 验算加权总量 → 换算目标药量。</p>
+</callout>
+
+<p><b>按病理维度看主辅（本例）</b></p>
+<ul>
+<li><b>水实=2</b>：葶苈 5 份主攻；半夏 2 份辅；小柴胡 3 份兼半热、里虚。</li>
+<li><b>半热=2</b>：葶苈 5 份 + 小柴胡 3 份主扛；四逆散 2 份兼里实、气实。</li>
+<li><b>里热=2</b>：麻杏石甘汤 3 份独担。</li>
+<li><b>表实=1、里实=1、气实=1、里虚=0.5</b>：分别由麻杏、四逆散、四逆散/半夏、小柴胡分担，份数 2～3 即可。</li>
+</ul>
+
+<p><b>注意</b>：病理打分与方内药物分值不是同一量纲，不能写成「份数 = 病理分 ÷ 常数」的精确公式；选哪几首方仍依赖方证辨证，算术只负责在已选方之间定份。</p>

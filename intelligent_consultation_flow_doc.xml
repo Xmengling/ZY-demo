@@ -1,0 +1,311 @@
+<callout emoji="✅" background-color="light-green" border-color="green">
+  <p><b>目标：</b>把智能问诊改成一个清晰的“问答式诊疗辅助流程”：先收集基础信息，再做初步辨证分析；若信息不足，自动追问 3-5 个关键问题；追问结束后，再输出整体辨证、治疗方向、方剂参考、调护建议和风险提醒。</p>
+</callout>
+
+<h1>智能问诊功能重构方案</h1>
+
+<h2>1. 核心定位</h2>
+<table>
+  <thead>
+    <tr>
+      <th background-color="light-gray">模块</th>
+      <th background-color="light-gray">定位</th>
+      <th background-color="light-gray">边界</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>问诊模块</td>
+      <td>按固定顺序收集症状、寒热、汗、饮食、二便、睡眠、舌脉、病程等信息</td>
+      <td>信息未收集完整前，不直接给治疗结论</td>
+    </tr>
+    <tr>
+      <td>分析模块</td>
+      <td>把用户信息整理成病机线索，形成初步辨证方向</td>
+      <td>只能输出“初步判断”，不能装作已经确诊</td>
+    </tr>
+    <tr>
+      <td>追问模块</td>
+      <td>根据缺失或矛盾信息，生成 3-5 个最关键追问</td>
+      <td>追问必须少而准，避免把用户问烦</td>
+    </tr>
+    <tr>
+      <td>治疗辅助模块</td>
+      <td>在问诊和追问完成后，输出治疗方向、方剂参考、调护建议、就医提醒</td>
+      <td>不直接替代医生处方，不给危险剂量和强治疗承诺</td>
+    </tr>
+  </tbody>
+</table>
+
+<hr/>
+
+<h2>2. 推荐总流程</h2>
+<whiteboard type="mermaid">flowchart TD
+  A["用户进入智能问诊"] --> B["第一步：基础信息采集"]
+  B --> C["第二步：主诉与现症问答"]
+  C --> D["第三步：初步辨证分析"]
+  D --> E{"信息是否足够"}
+  E -->|"不足或矛盾"| F["第四步：追问 3-5 个关键问题"]
+  F --> G["用户回答追问"]
+  G --> H["第五步：整合分析"]
+  E -->|"足够"| H
+  H --> I["第六步：输出治疗辅助建议"]
+  I --> J["方证方向、方剂参考、调护建议、风险提醒"]
+</whiteboard>
+
+<h2>3. 第一部分：顺序问诊信息采集</h2>
+<callout emoji="ℹ️" background-color="light-blue" border-color="blue">
+  <p>这一阶段的目标是“把病人信息问完整”，不是马上分析。页面可以做成分步问答卡片，每答完一组进入下一组。</p>
+</callout>
+
+<table>
+  <thead>
+    <tr>
+      <th background-color="light-gray">顺序</th>
+      <th background-color="light-gray">信息组</th>
+      <th background-color="light-gray">建议问题</th>
+      <th background-color="light-gray">前端控件</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>1</td>
+      <td>基础信息</td>
+      <td>年龄、性别、身高体重、是否孕产期、既往病史、正在用药</td>
+      <td>表单输入 + 单选/多选</td>
+    </tr>
+    <tr>
+      <td>2</td>
+      <td>主诉</td>
+      <td>最困扰你的症状是什么？从什么时候开始？加重或缓解因素是什么？</td>
+      <td>大文本输入</td>
+    </tr>
+    <tr>
+      <td>3</td>
+      <td>寒热与汗</td>
+      <td>怕冷还是怕热？有没有发热、恶寒、自汗、盗汗、无汗？</td>
+      <td>多选 + 补充描述</td>
+    </tr>
+    <tr>
+      <td>4</td>
+      <td>饮食口渴</td>
+      <td>食欲如何？口渴吗？喜欢冷饮还是热饮？有没有恶心、嗳气、反酸？</td>
+      <td>多选 + 条件追问</td>
+    </tr>
+    <tr>
+      <td>5</td>
+      <td>二便</td>
+      <td>大便干稀、次数、是否排不尽；小便颜色、频次、是否不利或疼痛</td>
+      <td>结构化表单</td>
+    </tr>
+    <tr>
+      <td>6</td>
+      <td>睡眠情绪</td>
+      <td>睡眠、心烦、焦虑、胸闷、易怒、惊悸等情况</td>
+      <td>多选 + 程度评分</td>
+    </tr>
+    <tr>
+      <td>7</td>
+      <td>部位与疼痛</td>
+      <td>疼痛部位、性质、是否固定、按压加重还是缓解、是否胀满</td>
+      <td>身体部位选择 + 文本</td>
+    </tr>
+    <tr>
+      <td>8</td>
+      <td>舌脉</td>
+      <td>舌质、舌苔、脉象；支持上传舌照，但提示仅供参考</td>
+      <td>图片上传 + 选项</td>
+    </tr>
+  </tbody>
+</table>
+
+<hr/>
+
+<h2>4. 第二部分：初步分析</h2>
+<p>用户完成基础问诊后，系统先不要直接给“治疗方案”，而是先输出一段结构化分析，让用户知道系统理解了什么。</p>
+
+<grid>
+  <column width-ratio="0.5">
+    <callout emoji="📌" background-color="light-blue" border-color="blue">
+      <p><b>初步分析内容</b></p>
+      <ul>
+        <li>主诉摘要：用 2-3 句话复述用户最核心的问题</li>
+        <li>关键症状：寒热、汗、饮食、二便、疼痛、舌脉等</li>
+        <li>可能病机：用中医语言归纳，如气滞、血瘀、里热、水饮、表虚等</li>
+        <li>信息缺口：明确哪些信息还不足</li>
+      </ul>
+    </callout>
+  </column>
+  <column width-ratio="0.5">
+    <callout emoji="⚠️" background-color="light-red" border-color="red">
+      <p><b>不能在这一步做的事</b></p>
+      <ul>
+        <li>不能直接给处方剂量</li>
+        <li>不能承诺疗效</li>
+        <li>不能忽略急症风险</li>
+        <li>不能把一个症状直接等同于某个方证</li>
+      </ul>
+    </callout>
+  </column>
+</grid>
+
+<hr/>
+
+<h2>5. 第三部分：自动追问 3-5 个关键问题</h2>
+<p>追问只在“信息不足、症状矛盾、存在风险、方证边界不清”时触发。追问数量控制在 3-5 个，优先问最能改变辨证方向的问题。</p>
+
+<table>
+  <thead>
+    <tr>
+      <th background-color="light-gray">触发情况</th>
+      <th background-color="light-gray">追问方向</th>
+      <th background-color="light-gray">示例问题</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>腹痛</td>
+      <td>固定与否、按压反应、胀满、二便</td>
+      <td>疼痛是固定一个点，还是位置会变？按压后更痛还是舒服？</td>
+    </tr>
+    <tr>
+      <td>寒热不清</td>
+      <td>怕冷怕热、发热、汗出、口渴</td>
+      <td>你更明显是怕冷，还是烦热？有没有汗出或口渴想喝冷水？</td>
+    </tr>
+    <tr>
+      <td>水饮可能</td>
+      <td>小便、口渴、眩晕、心下悸、痰饮</td>
+      <td>小便是否减少？喝水后会不会更胀、恶心或想吐？</td>
+    </tr>
+    <tr>
+      <td>血瘀可能</td>
+      <td>刺痛、固定痛、舌暗、月经/产后情况</td>
+      <td>疼痛是否像针刺一样固定？舌色是否暗紫？女性是否有经产相关异常？</td>
+    </tr>
+    <tr>
+      <td>急症风险</td>
+      <td>高热、剧痛、出血、胸痛、呼吸困难</td>
+      <td>有没有持续高热、剧烈腹痛、便血、胸痛或呼吸困难？</td>
+    </tr>
+  </tbody>
+</table>
+
+<h3>追问生成规则</h3>
+<ol>
+  <li seq="auto">每轮最多追问 5 个问题，默认 3 个。</li>
+  <li seq="auto">问题要能直接改变辨证结论，不问“可有可无”的信息。</li>
+  <li seq="auto">追问后必须等待用户回答，再进入最终分析。</li>
+  <li seq="auto">如果出现急症信号，立即输出就医提醒，暂停普通问诊。</li>
+</ol>
+
+<hr/>
+
+<h2>6. 第四部分：最终输出结构</h2>
+<p>追问结束后，系统输出最终结果。这里才放“治疗辅助功能”，并且要明确是学习和辅助判断，不替代线下医生诊疗。</p>
+
+<table>
+  <thead>
+    <tr>
+      <th background-color="light-gray">输出模块</th>
+      <th background-color="light-gray">内容要求</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>问诊摘要</td>
+      <td>概括主诉、病程、关键症状、舌脉和追问回答</td>
+    </tr>
+    <tr>
+      <td>辨证分析</td>
+      <td>按病机标签说明：表里、寒热、虚实、气血水津等</td>
+    </tr>
+    <tr>
+      <td>方证方向</td>
+      <td>给出 1-3 个可能方证方向，并说明支持点和不支持点</td>
+    </tr>
+    <tr>
+      <td>治疗辅助建议</td>
+      <td>只给治疗思路、调护方向、可进一步咨询医生的方剂参考；避免直接强处方</td>
+    </tr>
+    <tr>
+      <td>风险提醒</td>
+      <td>列出需要及时就医的红旗症状</td>
+    </tr>
+    <tr>
+      <td>下一步</td>
+      <td>提示用户补充舌照、检查结果、复诊变化，或保存本次问诊记录</td>
+    </tr>
+  </tbody>
+</table>
+
+<hr/>
+
+<h2>7. 前端交互建议</h2>
+<ul>
+  <li>把问诊页改成“步骤式问答”：基础信息 → 主诉 → 症状组 → 初步分析 → 追问 → 最终报告。</li>
+  <li>每一步只展示当前要回答的问题，减少一次性长表单压力。</li>
+  <li>右侧或底部固定显示“已收集信息摘要”，让用户知道自己填了什么。</li>
+  <li>追问阶段显示“还需要确认 3 个关键点”，增强用户耐心。</li>
+  <li>最终报告支持复制、保存到问诊记录、重新补充回答。</li>
+</ul>
+
+<h2>8. 后端与 Agent 状态设计</h2>
+<table>
+  <thead>
+    <tr>
+      <th background-color="light-gray">状态</th>
+      <th background-color="light-gray">含义</th>
+      <th background-color="light-gray">下一步</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>collecting</td>
+      <td>正在收集基础问诊信息</td>
+      <td>继续给出下一组问题</td>
+    </tr>
+    <tr>
+      <td>initial_analysis</td>
+      <td>基础信息已足够进行初步分析</td>
+      <td>输出初步辨证与信息缺口</td>
+    </tr>
+    <tr>
+      <td>follow_up</td>
+      <td>需要追问 3-5 个问题</td>
+      <td>等待用户回答追问</td>
+    </tr>
+    <tr>
+      <td>final_report</td>
+      <td>追问结束，生成最终报告</td>
+      <td>输出治疗辅助建议和风险提醒</td>
+    </tr>
+    <tr>
+      <td>urgent_warning</td>
+      <td>出现红旗症状</td>
+      <td>暂停普通问诊，提示尽快就医</td>
+    </tr>
+  </tbody>
+</table>
+
+<hr/>
+
+<h2>9. Agent 提示词草案</h2>
+<pre lang="text" caption="智能问诊 Agent 工作规则"><code>你是中医智能问诊辅助 Agent。你的任务不是立刻给治疗方案，而是按流程完成问诊、分析、追问和最终报告。
+
+工作流程：
+1. 先收集基础信息和主诉，不要急于下结论。
+2. 用户回答完整后，输出初步分析：主诉摘要、关键症状、可能病机、信息缺口。
+3. 如果信息不足或存在矛盾，提出 3-5 个最关键追问。
+4. 用户回答追问后，再输出最终报告。
+5. 最终报告包含：问诊摘要、辨证分析、方证方向、治疗辅助建议、调护建议、风险提醒。
+6. 如出现急症信号，如持续高热、剧烈胸腹痛、呼吸困难、出血、意识异常等，优先提示及时就医。
+7. 不承诺疗效，不替代医生诊疗，不给危险剂量。</code></pre>
+
+<h2>10. 最小可用版本</h2>
+<checkbox done="false">前端新增步骤式问诊界面</checkbox>
+<checkbox done="false">后端新增问诊状态字段：collecting、initial_analysis、follow_up、final_report、urgent_warning</checkbox>
+<checkbox done="false">Agent 输出结构拆分为：初步分析、追问、最终报告</checkbox>
+<checkbox done="false">追问问题数量限制为 3-5 个</checkbox>
+<checkbox done="false">最终报告加入治疗辅助建议与风险提醒</checkbox>
+<checkbox done="false">问诊记录保存每一步问答与最终报告</checkbox>
