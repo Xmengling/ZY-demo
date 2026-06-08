@@ -32,6 +32,9 @@ skills-lock.json
 *.db
 *.db.*
 
+# 经方网页数据库（纳入版本库）
+!ai-medical-consultant/backend/data/jingfang.sqlite3
+
 # Temporary auth artifacts
 feishu-auth-qrcode.png
 lark-cli-login-qr.png
