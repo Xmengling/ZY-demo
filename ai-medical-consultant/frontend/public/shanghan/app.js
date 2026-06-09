@@ -296,16 +296,39 @@ function matchesSearch(article) {
   ].some((value) => String(value || "").toLowerCase().includes(q));
 }
 
+function updateArticleListSummary() {
+  const summary = $("#article-list-summary");
+  if (!summary) return;
+  const query = $("#search").value.trim();
+  const visible = state.articles.filter(matchesSearch);
+  const total = state.articles.length;
+  if (!total) {
+    summary.textContent = "";
+    return;
+  }
+  summary.textContent = query
+    ? `找到 ${visible.length} / ${total} 条条文`
+    : `共 ${total} 条条文`;
+}
+
 function renderArticleList() {
   const visible = state.articles.filter(matchesSearch).sort(compareArticles);
   $("#article-list").innerHTML = visible.length
-    ? visible.map((article) => `
-      <button type="button" class="${article.id === state.selectedId ? "active" : ""}" data-id="${escapeHtml(article.id)}" title="${escapeHtml(articleLabel(article))}">
-        <span class="article-no">${escapeHtml(article.number ? `第${article.number}条` : "未编号")}</span>
-        <span class="article-name">${escapeHtml(articleLevel(article))}</span>
-      </button>
-    `).join("")
-    : '<p style="color:#607089;font-size:14px;">暂无匹配条文</p>';
+    ? visible.map((article, index) => {
+      const no = article.number ? String(article.number) : "";
+      const indexLabel = no && /^\d+$/.test(no)
+        ? String(Number(no)).padStart(2, "0")
+        : String(index + 1).padStart(2, "0");
+      const headline = articleOriginalHeadline(article.original);
+      const label = article.number ? `第${article.number}条 ${headline}` : headline;
+      return `<button type="button" class="article-item${article.id === state.selectedId ? " active" : ""}" data-id="${escapeHtml(article.id)}" title="${escapeHtml(label)}">
+        <span class="article-item-index">${escapeHtml(indexLabel)}</span>
+        <span class="article-item-body">
+          <span class="article-item-name">${escapeHtml(headline)}</span>
+        </span>
+      </button>`;
+    }).join("")
+    : '<p class="empty-hint">暂无匹配条文</p>';
 
   $$("#article-list button").forEach((button) => {
     button.addEventListener("click", () => {
@@ -313,6 +336,7 @@ function renderArticleList() {
       if (article) fillForm(article);
     });
   });
+  updateArticleListSummary();
 }
 
 function renderPreview(article) {
@@ -503,7 +527,7 @@ function getArticlePreviewMaxWidth(collapsed) {
   const workspacePadding = workspace
     ? parseFloat(getComputedStyle(workspace).paddingLeft) + parseFloat(getComputedStyle(workspace).paddingRight)
     : 24;
-  const listWidth = collapsed ? 0 : 280;
+  const listWidth = collapsed ? 0 : 300;
   const editorWidth = 460;
   const gap = collapsed ? 12 : 24;
   const shellPadding = 12;

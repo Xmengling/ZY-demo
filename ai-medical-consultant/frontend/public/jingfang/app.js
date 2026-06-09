@@ -593,12 +593,28 @@ function visibleFormulaCategories() {
   return [...state.categories];
 }
 
+function updateFormulaListSummary() {
+  const summary = $("#formula-list-summary");
+  if (!summary) return;
+  const query = $("#search").value.trim();
+  const visible = state.formulas.filter((formula) => matchesSearch(formula));
+  const total = state.formulas.length;
+  if (!total) {
+    summary.textContent = "";
+    return;
+  }
+  summary.textContent = query
+    ? `找到 ${visible.length} / ${total} 首方剂`
+    : `共 ${total} 首方剂`;
+}
+
 function renderFormulaList() {
   const container = $("#category-formula-accordions");
   const categories = visibleFormulaCategories();
 
   if (!categories.length) {
     container.innerHTML = '<p class="empty-hint">暂无分类方剂</p>';
+    updateFormulaListSummary();
     return;
   }
 
@@ -612,14 +628,20 @@ function renderFormulaList() {
     return `
       <section class="accordion-item ${state.accordionOpen[key] ? "" : "collapsed"}" data-accordion="${escapeHtml(key)}">
         <button class="accordion-trigger" type="button" aria-expanded="${state.accordionOpen[key]}" aria-controls="accordion-${escapeHtml(key)}-panel">
-          <span>${escapeHtml(category)}（${formulas.length}）</span>
+          <span class="accordion-trigger-label">${escapeHtml(category)}</span>
+          <span class="accordion-count">${formulas.length}</span>
           <span class="accordion-caret" aria-hidden="true">▾</span>
         </button>
         <div id="accordion-${escapeHtml(key)}-panel" class="accordion-panel">
           <div class="formula-list" data-category="${escapeHtml(category)}">
             ${formulas.length
-              ? formulas.map((formula) => (
-                `<button type="button" class="${formula.id === state.selectedId ? "active" : ""}" data-id="${escapeHtml(formula.id)}" title="${escapeHtml(formula.name)}">${escapeHtml(formula.name)}</button>`
+              ? formulas.map((formula, index) => (
+                `<button type="button" class="formula-item${formula.id === state.selectedId ? " active" : ""}" data-id="${escapeHtml(formula.id)}" title="${escapeHtml(formula.name)}">
+                  <span class="formula-item-index">${String(index + 1).padStart(2, "0")}</span>
+                  <span class="formula-item-body">
+                    <span class="formula-item-name">${escapeHtml(formula.name)}</span>
+                  </span>
+                </button>`
               )).join("")
               : '<p class="empty-hint">该分类暂无方剂</p>'}
           </div>
@@ -633,6 +655,7 @@ function renderFormulaList() {
       if (formula) fillForm(formula);
     });
   });
+  updateFormulaListSummary();
 }
 
 function getFormulaPreviewMaxWidth(collapsed) {
@@ -642,7 +665,7 @@ function getFormulaPreviewMaxWidth(collapsed) {
   const workspacePadding = workspace
     ? parseFloat(getComputedStyle(workspace).paddingLeft) + parseFloat(getComputedStyle(workspace).paddingRight)
     : 24;
-  const listWidth = collapsed ? 0 : 280;
+  const listWidth = collapsed ? 0 : 300;
   const editorWidth = 460;
   const gap = collapsed ? 12 : 24;
   const shellPadding = 12;

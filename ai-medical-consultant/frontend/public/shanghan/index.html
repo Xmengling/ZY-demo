@@ -4,7 +4,7 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>伤寒论条文解读</title>
-  <link rel="stylesheet" href="styles.css?v=20260605aa" />
+  <link rel="stylesheet" href="styles.css?v=list-ui1" />
 </head>
 <body>
   <main class="app-shell app-shell-embedded">
@@ -14,18 +14,20 @@
       </button>
 
       <aside class="list-panel">
-        <section class="panel-card">
+        <section class="filter-card">
           <div class="section-title">
-            <div>
-              <p class="eyebrow">SHANG HAN LUN</p>
-              <h1>伤寒论条文解读</h1>
+            <h1>伤寒论条文解读</h1>
+            <div class="toolbar-actions">
+              <button id="new-article" class="primary small" type="button">新增</button>
             </div>
-            <button id="new-article" class="primary small" type="button">新增</button>
           </div>
-          <label class="field">
-            <span>搜索</span>
-            <input id="search" type="search" placeholder="条文 / 病名 / 辨证要点" />
+          <label class="field search-field">
+            <span>搜索条文</span>
+            <div class="search-input-wrap">
+              <input id="search" type="search" placeholder="条文序号、原文、辨证要点…" />
+            </div>
           </label>
+          <p id="article-list-summary" class="article-list-summary" aria-live="polite"></p>
           <div id="article-list" class="article-list" aria-label="条文列表"></div>
         </section>
       </aside>
@@ -154,6 +156,6 @@
   </main>
 
   <div id="toast" class="toast" role="status"></div>
-  <script src="app.js?v=20260605x"></script>
+  <script src="app.js?v=list-ui1"></script>
 </body>
 </html>

@@ -4,7 +4,7 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>100首方剂解读</title>
-  <link rel="stylesheet" href="styles.css?v=integrated-fit2" />
+  <link rel="stylesheet" href="styles.css?v=list-ui1" />
 </head>
 <body>
   <main class="app-shell app-shell-embedded">
@@ -21,10 +21,13 @@
             <button id="new-formula" class="primary small" type="button">新增</button>
           </div>
         </div>
-        <label class="field">
-          <span>搜索</span>
-          <input id="search" type="search" placeholder="方名 / 药味 / 症状 / 现代病" />
+        <label class="field search-field">
+          <span>搜索方剂</span>
+          <div class="search-input-wrap">
+            <input id="search" type="search" placeholder="方名、药味、症状、现代病…" />
+          </div>
         </label>
+        <p id="formula-list-summary" class="formula-list-summary" aria-live="polite"></p>
         <div id="sidebar-accordion" class="sidebar-accordion" aria-label="方剂分类折叠列表">
           <div id="category-formula-accordions" class="category-formula-accordions"></div>
         </div>
@@ -181,6 +184,6 @@
   </main>
 
   <div id="toast" class="toast" role="status"></div>
-  <script src="app.js?v=integrated-fit3"></script>
+  <script src="app.js?v=list-ui2"></script>
 </body>
 </html>
