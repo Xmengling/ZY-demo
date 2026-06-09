@@ -207,13 +207,109 @@ button {
   transition: border-color .18s ease, box-shadow .18s ease;
 }
 
-.formula-list-summary {
+.formula-list-summary-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
   margin: 0 0 10px;
+}
+
+.formula-list-summary {
+  margin: 0;
   padding: 0 2px;
   color: #7b8ba6;
   font-size: 12px;
   font-weight: 700;
   letter-spacing: 0.02em;
+  flex: 1;
+  min-width: 0;
+}
+
+.list-filter-btn {
+  flex-shrink: 0;
+  min-height: 28px;
+  border: 1px solid #c5d8fb;
+  border-radius: 999px;
+  padding: 0 12px;
+  background: #fff;
+  color: #5a6880;
+  font-size: 12px;
+  font-weight: 800;
+  transition: background .15s ease, border-color .15s ease, color .15s ease, box-shadow .15s ease;
+}
+
+.list-filter-btn:hover {
+  border-color: #9ebfff;
+  background: #f6f9ff;
+  color: var(--blue-dark);
+}
+
+.list-filter-btn.active {
+  border-color: var(--blue);
+  background: var(--blue-soft);
+  color: var(--blue-dark);
+  box-shadow: 0 2px 8px rgba(71, 124, 255, .12);
+}
+
+.name-proofread-row {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 8px;
+  align-items: center;
+}
+
+.field-name-row input {
+  min-width: 0;
+}
+
+.proofread-btn {
+  flex-shrink: 0;
+  min-height: 38px;
+  border: 1px dashed #9ebfff;
+  border-radius: 10px;
+  padding: 0 12px;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: #f8fbff;
+  color: #5a6880;
+  font-size: 13px;
+  font-weight: 800;
+  white-space: nowrap;
+  transition: background .15s ease, border-color .15s ease, color .15s ease, box-shadow .15s ease;
+}
+
+.proofread-btn-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  border-radius: 999px;
+  border: 1.5px solid #b8cff5;
+  font-size: 11px;
+  line-height: 1;
+  color: transparent;
+}
+
+.proofread-btn:hover {
+  border-color: var(--blue);
+  background: #edf4ff;
+  color: var(--blue-dark);
+}
+
+.proofread-btn.is-complete {
+  border: 1px solid #3d9b6d;
+  background: linear-gradient(180deg, #f2fff7 0%, #e8f8ef 100%);
+  color: #1f6b45;
+  box-shadow: 0 2px 8px rgba(47, 155, 105, .12);
+}
+
+.proofread-btn.is-complete .proofread-btn-icon {
+  border-color: #3d9b6d;
+  background: #3d9b6d;
+  color: #fff;
 }
 
 .editor-card {
@@ -728,19 +824,39 @@ textarea:focus {
 }
 
 .formula-item-body {
-  display: grid;
-  gap: 2px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
   min-width: 0;
 }
 
 .formula-item-name {
   display: block;
+  flex: 1;
+  min-width: 0;
   font-size: 14px;
   font-weight: 900;
   line-height: 1.25;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+.formula-item-flag {
+  flex-shrink: 0;
+  min-height: 18px;
+  padding: 0 6px;
+  border-radius: 999px;
+  background: #fff4e8;
+  color: #b45309;
+  font-size: 10px;
+  font-weight: 800;
+  line-height: 18px;
+}
+
+.formula-item.active .formula-item-flag {
+  background: #ffe8cc;
+  color: #9a3412;
 }
 
 .formula-item-meta {
@@ -915,10 +1031,10 @@ textarea:focus {
   grid-template-columns: repeat(var(--herb-cols), var(--herb-w));
   grid-auto-rows: var(--herb-h);
   gap: var(--herb-gap);
-  align-content: center;
-  justify-content: center;
-  justify-items: center;
-  align-items: center;
+  align-content: start;
+  justify-content: start;
+  justify-items: start;
+  align-items: start;
 }
 
 .herb-gallery img,
@@ -981,11 +1097,12 @@ textarea:focus {
 .formula-row span {
   padding: 8px 12px;
   overflow-wrap: anywhere;
+  text-align: left;
 }
 
 #card-composition {
   display: block;
-  text-align: center;
+  text-align: left;
   line-height: 1.55;
   overflow-wrap: anywhere;
 }

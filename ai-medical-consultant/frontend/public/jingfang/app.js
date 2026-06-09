@@ -28,6 +28,7 @@ const state = {
   selectedId: null,
   accordionOpen: {},
   listCollapsed: false,
+  proofreadFilterOnly: false,
 };
 
 const $ = (selector) => document.querySelector(selector);
@@ -339,7 +340,30 @@ function normalizeFormulaFromForm() {
     caseItems,
     cases: caseItems.join("\n\n"),
     caution: fields.caution.value.trim(),
+    proofreadComplete: $("#toggle-proofread")?.getAttribute("aria-pressed") === "true",
   };
+}
+
+function isFormulaProofread(formula) {
+  return formula?.proofreadComplete === true;
+}
+
+function updateProofreadButton(complete) {
+  const btn = $("#toggle-proofread");
+  if (!btn) return;
+  const done = Boolean(complete);
+  btn.setAttribute("aria-pressed", String(done));
+  btn.classList.toggle("is-complete", done);
+  const text = btn.querySelector(".proofread-btn-text");
+  if (text) text.textContent = done ? "已校对" : "校对完成";
+  btn.title = done ? "点击取消校对完成标记" : "标记当前方剂已校对完成";
+}
+
+function updateProofreadFilterButton() {
+  const btn = $("#filter-unproofread");
+  if (!btn) return;
+  btn.setAttribute("aria-pressed", String(state.proofreadFilterOnly));
+  btn.classList.toggle("active", state.proofreadFilterOnly);
 }
 
 function expandSidebarCategories(categories = []) {
@@ -371,6 +395,7 @@ function fillForm(formula) {
     input.checked = (formula.categories || []).includes(input.value);
   });
   renderPathologyChoices(formula.pathology || []);
+  updateProofreadButton(isFormulaProofread(formula));
   renderPreview(normalizeFormulaFromForm());
   renderFormulaList();
 }
@@ -583,9 +608,14 @@ function matchesSearch(formula) {
   return !query || formulaSearchText(formula).includes(query);
 }
 
+function matchesListFilters(formula) {
+  if (state.proofreadFilterOnly && isFormulaProofread(formula)) return false;
+  return matchesSearch(formula);
+}
+
 function formulasInCategory(category) {
   return state.formulas.filter((formula) => (
-    (formula.categories || []).includes(category) && matchesSearch(formula)
+    (formula.categories || []).includes(category) && matchesListFilters(formula)
   ));
 }
 
@@ -597,15 +627,22 @@ function updateFormulaListSummary() {
   const summary = $("#formula-list-summary");
   if (!summary) return;
   const query = $("#search").value.trim();
-  const visible = state.formulas.filter((formula) => matchesSearch(formula));
+  const visible = state.formulas.filter((formula) => matchesListFilters(formula));
   const total = state.formulas.length;
+  const unproofread = state.formulas.filter((formula) => !isFormulaProofread(formula)).length;
   if (!total) {
     summary.textContent = "";
     return;
   }
+  if (state.proofreadFilterOnly) {
+    summary.textContent = query
+      ? `未校对 ${visible.length} / ${unproofread} 首（共 ${total} 首）`
+      : `未校对 ${unproofread} / ${total} 首方剂`;
+    return;
+  }
   summary.textContent = query
     ? `找到 ${visible.length} / ${total} 首方剂`
-    : `共 ${total} 首方剂`;
+    : `共 ${total} 首方剂，未校对 ${unproofread} 首`;
 }
 
 function renderFormulaList() {
@@ -636,10 +673,11 @@ function renderFormulaList() {
           <div class="formula-list" data-category="${escapeHtml(category)}">
             ${formulas.length
               ? formulas.map((formula, index) => (
-                `<button type="button" class="formula-item${formula.id === state.selectedId ? " active" : ""}" data-id="${escapeHtml(formula.id)}" title="${escapeHtml(formula.name)}">
+                `<button type="button" class="formula-item${formula.id === state.selectedId ? " active" : ""}${isFormulaProofread(formula) ? " is-proofread" : ""}" data-id="${escapeHtml(formula.id)}" title="${escapeHtml(formula.name)}">
                   <span class="formula-item-index">${String(index + 1).padStart(2, "0")}</span>
                   <span class="formula-item-body">
                     <span class="formula-item-name">${escapeHtml(formula.name)}</span>
+                    ${isFormulaProofread(formula) ? "" : '<span class="formula-item-flag">未校</span>'}
                   </span>
                 </button>`
               )).join("")
@@ -829,13 +867,7 @@ async function loadData() {
   requestAnimationFrame(fitFormulaCardPreview);
 }
 
-async function saveCurrentFormula() {
-  const formula = normalizeFormulaFromForm();
-  const missing = validateFormulaForm(formula);
-  if (missing.length) {
-    toast(`请补充必填项：${missing.slice(0, 4).join("、")}${missing.length > 4 ? "等" : ""}`);
-    return;
-  }
+async function persistFormula(formula, { successMessage = "已保存到 SQLite 数据库" } = {}) {
   const exists = state.formulas.some((item) => item.id === formula.id);
   const url = exists ? `${API_BASE}/${encodeURIComponent(formula.id)}` : API_BASE;
   const res = await fetch(url, {
@@ -845,14 +877,40 @@ async function saveCurrentFormula() {
   });
   if (!res.ok) {
     toast("保存失败");
-    return;
+    return null;
   }
   const saved = await res.json();
   const index = state.formulas.findIndex((item) => item.id === saved.id);
   if (index >= 0) state.formulas[index] = saved;
   else state.formulas.unshift(saved);
   fillForm(saved);
-  toast("已保存到 SQLite 数据库");
+  toast(successMessage);
+  return saved;
+}
+
+async function saveCurrentFormula() {
+  const formula = normalizeFormulaFromForm();
+  const missing = validateFormulaForm(formula);
+  if (missing.length) {
+    toast(`请补充必填项：${missing.slice(0, 4).join("、")}${missing.length > 4 ? "等" : ""}`);
+    return;
+  }
+  await persistFormula(formula);
+}
+
+async function toggleProofreadComplete() {
+  const formula = normalizeFormulaFromForm();
+  const next = !formula.proofreadComplete;
+  if (!formula.name || formula.name === "未命名方剂") {
+    toast("请先填写方剂名");
+    return;
+  }
+  formula.proofreadComplete = next;
+  updateProofreadButton(next);
+  const saved = await persistFormula(formula, {
+    successMessage: next ? "已标记校对完成" : "已取消校对完成",
+  });
+  if (!saved) updateProofreadButton(!next);
 }
 
 async function deleteCurrentFormula() {
@@ -903,6 +961,7 @@ function newFormula() {
     caseItems: [],
     cases: "",
     caution: "",
+    proofreadComplete: false,
   };
   fillForm(blank);
   $("#editor-title").textContent = "添加方剂";
@@ -1037,7 +1096,7 @@ function computeHerbGalleryLayout(count, zone) {
 
   const gridW = cols * imgW + (cols - 1) * gap;
   const gridH = rows * imgH + (rows - 1) * gap;
-  const offsetX = Math.max(0, (zone.width - gridW) / 2);
+  const offsetX = 0;
   const offsetY = Math.max(0, (zone.height - gridH) / 2);
   const originX = zone.left ?? 0;
   const originY = zone.top ?? 0;
@@ -1594,7 +1653,7 @@ async function downloadCardPng(mode = "partial") {
       44,
       compTextHeight + 18,
     );
-    const compTextCenteredY = compY + Math.max(0, (compBoxH - compTextHeight) / 2);
+    const compTextY = compY + 9;
     drawPill(ctx, "组成", 380, compY, { minWidth: 86, height: 44, fill: "#ffffff", stroke: "#ff963d", color: "#111827" });
     drawDashedBox(ctx, compBoxX, compY, compBoxW, compBoxH, 6);
     const isSingleLinePlain = !/\n|\[\[|\*\*/.test(compText);
@@ -1602,15 +1661,15 @@ async function downloadCardPng(mode = "partial") {
       ctx.save();
       ctx.font = compFont;
       ctx.fillStyle = "#111827";
-      ctx.textAlign = "center";
+      ctx.textAlign = "left";
       ctx.textBaseline = "middle";
-      ctx.fillText(compText, compBoxX + compBoxW / 2, compY + compBoxH / 2 + 1);
+      ctx.fillText(compText, compTextX, compY + compBoxH / 2 + 1);
       ctx.restore();
     } else {
-      drawMarkupText(ctx, compText, compTextX, compTextCenteredY, compTextW, compLineH, {
+      drawMarkupText(ctx, compText, compTextX, compTextY, compTextW, compLineH, {
         font: compFont,
         paragraphGap: 4,
-        align: "center",
+        align: "left",
       });
     }
 
@@ -1799,6 +1858,12 @@ $("#field-pathology").addEventListener("change", () => {
 });
 $("#field-pathology-symptoms").addEventListener("input", () => renderPreview(normalizeFormulaFromForm()));
 $("#search").addEventListener("input", renderFormulaList);
+$("#filter-unproofread")?.addEventListener("click", () => {
+  state.proofreadFilterOnly = !state.proofreadFilterOnly;
+  updateProofreadFilterButton();
+  renderFormulaList();
+});
+$("#toggle-proofread")?.addEventListener("click", toggleProofreadComplete);
 $("#export-all-pdf")?.addEventListener("click", downloadAllPdf);
 $("#new-formula").addEventListener("click", newFormula);
 $("#toggle-list-panel")?.addEventListener("click", () => setListPanelCollapsed(!state.listCollapsed));
@@ -1840,6 +1905,7 @@ fields.cases?.addEventListener("click", (event) => {
   renderPreview(normalizeFormulaFromForm());
 });
 initSidebarAccordion();
+updateProofreadFilterButton();
 setListPanelCollapsed(false);
 window.addEventListener("resize", fitFormulaCardPreview);
 window.addEventListener("resize", () => requestAnimationFrame(layoutLogicMapLines));

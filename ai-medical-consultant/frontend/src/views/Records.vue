@@ -11,7 +11,21 @@
       </template>
 
       <el-table :data="sessions" stripe @row-click="(row) => $router.push(`/consult/${row.id}`)" style="cursor: pointer">
-        <el-table-column prop="title" label="主题" min-width="280" />
+        <el-table-column prop="title" label="主题" min-width="220" />
+        <el-table-column prop="patient_name" label="姓名" width="110">
+          <template #default="{ row }">{{ row.patient_name || '—' }}</template>
+        </el-table-column>
+        <el-table-column prop="phone" label="电话" width="140">
+          <template #default="{ row }">{{ row.phone || '—' }}</template>
+        </el-table-column>
+        <el-table-column prop="modern_diagnosis" label="现代诊断" min-width="160">
+          <template #default="{ row }">{{ row.modern_diagnosis || '—' }}</template>
+        </el-table-column>
+        <el-table-column label="状态" width="110">
+          <template #default="{ row }">
+            <el-tag size="small" effect="plain">{{ statusText(row.status) }}</el-tag>
+          </template>
+        </el-table-column>
         <el-table-column label="更新时间" width="200">
           <template #default="{ row }">{{ formatTime(row.updated_at) }}</template>
         </el-table-column>
@@ -36,6 +50,10 @@ const sessions = ref([])
 
 function formatTime(t) {
   return new Date(t).toLocaleString('zh-CN')
+}
+function statusText(status) {
+  const map = { collecting: '采集中', analyzed: '已分析', completed: '已完成' }
+  return map[status] || '采集中'
 }
 async function load() {
   sessions.value = await consultApi.listSessions()

@@ -55,6 +55,13 @@ class MessageOut(BaseModel):
 class SessionOut(BaseModel):
     id: int
     title: str
+    patient_name: str = ""
+    phone: str = ""
+    address: str = ""
+    gender: str = ""
+    age: str = ""
+    modern_diagnosis: str = ""
+    status: str = "collecting"
     created_at: datetime
     updated_at: datetime
 
@@ -64,6 +71,46 @@ class SessionOut(BaseModel):
 
 class SessionDetail(SessionOut):
     messages: List[MessageOut] = []
+    intake_data: dict[str, Any] = {}
+    case_text: str = ""
+
+
+class SessionIntakeUpdate(BaseModel):
+    title: Optional[str] = None
+    patient_name: str = ""
+    phone: str = ""
+    address: str = ""
+    gender: str = ""
+    age: str = ""
+    modern_diagnosis: str = ""
+    status: str = "collecting"
+    intake_data: dict[str, Any] = {}
+    case_text: str = ""
+
+
+class SymptomPresetBlock(BaseModel):
+    label: str
+    tone: str = ""
+    symptoms: list[str] = []
+
+
+class SymptomPresetSection(BaseModel):
+    key: str
+    order: int
+    title: str
+    tag: str = ""
+    tone: str = ""
+    blocks: list[SymptomPresetBlock] = []
+    inquiry_hints: list[str] = []
+
+
+class ModuleHintUpdate(BaseModel):
+    hints: list[str] = []
+
+
+class ModuleHintOut(BaseModel):
+    module_key: str
+    hints: list[str] = []
 
 
 class ChatRequest(BaseModel):

@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import argparse
 import html
+import math
 import sys
 import tempfile
 from datetime import datetime
@@ -27,6 +28,7 @@ from _export_common import (  # noqa: E402
     stop_server,
 )
 FOOTER_TEXT = "© 小小梦学中医｜学习资料，仅供中医学习交流，不作为诊疗处方依据。"
+ROWS_PER_TOC_PAGE = 18
 
 
 def html_page(title: str, body: str) -> str:
@@ -122,7 +124,10 @@ def footer_html(page_num: int, total_pages: int, prefix: str = "") -> str:
 
 
 def cover_html(formulas: list[dict], total_pages: int) -> str:
-    names = "、".join(item["name"] for item in formulas[:24])
+    preview_names = formulas[:24]
+    names = "、".join(item["name"] for item in preview_names)
+    if len(formulas) > len(preview_names):
+        names = f"{names} 等共 {len(formulas)} 首"
     exported_at = datetime.now().strftime("%Y-%m-%d %H:%M")
     body = f"""
     <main class="page">
@@ -140,30 +145,44 @@ def cover_html(formulas: list[dict], total_pages: int) -> str:
     return html_page("封面", body)
 
 
-def toc_html(formulas: list[dict], total_pages: int) -> str:
-    rows = []
-    for index, formula in enumerate(formulas[:12], 1):
-        cats = " / ".join(formula["categories"] or ["未归类"])
-        points = "；".join(str(x) for x in formula["points"][:2])
-        rows.append(
-            "<tr>"
-            f"<td>{index:02d}</td>"
-            f"<td>{html.escape(formula['name'])}</td>"
-            f"<td>{html.escape(cats)}</td>"
-            f"<td>{html.escape(points)}</td>"
-            "</tr>"
-        )
-    body = f"""
+def toc_page_count(formulas: list[dict]) -> int:
+    if not formulas:
+        return 1
+    return max(1, math.ceil(len(formulas) / ROWS_PER_TOC_PAGE))
+
+
+def toc_html_pages(formulas: list[dict], total_pages: int) -> list[str]:
+    pages: list[str] = []
+    total_toc_pages = toc_page_count(formulas)
+    for page_idx in range(total_toc_pages):
+        start = page_idx * ROWS_PER_TOC_PAGE
+        chunk = formulas[start : start + ROWS_PER_TOC_PAGE]
+        rows = []
+        for index, formula in enumerate(chunk, start + 1):
+            cats = " / ".join(formula["categories"] or ["未归类"])
+            points = "；".join(str(x) for x in formula["points"][:2])
+            rows.append(
+                "<tr>"
+                f"<td>{index:02d}</td>"
+                f"<td>{html.escape(formula['name'])}</td>"
+                f"<td>{html.escape(cats)}</td>"
+                f"<td>{html.escape(points)}</td>"
+                "</tr>"
+            )
+        title_suffix = f"（{page_idx + 1}/{total_toc_pages}）" if total_toc_pages > 1 else ""
+        page_num = 2 + page_idx
+        body = f"""
     <main class="page">
-      <h1>目录索引</h1>
+      <h1>目录索引{html.escape(title_suffix)}</h1>
       <h2>按当前数据库更新时间排序</h2>
       <table>
         <thead><tr><th>序号</th><th>方剂</th><th>归类</th><th>辨证要点</th></tr></thead>
         <tbody>{''.join(rows)}</tbody>
       </table>
-      {footer_html(2, total_pages, "点击目录中的方剂名可跳转到对应卡片")}
+      {footer_html(page_num, total_pages, "点击目录中的方剂名可跳转到对应卡片")}
     </main>"""
-    return html_page("目录索引", body)
+        pages.append(html_page("目录索引", body))
+    return pages
 
 
 def launch_browser(playwright):
@@ -188,7 +207,13 @@ def write_static_pdf(browser, html_source: str, output_path: Path) -> None:
     page.close()
 
 
-def render_card_pdfs(browser, output_dir: Path, total_pages: int) -> list[Path]:
+def render_card_pdfs(
+    browser,
+    output_dir: Path,
+    total_pages: int,
+    toc_pages: int = 1,
+) -> list[Path]:
+    first_card_page = toc_pages + 2
     probe = browser.new_page()
     probe.goto(URL, wait_until="domcontentloaded")
     probe.wait_for_function("typeof state !== 'undefined' && state.formulas && state.formulas.length > 0", timeout=60000)
@@ -202,7 +227,7 @@ def render_card_pdfs(browser, output_dir: Path, total_pages: int) -> list[Path]:
         page.wait_for_selector("#formula-card")
         page.wait_for_function("typeof state !== 'undefined' && state.formulas && state.formulas.length > 0", timeout=60000)
         result = page.evaluate(
-            """async ({ index, footerText, totalPages }) => {
+            """async ({ index, footerText, totalPages, firstCardPage }) => {
               fillForm(state.formulas[index]);
               renderPreview(state.formulas[index]);
               await new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve)));
@@ -239,7 +264,7 @@ def render_card_pdfs(browser, output_dir: Path, total_pages: int) -> list[Path]:
               const footerLeft = document.createElement('span');
               footerLeft.textContent = footerText;
               const footerRight = document.createElement('span');
-              footerRight.textContent = `第 ${index + 3} / ${totalPages} 页`;
+              footerRight.textContent = `第 ${index + firstCardPage} / ${totalPages} 页`;
               footer.append(footerLeft, footerRight);
               clone.appendChild(footer);
               const fitSingleLine = (selector, minSize = 14) => {
@@ -300,7 +325,12 @@ def render_card_pdfs(browser, output_dir: Path, total_pages: int) -> list[Path]:
               style.textContent = style.textContent.replace(`size: ${width}px ${height}px`, `size: ${width}px ${finalHeight}px`);
               return { name: state.formulas[index].name || `formula-${index + 1}`, width, height: finalHeight };
             }""",
-            {"index": index, "footerText": FOOTER_TEXT, "totalPages": total_pages},
+            {
+                "index": index,
+                "footerText": FOOTER_TEXT,
+                "totalPages": total_pages,
+                "firstCardPage": first_card_page,
+            },
         )
         safe_name = "".join(ch for ch in result["name"] if ch not in '<>:"/\\|?*').strip() or f"formula-{index + 1}"
         path = output_dir / f"{index + 1:02d}_{safe_name}.pdf"
@@ -326,7 +356,7 @@ def merge_pdfs(inputs: list[Path], output_path: Path) -> None:
     merged.close()
 
 
-def add_toc_links(pdf_path: Path, formulas: list[dict]) -> int:
+def add_toc_links(pdf_path: Path, formulas: list[dict], toc_pages: int = 1) -> int:
     """Add internal links from TOC formula names to their card pages."""
     if len(formulas) == 0:
         return 0
@@ -334,13 +364,14 @@ def add_toc_links(pdf_path: Path, formulas: list[dict]) -> int:
     tmp_path = pdf_path.with_suffix(".linked.pdf")
     link_count = 0
     with fitz.open(str(pdf_path)) as doc:
-        if doc.page_count < 3:
+        if doc.page_count < toc_pages + 2:
             return 0
-        toc_page = doc[1]
         for index, formula in enumerate(formulas, 1):
             name = str(formula.get("name") or "").strip()
             if not name:
                 continue
+            toc_page_idx = (index - 1) // ROWS_PER_TOC_PAGE
+            toc_page = doc[1 + toc_page_idx]
             matches = toc_page.search_for(name)
             if not matches:
                 continue
@@ -355,7 +386,7 @@ def add_toc_links(pdf_path: Path, formulas: list[dict]) -> int:
                 {
                     "kind": fitz.LINK_GOTO,
                     "from": click_rect,
-                    "page": index + 1,
+                    "page": toc_pages + index,
                     "to": fitz.Point(0, 0),
                 }
             )
@@ -372,7 +403,8 @@ def main() -> None:
     formulas = load_formula_summary()
     if not formulas:
         raise RuntimeError("数据库中没有方剂")
-    total_pages = len(formulas) + 2
+    toc_pages = toc_page_count(formulas)
+    total_pages = len(formulas) + 1 + toc_pages
 
     OUT_DIR.mkdir(parents=True, exist_ok=True)
     stamp = datetime.now().strftime("%Y%m%d_%H%M")
@@ -385,18 +417,26 @@ def main() -> None:
             with sync_playwright() as p:
                 browser = launch_browser(p)
                 cover_path = tmp / "00_cover.pdf"
-                toc_path = tmp / "01_toc.pdf"
+                toc_paths: list[Path] = []
                 write_static_pdf(browser, cover_html(formulas, total_pages), cover_path)
-                write_static_pdf(browser, toc_html(formulas, total_pages), toc_path)
-                card_paths = render_card_pdfs(browser, tmp, total_pages)
+                for page_idx, toc_source in enumerate(toc_html_pages(formulas, total_pages)):
+                    toc_path = tmp / f"01_toc_{page_idx:02d}.pdf"
+                    write_static_pdf(browser, toc_source, toc_path)
+                    toc_paths.append(toc_path)
+                card_paths = render_card_pdfs(browser, tmp, total_pages, toc_pages)
                 browser.close()
-            merge_pdfs([cover_path, toc_path, *card_paths], output_path)
-            link_count = add_toc_links(output_path, formulas)
+            merge_pdfs([cover_path, *toc_paths, *card_paths], output_path)
+            link_count = add_toc_links(output_path, formulas, toc_pages)
         finally:
             stop_server(process)
 
     with fitz.open(str(output_path)) as doc:
-        sample_text = doc[2].get_text().strip()[:80] if doc.page_count >= 3 else ""
+        first_card_page_idx = 1 + toc_pages
+        sample_text = (
+            doc[first_card_page_idx].get_text().strip()[:80]
+            if doc.page_count > first_card_page_idx
+            else ""
+        )
         print(f"导出方剂：{len(formulas)} 首")
         print(f"PDF：{output_path}")
         print(f"页数：{doc.page_count}")

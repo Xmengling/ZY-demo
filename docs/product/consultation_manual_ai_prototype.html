@@ -1,0 +1,2833 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>智能问诊页面原型 - 手动采集与AI分析</title>
+  <style>
+    :root {
+      --brand: #18a058;
+      --brand-dark: #0f7c43;
+      --nav: #11324a;
+      --bg: #f3f6fb;
+      --surface: #ffffff;
+      --line: #e6ebf2;
+      --text: #1f2933;
+      --muted: #7b8794;
+      --soft: #f7fafc;
+      --blue: #2563eb;
+      --blue-soft: #eaf2ff;
+      --amber: #b7791f;
+      --amber-soft: #fff7e6;
+      --red: #c2410c;
+      --red-soft: #fff1ec;
+      --radius: 8px;
+    }
+
+    * { box-sizing: border-box; }
+    html, body {
+      height: 100%;
+      margin: 0;
+      overflow: hidden;
+    }
+    body {
+      color: var(--text);
+      background: var(--bg);
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Microsoft YaHei", Roboto, Arial, sans-serif;
+      font-size: 14px;
+    }
+    button, input, select, textarea { font: inherit; }
+
+    .app {
+      display: grid;
+      grid-template-columns: 220px minmax(0, 1fr);
+      height: 100vh;
+      overflow: hidden;
+    }
+    .aside {
+      background: var(--nav);
+      color: #cdd6e4;
+      display: flex;
+      flex-direction: column;
+    }
+    .logo {
+      height: 60px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 0 18px;
+      color: #fff;
+      font-weight: 700;
+      font-size: 17px;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+    }
+    .logo-mark {
+      width: 26px;
+      height: 26px;
+      border-radius: 7px;
+      background: var(--brand);
+      display: grid;
+      place-items: center;
+      color: #fff;
+      font-weight: 800;
+    }
+    .menu { padding: 10px; }
+    .menu-item {
+      height: 42px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 0 12px;
+      border-radius: var(--radius);
+      margin-bottom: 4px;
+      color: #cdd6e4;
+    }
+    .menu-item.active {
+      background: var(--brand);
+      color: #fff;
+    }
+
+    .main-wrap {
+      display: grid;
+      grid-template-rows: 60px minmax(0, 1fr);
+      min-width: 0;
+      min-height: 0;
+      overflow: hidden;
+    }
+    .header {
+      background: var(--surface);
+      border-bottom: 1px solid var(--line);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 24px;
+    }
+    .header-title { font-size: 18px; font-weight: 700; }
+    .user {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      color: #4b5563;
+    }
+    .avatar {
+      width: 30px;
+      height: 30px;
+      border-radius: 50%;
+      background: var(--brand);
+      color: #fff;
+      display: grid;
+      place-items: center;
+      font-weight: 700;
+    }
+
+    .page {
+      padding: 18px;
+      overflow: hidden;
+      min-width: 0;
+      min-height: 0;
+      height: 100%;
+    }
+    .consult-layout {
+      display: grid;
+      grid-template-columns: minmax(680px, 1fr) 380px;
+      gap: 14px;
+      align-items: stretch;
+      height: 100%;
+      min-height: 0;
+      max-width: 1420px;
+      margin: 0 auto;
+    }
+    .panel {
+      background: var(--surface);
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      min-width: 0;
+    }
+    .collect-panel {
+      display: flex;
+      flex-direction: column;
+      height: 100%;
+      min-height: 0;
+      max-height: 100%;
+      overflow: hidden;
+    }
+    .panel-head {
+      padding: 14px 16px;
+      border-bottom: 1px solid var(--line);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 14px;
+    }
+    .panel-title { font-weight: 800; color: #111827; }
+    .muted { color: var(--muted); font-size: 13px; line-height: 1.6; }
+
+    .hero {
+      flex-shrink: 0;
+      padding: 16px;
+      background: linear-gradient(180deg, #ffffff 0%, #f8fbfd 100%);
+      border-bottom: 1px solid var(--line);
+    }
+    .hero-top {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 16px;
+    }
+    .hero h1 {
+      margin: 0 0 6px;
+      font-size: 22px;
+      letter-spacing: 0;
+    }
+    .hero p { margin: 0; color: var(--muted); line-height: 1.7; }
+    .quick-nav {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+    .quick-nav a {
+      color: #344054;
+      text-decoration: none;
+      height: 30px;
+      display: inline-flex;
+      align-items: center;
+      padding: 0 10px;
+      border-radius: 999px;
+      background: #eef3f8;
+      font-size: 12px;
+    }
+
+    .module-nav {
+      flex-shrink: 0;
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 12px;
+      padding: 12px 16px;
+      border-bottom: 1px solid var(--line);
+      background: #fff;
+    }
+    .module-nav-list {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      min-width: 0;
+      flex: 1;
+    }
+    .module-nav-actions {
+      display: flex;
+      flex-shrink: 0;
+      align-items: center;
+      gap: 6px;
+      padding-top: 1px;
+    }
+    .module-nav-action-btn {
+      width: 30px;
+      height: 30px;
+      padding: 0;
+      border-radius: 7px;
+      border: 1px solid #dce3ec;
+      background: #fff;
+      color: #667085;
+      cursor: pointer;
+      position: relative;
+      flex-shrink: 0;
+    }
+    .module-nav-action-btn:hover {
+      border-color: #bde7d0;
+      color: var(--brand-dark);
+      background: #f1fbf6;
+    }
+    .module-nav-action-btn::before,
+    .module-nav-action-btn::after {
+      content: "";
+      position: absolute;
+      left: 50%;
+      width: 6px;
+      height: 6px;
+      border-right: 2px solid currentColor;
+      border-bottom: 2px solid currentColor;
+      transform: translateX(-50%);
+    }
+    .module-nav-action-btn.expand-all::before {
+      top: 8px;
+      transform: translateX(-50%) rotate(45deg);
+    }
+    .module-nav-action-btn.expand-all::after {
+      top: 14px;
+      transform: translateX(-50%) rotate(45deg);
+    }
+    .module-nav-action-btn.collapse-all::before {
+      top: 10px;
+      transform: translateX(-50%) rotate(-135deg);
+    }
+    .module-nav-action-btn.collapse-all::after {
+      top: 16px;
+      transform: translateX(-50%) rotate(-135deg);
+    }
+    .collect-scroll {
+      flex: 1;
+      min-height: 0;
+      overflow-y: auto;
+      overflow-x: hidden;
+    }
+    .module-nav-btn {
+      height: 30px;
+      padding: 0 12px;
+      border-radius: 999px;
+      border: 1px solid #dce3ec;
+      background: #fff;
+      color: #536171;
+      cursor: pointer;
+      font-size: 12px;
+      font-weight: 600;
+      white-space: nowrap;
+    }
+    .module-nav-btn.active {
+      border-color: var(--brand);
+      background: #e8f7ef;
+      color: var(--brand-dark);
+      font-weight: 700;
+    }
+    .form-body { padding: 16px; }
+    .form-body .section.is-hidden { display: none; }
+    .section {
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      background: #fff;
+      margin-bottom: 14px;
+      overflow: hidden;
+    }
+    .section-head {
+      min-height: 48px;
+      padding: 10px 14px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      border-bottom: 1px solid var(--line);
+      background: var(--soft);
+      cursor: pointer;
+      user-select: none;
+    }
+    .section.is-collapsed .section-head {
+      border-bottom-color: transparent;
+    }
+    .section.is-collapsed .section-content {
+      display: none;
+    }
+    .section-head-meta {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      flex-shrink: 0;
+    }
+    .section-chevron {
+      width: 22px;
+      height: 22px;
+      border-radius: 6px;
+      border: 1px solid #dce3ec;
+      background: #fff;
+      position: relative;
+      flex-shrink: 0;
+    }
+    .section-chevron::before {
+      content: "";
+      position: absolute;
+      top: 7px;
+      left: 50%;
+      width: 7px;
+      height: 7px;
+      border-right: 2px solid #667085;
+      border-bottom: 2px solid #667085;
+      transform: translateX(-50%) rotate(45deg);
+      transition: transform 0.2s ease;
+    }
+    .section.is-collapsed .section-chevron::before {
+      top: 9px;
+      transform: translateX(-50%) rotate(-135deg);
+    }
+    .section-name {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      font-weight: 800;
+      font-size: 16px;
+    }
+    .num {
+      width: 26px;
+      height: 26px;
+      border-radius: 7px;
+      display: grid;
+      place-items: center;
+      background: #e8f7ef;
+      color: var(--brand-dark);
+      font-weight: 800;
+      font-size: 13px;
+    }
+    .section-desc {
+      display: none;
+    }
+    .section-content { padding: 14px; }
+
+    .form-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 12px;
+    }
+    .form-grid.dense {
+      grid-template-columns: 180px 180px minmax(220px, 1fr);
+      gap: 10px;
+    }
+    .form-grid.base-info {
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 10px;
+    }
+    .form-grid.base-info .field.wide {
+      grid-column: 1 / -1;
+    }
+    .form-grid.base-info .field.span-2 {
+      grid-column: span 2;
+    }
+    .form-grid.base-info .field.slim {
+      grid-template-columns: 72px minmax(0, 1fr);
+    }
+    .form-grid.base-info .field.slim.span-2 {
+      grid-template-columns: 96px minmax(0, 1fr);
+    }
+    .base-contact-row {
+      grid-column: 1 / -1;
+      display: grid;
+      grid-template-columns: 220px minmax(0, 1fr);
+      gap: 10px;
+    }
+    .base-contact-row .field.slim {
+      grid-template-columns: 72px minmax(0, 1fr);
+    }
+    .base-contact-row .field.slim:last-child {
+      grid-template-columns: 56px minmax(0, 1fr);
+    }
+    .field {
+      display: grid;
+      grid-template-columns: 116px minmax(0, 1fr);
+      align-items: center;
+      gap: 8px;
+      background: #fbfcfe;
+      border: 1px solid #edf1f5;
+      border-radius: var(--radius);
+      padding: 7px 10px;
+    }
+    .field.wide { grid-column: 1 / -1; }
+    .field.compact { padding: 7px; }
+    .field.slim {
+      padding: 6px 8px;
+    }
+    .form-grid.dense .field {
+      grid-template-columns: 76px minmax(0, 1fr);
+    }
+    .field:has(.textarea),
+    .field:has(.chips),
+    .field:has(.scale),
+    .field:has(.tongue-upload) {
+      align-items: flex-start;
+    }
+    .field:has(.textarea) .label,
+    .field:has(.chips) .label,
+    .field:has(.scale) .label,
+    .field:has(.tongue-upload) .label {
+      padding-top: 4px;
+    }
+    .label {
+      display: flex;
+      align-items: center;
+      justify-content: flex-start;
+      gap: 10px;
+      margin-bottom: 0;
+      font-weight: 700;
+      color: #344054;
+      min-width: 0;
+    }
+    .required { color: var(--red); font-weight: 800; }
+    .input, .select, .textarea {
+      width: 100%;
+      border: 1px solid #dce3ec;
+      border-radius: 7px;
+      background: #fff;
+      color: var(--text);
+      outline: none;
+    }
+    .input, .select { height: 30px; padding: 0 8px; }
+    .textarea {
+      min-height: 40px;
+      padding: 6px 8px;
+      resize: vertical;
+      line-height: 1.55;
+    }
+    .textarea.compact { min-height: 38px; }
+    .textarea.small { min-height: 34px; }
+    .chips {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      min-width: 0;
+    }
+    .chip {
+      min-height: 32px;
+      padding: 6px 10px;
+      border-radius: 999px;
+      border: 1px solid #dce3ec;
+      background: #fff;
+      color: #536171;
+      cursor: pointer;
+    }
+    .chip.active {
+      color: var(--brand-dark);
+      background: #e8f7ef;
+      border-color: #a8dec2;
+      font-weight: 700;
+    }
+    .chip.warn.active {
+      color: var(--amber);
+      background: var(--amber-soft);
+      border-color: #f5d798;
+    }
+    .chip.red.active {
+      color: var(--red);
+      background: var(--red-soft);
+      border-color: #f7c8b8;
+    }
+    .tag {
+      display: inline-flex;
+      align-items: center;
+      height: 22px;
+      padding: 0 8px;
+      border-radius: 999px;
+      background: #eef2f7;
+      color: #536171;
+      font-size: 12px;
+      white-space: nowrap;
+    }
+    .tag.green { background: #e8f7ef; color: var(--brand-dark); }
+    .tag.blue { background: var(--blue-soft); color: var(--blue); }
+    .tag.amber { background: var(--amber-soft); color: var(--amber); }
+    .tag.red { background: var(--red-soft); color: var(--red); }
+    .section-score-summary {
+      max-width: 340px;
+      white-space: normal;
+      text-align: right;
+      line-height: 1.45;
+      font-variant-numeric: tabular-nums;
+    }
+    .section-score-summary .score-item strong {
+      font-weight: 800;
+    }
+
+    .scale {
+      display: grid;
+      grid-template-columns: repeat(5, 1fr);
+      gap: 8px;
+    }
+    .scale button {
+      height: 34px;
+      border: 1px solid #dce3ec;
+      background: #fff;
+      border-radius: 7px;
+      color: #536171;
+      cursor: pointer;
+    }
+    .scale button.active {
+      border-color: var(--brand);
+      background: #e8f7ef;
+      color: var(--brand-dark);
+      font-weight: 800;
+    }
+
+    .biao-block {
+      display: grid;
+      grid-template-columns: 54px minmax(0, 1fr);
+      border: 1px solid #edf1f5;
+      border-radius: var(--radius);
+      background: #fff;
+      overflow: hidden;
+      align-items: stretch;
+    }
+    .biao-block + .biao-block { margin-top: 8px; }
+    .biao-label {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 8px 4px;
+      font-size: 14px;
+      font-weight: 800;
+      line-height: 1.2;
+      letter-spacing: 1px;
+      writing-mode: vertical-rl;
+      text-orientation: upright;
+      border-right: 1px solid #edf1f5;
+    }
+    .biao-label.tone-blue { background: #eaf2ff; color: #2563eb; }
+    .biao-label.tone-green { background: #e8f7ef; color: #0f7c43; }
+    .biao-label.tone-amber { background: #fff7e6; color: #b7791f; }
+    .biao-label.tone-red { background: #fff1ec; color: #c2410c; }
+    .biao-body { min-width: 0; }
+    .biao-row {
+      display: grid;
+      grid-template-columns: minmax(0, 1.1fr) minmax(140px, 0.9fr) 64px;
+      gap: 10px;
+      padding: 8px 10px;
+      align-items: start;
+    }
+    .biao-symptoms-title,
+    .biao-input-title {
+      margin-bottom: 8px;
+      font-size: 13px;
+      font-weight: 700;
+      color: #536171;
+    }
+    .biao-score {
+      display: flex;
+      flex-direction: column;
+      min-width: 0;
+    }
+    .biao-score .biao-input-title {
+      text-align: center;
+      line-height: 1.2;
+      font-size: 12px;
+      margin-bottom: 4px;
+    }
+    .biao-score .score-input {
+      text-align: center;
+      padding: 0 4px;
+    }
+    .biao-symptoms-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+      margin-bottom: 6px;
+    }
+    .biao-symptoms-title-text {
+      font-size: 12px;
+      font-weight: 700;
+      color: #536171;
+    }
+    .biao-symptoms-hint {
+      margin-left: 6px;
+      font-size: 11px;
+      font-weight: 400;
+      color: var(--muted);
+    }
+    .symptoms-edit-btn {
+      flex-shrink: 0;
+      height: 22px;
+      padding: 0 8px;
+      border-radius: 999px;
+      border: 1px solid #dce3ec;
+      background: #fff;
+      color: #536171;
+      font-size: 11px;
+      font-weight: 700;
+      cursor: pointer;
+    }
+    .symptoms-edit-btn:hover {
+      border-color: #bde7d0;
+      color: var(--brand-dark);
+      background: #f1fbf6;
+    }
+    .biao-symptoms.is-editing .symptoms-edit-btn {
+      border-color: var(--brand);
+      background: #e8f7ef;
+      color: var(--brand-dark);
+    }
+    .biao-symptoms .chips {
+      align-content: flex-start;
+      gap: 6px;
+    }
+    .biao-symptoms .chip-item {
+      min-height: 26px;
+      padding: 3px 8px;
+      font-size: 12px;
+      display: inline-flex;
+      align-items: center;
+      gap: 1px;
+      border-radius: 999px;
+      border: 1px solid #dce3ec;
+      background: #fff;
+      color: #536171;
+      vertical-align: top;
+    }
+    .biao-symptoms.is-editing .chip-item {
+      padding: 2px 2px 2px 0;
+    }
+    .biao-symptoms .chip-item.active {
+      color: var(--brand-dark);
+      background: #e8f7ef;
+      border-color: #a8dec2;
+    }
+    .biao-symptoms .chip-item.is-dragging {
+      opacity: 0.45;
+    }
+    .biao-symptoms .chip-item.is-drop-target {
+      border-color: var(--brand);
+      box-shadow: 0 0 0 2px rgba(24, 160, 88, 0.14);
+    }
+    .biao-symptoms .chip-drag {
+      display: none;
+      align-items: center;
+      justify-content: center;
+      width: 14px;
+      min-height: 22px;
+      color: #b0bac5;
+      font-size: 10px;
+      line-height: 1;
+      letter-spacing: -1px;
+      cursor: grab;
+      user-select: none;
+      border-radius: 999px 0 0 999px;
+    }
+    .biao-symptoms.is-editing .chip-drag {
+      display: inline-flex;
+    }
+    .biao-symptoms .chip-drag:active {
+      cursor: grabbing;
+    }
+    .biao-symptoms .chip-text {
+      padding: 0;
+      outline: none;
+      cursor: pointer;
+      line-height: 1.4;
+    }
+    .biao-symptoms.is-editing .chip-text {
+      padding: 0 4px;
+    }
+    .biao-symptoms .chip-text.is-editing {
+      cursor: text;
+    }
+    .biao-symptoms .chip-item:has(.chip-text.is-editing) {
+      border-color: var(--brand);
+      box-shadow: 0 0 0 2px rgba(24, 160, 88, 0.16);
+      background: #fff;
+    }
+    .biao-symptoms .chip-remove {
+      display: none;
+      align-items: center;
+      justify-content: center;
+      width: 18px;
+      min-height: 22px;
+      padding: 0;
+      border: none;
+      border-radius: 0 999px 999px 0;
+      background: transparent;
+      color: #a8b2bd;
+      font-size: 14px;
+      line-height: 1;
+      cursor: pointer;
+    }
+    .biao-symptoms.is-editing .chip-remove {
+      display: inline-flex;
+    }
+    .biao-symptoms .chip-remove:hover {
+      color: #d94848;
+      background: rgba(217, 72, 72, 0.08);
+    }
+    .biao-symptoms .chip.chip-add {
+      display: none;
+      min-height: 26px;
+      padding: 3px 8px;
+      font-size: 12px;
+      border-style: dashed;
+      color: var(--brand-dark);
+      background: #f1fbf6;
+      cursor: pointer;
+    }
+    .biao-symptoms.is-editing .chip.chip-add {
+      display: inline-flex;
+      align-items: center;
+    }
+    .biao-input .textarea {
+      min-height: 52px;
+      max-height: 72px;
+    }
+
+    .tongue-upload {
+      min-width: 0;
+    }
+    .tongue-upload-input {
+      position: absolute;
+      width: 1px;
+      height: 1px;
+      opacity: 0;
+      pointer-events: none;
+    }
+    .tongue-upload-panel {
+      border: 1px dashed #c5d0de;
+      border-radius: var(--radius);
+      background: #fbfcfe;
+      padding: 12px;
+    }
+    .tongue-upload-trigger {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+    .tongue-upload-hint {
+      font-size: 12px;
+      color: var(--muted);
+    }
+    .tongue-preview {
+      display: none;
+      align-items: flex-start;
+      gap: 12px;
+    }
+    .tongue-preview.has-image {
+      display: flex;
+    }
+    .tongue-preview img {
+      width: 120px;
+      height: 120px;
+      object-fit: cover;
+      border-radius: 8px;
+      border: 1px solid #dce3ec;
+      background: #fff;
+    }
+    .tongue-preview-meta {
+      display: grid;
+      gap: 8px;
+      min-width: 0;
+    }
+    .tongue-preview-name {
+      font-size: 13px;
+      color: #344054;
+      word-break: break-all;
+    }
+    .tongue-upload-empty.is-hidden {
+      display: none;
+    }
+
+    .sticky-actions {
+      flex-shrink: 0;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      padding: 12px 16px;
+      border-top: 1px solid var(--line);
+      background: rgba(255, 255, 255, 0.94);
+      backdrop-filter: blur(8px);
+    }
+    .btn {
+      height: 38px;
+      padding: 0 14px;
+      border-radius: var(--radius);
+      border: 1px solid #d9e1ea;
+      background: #fff;
+      color: #344054;
+      cursor: pointer;
+      font-weight: 700;
+    }
+    .btn.primary {
+      border-color: var(--brand);
+      background: var(--brand);
+      color: #fff;
+    }
+    .btn.ghost {
+      color: var(--brand-dark);
+      border-color: #bde7d0;
+      background: #f1fbf6;
+    }
+
+    .analysis {
+      display: flex;
+      flex-direction: column;
+      height: 100%;
+      min-height: 0;
+      max-height: 100%;
+      overflow: hidden;
+    }
+    .analysis .panel-head {
+      flex-shrink: 0;
+    }
+    .analysis-body {
+      flex: 1;
+      min-height: 0;
+      overflow-y: auto;
+      overflow-x: hidden;
+      padding: 14px;
+    }
+    .status-card {
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      padding: 12px;
+      margin-bottom: 12px;
+      background: #fff;
+    }
+    .status-card.soft { background: var(--soft); }
+    .analysis-lead {
+      background: linear-gradient(180deg, #f8fbfd 0%, #ffffff 100%);
+    }
+    .status-title {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+      font-weight: 800;
+      margin-bottom: 10px;
+    }
+    .summary-list {
+      display: grid;
+      gap: 8px;
+      color: #4b5563;
+      line-height: 1.6;
+      margin: 0;
+      padding: 0;
+      list-style: none;
+    }
+    .summary-list li {
+      border-bottom: 1px dashed #e3e8ef;
+      padding-bottom: 7px;
+    }
+    .summary-list li:last-child {
+      border-bottom: 0;
+      padding-bottom: 0;
+    }
+    .pathology-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 8px;
+    }
+    .pathology {
+      border-radius: 7px;
+      background: #f5f8fb;
+      padding: 9px;
+    }
+    .pathology strong {
+      display: flex;
+      justify-content: space-between;
+      margin-bottom: 6px;
+    }
+    .bar {
+      height: 7px;
+      border-radius: 99px;
+      overflow: hidden;
+      background: #e2e8f0;
+    }
+    .bar span {
+      display: block;
+      height: 100%;
+      background: var(--brand);
+    }
+    .question {
+      border-left: 3px solid var(--blue);
+      padding: 8px 0 8px 10px;
+      margin-bottom: 10px;
+      line-height: 1.65;
+    }
+    .question small {
+      display: block;
+      margin-top: 4px;
+      color: var(--muted);
+    }
+    .formula-row {
+      display: grid;
+      grid-template-columns: 1fr auto;
+      gap: 8px;
+      padding: 9px 0;
+      border-bottom: 1px solid var(--line);
+    }
+    .formula-row:last-child { border-bottom: 0; }
+    .formula-head {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 4px;
+    }
+    .formula-pathology {
+      display: inline-flex;
+      flex-wrap: wrap;
+      gap: 4px;
+    }
+    .formula-pathology .pathology-tag {
+      height: 20px;
+      padding: 0 7px;
+      border-radius: 999px;
+      background: #fff7e6;
+      color: #b7791f;
+      font-size: 11px;
+      font-weight: 700;
+      line-height: 20px;
+    }
+    .notice {
+      background: var(--red-soft);
+      border: 1px solid #fed7c7;
+      color: #8f2d10;
+      border-radius: var(--radius);
+      padding: 10px;
+      line-height: 1.6;
+    }
+
+    #prescription .section-content {
+      padding-top: 12px;
+    }
+    #prescription .section-head {
+      background: #fff;
+    }
+    #prescription .tag.green {
+      background: #edf7f1;
+      color: var(--brand-dark);
+    }
+    #prescription .section-desc {
+      display: none;
+    }
+    .prescription-block {
+      background: #fff;
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      padding: 12px;
+    }
+    .prescription-block-title {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      margin-bottom: 12px;
+      padding-bottom: 10px;
+      border-bottom: 1px solid #eef2f6;
+      font-size: 14px;
+      font-weight: 800;
+      color: #1f2933;
+    }
+    .prescription-title-main {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      flex-wrap: wrap;
+      min-width: 0;
+    }
+    .prescription-target-wrap {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 4px 10px 4px 12px;
+      border: 1px solid #e4e9ef;
+      border-radius: 999px;
+      background: #f8fafc;
+      font-size: 12px;
+      font-weight: 600;
+      color: #667085;
+    }
+    .prescription-target-wrap .input {
+      width: 72px;
+      height: 28px;
+      border-color: #dce3ec;
+      background: #fff;
+    }
+    #prescription #dose-calc-mode-tag {
+      background: #f1f5f9;
+      color: #475467;
+      font-weight: 600;
+    }
+    #prescription .btn.ghost.compact {
+      border-color: #d7e8de;
+      background: #fff;
+      color: var(--brand-dark);
+    }
+    #prescription .btn.ghost.compact:hover {
+      background: #f3fbf7;
+    }
+    .btn.compact {
+      height: 30px;
+      padding: 0 10px;
+      font-size: 12px;
+    }
+    .formula-table-wrap {
+      overflow-x: auto;
+      border: 1px solid #e8edf3;
+      border-radius: 7px;
+      background: #fff;
+    }
+    .formula-table {
+      width: 100%;
+      min-width: 620px;
+      border-collapse: collapse;
+      table-layout: fixed;
+      font-size: 12px;
+      color: #344054;
+    }
+    .formula-table thead,
+    .formula-table tbody,
+    .formula-table tfoot {
+      display: table-row-group;
+    }
+    .formula-table tr {
+      display: table-row;
+    }
+    .formula-table th,
+    .formula-table td {
+      display: table-cell;
+      border-bottom: 1px solid #eef2f6;
+      padding: 9px 10px;
+      text-align: left;
+      vertical-align: middle;
+      overflow: hidden;
+      background: #fff;
+    }
+    .formula-table th {
+      background: #f8fafc;
+      color: #667085;
+      font-size: 11px;
+      font-weight: 600;
+      white-space: nowrap;
+    }
+    .formula-table tbody tr:last-child td {
+      border-bottom: none;
+    }
+    .formula-table tbody tr:hover td {
+      background: #fbfcfd;
+    }
+    .formula-table td.num,
+    .formula-table th.num {
+      text-align: right;
+      font-variant-numeric: tabular-nums;
+      white-space: nowrap;
+    }
+    .formula-table col.col-name { width: 30%; }
+    .formula-table col.col-pathology { width: 24%; }
+    .formula-table col.col-unit { width: 12%; }
+    .formula-table col.col-portions { width: 12%; }
+    .formula-table col.col-final { width: 14%; }
+    .formula-table col.col-action { width: 44px; }
+    .formula-table .col-action {
+      text-align: center;
+      padding-left: 4px;
+      padding-right: 4px;
+    }
+    .formula-table-row.is-missing-total td {
+      background: #fffaf3;
+    }
+    .formula-table-row .input {
+      height: 30px;
+      box-sizing: border-box;
+      border-color: #dce3ec;
+      background: #fff;
+      color: #1f2933;
+    }
+    .formula-table-row .input:focus {
+      border-color: #9fd4b6;
+      box-shadow: 0 0 0 2px rgba(24, 160, 88, 0.1);
+      outline: none;
+    }
+    .formula-table-row .formula-name-input {
+      width: 100%;
+      min-width: 0;
+      background: #fafbfc;
+    }
+    .formula-table-row .formula-dose-input {
+      width: 64px;
+      max-width: 100%;
+      margin-left: auto;
+      display: block;
+      text-align: center;
+    }
+    .formula-pathology-cell {
+      display: inline-flex;
+      flex-wrap: wrap;
+      gap: 4px;
+    }
+    .formula-pathology-cell .pathology-tag {
+      height: 20px;
+      padding: 0 8px;
+      border-radius: 6px;
+      border: 1px solid #e4e9ef;
+      background: #f4f6f8;
+      color: #475467;
+      font-size: 11px;
+      font-weight: 600;
+      line-height: 18px;
+    }
+    .formula-unit-total {
+      color: #475467;
+      font-weight: 600;
+    }
+    .formula-unit-total.is-auto {
+      color: #344054;
+    }
+    .formula-final-dose {
+      color: var(--brand-dark);
+      font-weight: 700;
+    }
+    .formula-table tfoot .total-row td {
+      background: #f8fafc;
+      font-weight: 700;
+      color: #1f2933;
+      border-top: 1px solid #e4e9ef;
+      border-bottom: none;
+    }
+    .formula-table tfoot .total-row #formula-dose-total {
+      color: var(--brand-dark);
+      font-size: 13px;
+    }
+    .formula-remove-btn {
+      width: 28px;
+      height: 28px;
+      padding: 0;
+      border: 1px solid transparent;
+      border-radius: 6px;
+      background: transparent;
+      color: #98a2b3;
+      font-size: 15px;
+      line-height: 1;
+      cursor: pointer;
+    }
+    .formula-remove-btn:hover {
+      color: #c2410c;
+      border-color: #f3d8cf;
+      background: #fff7f4;
+    }
+    .formula-remove-btn:disabled {
+      opacity: 0.35;
+      cursor: not-allowed;
+    }
+    .prescription-note-field {
+      margin-top: 12px;
+    }
+    .prescription-note-field .label {
+      color: #667085;
+      font-size: 12px;
+      font-weight: 600;
+    }
+    .prescription-note-field .textarea {
+      border-color: #dce3ec;
+      background: #fafbfc;
+      color: #344054;
+    }
+
+    @media (max-width: 1180px) {
+      html, body { overflow: auto; }
+      .app { height: auto; min-height: 100vh; overflow: visible; }
+      .main-wrap { overflow: visible; }
+      .page { height: auto; overflow: auto; }
+      .consult-layout {
+        grid-template-columns: minmax(0, 1fr);
+        height: auto;
+      }
+      .collect-panel { height: auto; max-height: none; }
+      .collect-scroll { overflow: visible; }
+      .analysis { height: auto; max-height: none; }
+      .analysis-body { overflow: visible; }
+      .module-nav {
+        flex-direction: column;
+        align-items: stretch;
+      }
+      .module-nav-actions {
+        justify-content: flex-end;
+        padding-top: 0;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="app">
+    <aside class="aside">
+      <div class="logo">
+        <div class="logo-mark">十</div>
+        <span>AI 智能问诊</span>
+      </div>
+      <nav class="menu">
+        <div class="menu-item">首页</div>
+        <div class="menu-item active">智能问诊</div>
+        <div class="menu-item">问诊记录</div>
+        <div class="menu-item">知识库</div>
+        <div class="menu-item">100首方剂解读</div>
+        <div class="menu-item">伤寒论条文解读</div>
+      </nav>
+    </aside>
+
+    <div class="main-wrap">
+      <header class="header">
+        <div class="header-title">智能问诊</div>
+        <div class="user">
+          <div class="avatar">U</div>
+          <span>学习用户</span>
+        </div>
+      </header>
+
+      <main class="page">
+        <section class="consult-layout">
+          <section class="panel collect-panel">
+            <div class="hero">
+              <div class="hero-top">
+                <h1>问诊信息采集</h1>
+                <span class="tag green">自动保存草稿</span>
+              </div>
+            </div>
+
+            <nav class="module-nav" id="module-nav" aria-label="问诊模块导航">
+              <div class="module-nav-list">
+                <button class="module-nav-btn active" type="button" data-target="all">全部</button>
+                <button class="module-nav-btn" type="button" data-target="base">基础信息</button>
+                <button class="module-nav-btn" type="button" data-target="biaozheng">表证</button>
+                <button class="module-nav-btn" type="button" data-target="lizheng">里证</button>
+                <button class="module-nav-btn" type="button" data-target="banzheng">半证</button>
+                <button class="module-nav-btn" type="button" data-target="shuizheng">水证</button>
+                <button class="module-nav-btn" type="button" data-target="qizheng">气证</button>
+                <button class="module-nav-btn" type="button" data-target="xuezheng">血证</button>
+                <button class="module-nav-btn" type="button" data-target="yinxing">阴性</button>
+                <button class="module-nav-btn" type="button" data-target="tongue">舌脉腹诊</button>
+                <button class="module-nav-btn" type="button" data-target="prescription">处方</button>
+              </div>
+              <div class="module-nav-actions" aria-label="模块折叠控制">
+                <button class="module-nav-action-btn collapse-all" type="button" id="toggle-all-sections" title="折叠全部" aria-label="折叠全部" aria-pressed="true"></button>
+              </div>
+            </nav>
+
+            <div class="collect-scroll" id="collect-scroll">
+            <div class="form-body">
+              <section class="section" id="base">
+                <div class="section-head">
+                  <div>
+                    <div class="section-name"><span class="num">1</span>基础信息与主诉</div>
+                    <p class="section-desc">先记录安全边界、主诉、病程和既往情况。</p>
+                  </div>
+                  <span class="tag amber">必填</span>
+                </div>
+                <div class="section-content">
+                  <div class="form-grid base-info">
+                    <div class="field slim">
+                      <div class="label">姓名 <span class="required">*</span></div>
+                      <input class="input" value="张女士" />
+                    </div>
+                    <div class="field slim">
+                      <div class="label">年龄 <span class="required">*</span></div>
+                      <input class="input" value="36" />
+                    </div>
+                    <div class="field slim">
+                      <div class="label">性别 <span class="required">*</span></div>
+                      <select class="select"><option>女</option><option>男</option></select>
+                    </div>
+                    <div class="base-contact-row">
+                      <div class="field slim">
+                        <div class="label">电话</div>
+                        <input class="input" type="tel" value="138****6721" />
+                      </div>
+                      <div class="field slim">
+                        <div class="label">住址</div>
+                        <input class="input" value="北京市朝阳区××街道××小区" />
+                      </div>
+                    </div>
+                    <div class="field wide">
+                      <div class="label">主诉 <span class="required">*</span></div>
+                      <textarea class="textarea compact">胃胀反酸，饭后明显，最近一周口苦、胸口发闷，食欲变差。</textarea>
+                    </div>
+                    <div class="field slim">
+                      <div class="label">现代诊断/检查</div>
+                      <input class="input" value="慢性胃炎" />
+                    </div>
+                    <div class="field slim span-2">
+                      <div class="label">病程、既往史、用药史</div>
+                      <textarea class="textarea small">约 2 周前开始，饭后加重，嗳气后略缓解；慢性胃炎史，近期偶尔服用抑酸药，无明确药物过敏。</textarea>
+                    </div>
+                  </div>
+                </div>
+              </section>
+
+              <section class="section" id="biaozheng">
+                <div class="section-head">
+                  <div>
+                    <div class="section-name"><span class="num">2</span>表证采集</div>
+                    <p class="section-desc">分表虚、表实采集：左侧对照常见症状，右侧记录本例所见。</p>
+                  </div>
+                  <span class="tag blue section-score-summary" aria-live="polite"></span>
+                </div>
+                <div class="section-content">
+                  <div class="biao-block">
+                    <div class="biao-label tone-blue" aria-label="表虚">表虚</div>
+                    <div class="biao-body">
+                    <div class="biao-row">
+                      <div class="biao-symptoms">
+<div class="chips">
+                          <button class="chip" type="button">恶风</button>
+                          <button class="chip" type="button">汗出</button>
+                          <button class="chip" type="button">自汗</button>
+                          <button class="chip" type="button">发热</button>
+                          <button class="chip" type="button">头痛</button>
+                          <button class="chip" type="button">鼻鸣</button>
+                          <button class="chip" type="button">干呕</button>
+                          <button class="chip" type="button">脉浮缓</button>
+                          <button class="chip" type="button">脉浮弱</button>
+                          <button class="chip" type="button">项背不舒</button>
+                          <button class="chip" type="button">身体痒</button>
+                          <button class="chip" type="button">啬啬恶寒</button>
+                        </div>
+                      </div>
+                      <div class="biao-input">
+<textarea class="textarea" placeholder="记录恶风、汗出、发热头痛、脉象及补充所见"></textarea>
+                      </div>
+                      <div class="biao-score">
+                        <div class="biao-input-title">病理打分</div>
+                        <input class="input score-input" type="number" min="0" max="100" placeholder="0" />
+                      </div>
+                    </div>
+                    </div>
+                  </div>
+
+                  <div class="biao-block">
+                    <div class="biao-label tone-green" aria-label="表实">表实</div>
+                    <div class="biao-body">
+                    <div class="biao-row">
+                      <div class="biao-symptoms">
+<div class="chips">
+                          <button class="chip" type="button">恶寒</button>
+                          <button class="chip" type="button">发热</button>
+                          <button class="chip" type="button">无汗</button>
+                          <button class="chip" type="button">头痛</button>
+                          <button class="chip" type="button">身痛</button>
+                          <button class="chip" type="button">骨节疼痛</button>
+                          <button class="chip" type="button">项背强</button>
+                          <button class="chip" type="button">喘</button>
+                          <button class="chip" type="button">咳嗽</button>
+                          <button class="chip" type="button">脉浮紧</button>
+                          <button class="chip" type="button">脉浮数</button>
+                          <button class="chip" type="button">不得平卧</button>
+                        </div>
+                      </div>
+                      <div class="biao-input">
+<textarea class="textarea" placeholder="记录恶寒、无汗、身痛、脉浮紧及补充所见"></textarea>
+                      </div>
+                      <div class="biao-score">
+                        <div class="biao-input-title">病理打分</div>
+                        <input class="input score-input" type="number" min="0" max="100" placeholder="0" />
+                      </div>
+                    </div>
+                    </div>
+                  </div>
+                </div>
+              </section>
+
+              <section class="section" id="lizheng">
+                <div class="section-head">
+                  <div>
+                    <div class="section-name"><span class="num">3</span>里证采集</div>
+                    <p class="section-desc">分里热、里寒、里虚、里实采集：左侧对照常见症状，右侧记录本例所见。</p>
+                  </div>
+                  <span class="tag amber section-score-summary" aria-live="polite"></span>
+                </div>
+                <div class="section-content">
+                  <div class="biao-block">
+                    <div class="biao-label tone-amber" aria-label="里热">里热</div>
+                    <div class="biao-body">
+                    <div class="biao-row">
+                      <div class="biao-symptoms">
+<div class="chips">
+                          <button class="chip" type="button">口渴喜冷</button>
+                          <button class="chip" type="button">口苦</button>
+                          <button class="chip" type="button">烦躁</button>
+                          <button class="chip" type="button">便秘</button>
+                          <button class="chip" type="button">大便臭秽</button>
+                          <button class="chip" type="button">尿赤</button>
+                          <button class="chip" type="button">舌红苔黄</button>
+                          <button class="chip" type="button">蒸蒸发热</button>
+                          <button class="chip" type="button">反酸</button>
+                          <button class="chip" type="button">肛门灼热</button>
+                        </div>
+                      </div>
+                      <div class="biao-input">
+<textarea class="textarea" placeholder="记录口渴、口苦、便秘、尿赤及补充所见"></textarea>
+                      </div>
+                      <div class="biao-score">
+                        <div class="biao-input-title">病理打分</div>
+                        <input class="input score-input" type="number" min="0" max="100" placeholder="0" />
+                      </div>
+                    </div>
+                    </div>
+                  </div>
+                  <div class="biao-block">
+                    <div class="biao-label tone-blue" aria-label="里寒">里寒</div>
+                    <div class="biao-body">
+                    <div class="biao-row">
+                      <div class="biao-symptoms">
+<div class="chips">
+                          <button class="chip" type="button">畏寒</button>
+                          <button class="chip" type="button">喜热饮</button>
+                          <button class="chip" type="button">口不渴</button>
+                          <button class="chip" type="button">下利清谷</button>
+                          <button class="chip" type="button">腹痛喜温</button>
+                          <button class="chip" type="button">四肢厥冷</button>
+                          <button class="chip" type="button">舌淡苔白</button>
+                          <button class="chip" type="button">呕吐清水</button>
+                          <button class="chip" type="button">涎沫</button>
+                          <button class="chip" type="button">小便清长</button>
+                        </div>
+                      </div>
+                      <div class="biao-input">
+<textarea class="textarea" placeholder="记录畏寒、喜温、下利、腹痛及补充所见"></textarea>
+                      </div>
+                      <div class="biao-score">
+                        <div class="biao-input-title">病理打分</div>
+                        <input class="input score-input" type="number" min="0" max="100" placeholder="0" />
+                      </div>
+                    </div>
+                    </div>
+                  </div>
+                  <div class="biao-block">
+                    <div class="biao-label tone-green" aria-label="里虚">里虚</div>
+                    <div class="biao-body">
+                    <div class="biao-row">
+                      <div class="biao-symptoms">
+<div class="chips">
+                          <button class="chip" type="button">食少纳呆</button>
+                          <button class="chip" type="button">乏力</button>
+                          <button class="chip" type="button">自汗</button>
+                          <button class="chip" type="button">懒言</button>
+                          <button class="chip" type="button">面色萎黄</button>
+                          <button class="chip" type="button">不欲食</button>
+                          <button class="chip" type="button">腹软喜按</button>
+                          <button class="chip" type="button">便溏</button>
+                          <button class="chip" type="button">心悸</button>
+                          <button class="chip" type="button">脉弱</button>
+                        </div>
+                      </div>
+                      <div class="biao-input">
+<textarea class="textarea" placeholder="记录纳差、乏力、便溏及补充所见"></textarea>
+                      </div>
+                      <div class="biao-score">
+                        <div class="biao-input-title">病理打分</div>
+                        <input class="input score-input" type="number" min="0" max="100" placeholder="0" />
+                      </div>
+                    </div>
+                    </div>
+                  </div>
+                  <div class="biao-block">
+                    <div class="biao-label tone-red" aria-label="里实">里实</div>
+                    <div class="biao-body">
+                    <div class="biao-row">
+                      <div class="biao-symptoms">
+<div class="chips">
+                          <button class="chip" type="button">腹满痛</button>
+                          <button class="chip" type="button">便秘拒按</button>
+                          <button class="chip" type="button">潮热谵语</button>
+                          <button class="chip" type="button">大便硬</button>
+                          <button class="chip" type="button">舌苔厚腻</button>
+                          <button class="chip" type="button">按之疼痛</button>
+                          <button class="chip" type="button">嗳气腐臭</button>
+                          <button class="chip" type="button">心下痞硬</button>
+                          <button class="chip" type="button">不大便</button>
+                          <button class="chip" type="button">脉沉实</button>
+                        </div>
+                      </div>
+                      <div class="biao-input">
+<textarea class="textarea" placeholder="记录腹满痛、便秘拒按、痞硬及补充所见"></textarea>
+                      </div>
+                      <div class="biao-score">
+                        <div class="biao-input-title">病理打分</div>
+                        <input class="input score-input" type="number" min="0" max="100" placeholder="0" />
+                      </div>
+                    </div>
+                    </div>
+                  </div>
+                </div>
+              </section>
+
+              <section class="section" id="banzheng">
+                <div class="section-head">
+                  <div>
+                    <div class="section-name"><span class="num">4</span>半证采集</div>
+                    <p class="section-desc">分半热采集：左侧对照常见症状，右侧记录本例所见。</p>
+                  </div>
+                  <span class="tag blue section-score-summary" aria-live="polite"></span>
+                </div>
+                <div class="section-content">
+                  <div class="biao-block">
+                    <div class="biao-label tone-blue" aria-label="半热">半热</div>
+                    <div class="biao-body">
+                    <div class="biao-row">
+                      <div class="biao-symptoms">
+<div class="chips">
+                          <button class="chip" type="button">胸胁苦满</button>
+                          <button class="chip" type="button">往来寒热</button>
+                          <button class="chip" type="button">口苦</button>
+                          <button class="chip" type="button">咽干</button>
+                          <button class="chip" type="button">目眩</button>
+                          <button class="chip" type="button">心烦</button>
+                          <button class="chip" type="button">默默不欲饮食</button>
+                          <button class="chip" type="button">喜呕</button>
+                          <button class="chip" type="button">胸闷</button>
+                          <button class="chip" type="button">低热</button>
+                          <button class="chip" type="button">胸胁不舒</button>
+                          <button class="chip" type="button">脉弦</button>
+                        </div>
+                      </div>
+                      <div class="biao-input">
+<textarea class="textarea" placeholder="记录胸胁苦满、往来寒热、口苦及补充所见"></textarea>
+                      </div>
+                      <div class="biao-score">
+                        <div class="biao-input-title">病理打分</div>
+                        <input class="input score-input" type="number" min="0" max="100" placeholder="0" />
+                      </div>
+                    </div>
+                    </div>
+                  </div>
+                </div>
+              </section>
+
+              <section class="section" id="shuizheng">
+                <div class="section-head">
+                  <div>
+                    <div class="section-name"><span class="num">5</span>水证采集</div>
+                    <p class="section-desc">分水虚、水实采集：左侧对照常见症状，右侧记录本例所见。</p>
+                  </div>
+                  <span class="tag section-score-summary" aria-live="polite"></span>
+                </div>
+                <div class="section-content">
+                  <div class="biao-block">
+                    <div class="biao-label tone-green" aria-label="水虚">水虚</div>
+                    <div class="biao-body">
+                    <div class="biao-row">
+                      <div class="biao-symptoms">
+<div class="chips">
+                          <button class="chip" type="button">口干不欲饮</button>
+                          <button class="chip" type="button">小便清长</button>
+                          <button class="chip" type="button">夜尿频</button>
+                          <button class="chip" type="button">水肿按之陷</button>
+                          <button class="chip" type="button">眩晕</button>
+                          <button class="chip" type="button">消瘦</button>
+                          <button class="chip" type="button">腰膝酸软</button>
+                          <button class="chip" type="button">畏寒</button>
+                          <button class="chip" type="button">脉沉细</button>
+                        </div>
+                      </div>
+                      <div class="biao-input">
+<textarea class="textarea" placeholder="记录口干不欲饮、小便清长、水肿及补充所见"></textarea>
+                      </div>
+                      <div class="biao-score">
+                        <div class="biao-input-title">病理打分</div>
+                        <input class="input score-input" type="number" min="0" max="100" placeholder="0" />
+                      </div>
+                    </div>
+                    </div>
+                  </div>
+                  <div class="biao-block">
+                    <div class="biao-label tone-amber" aria-label="水实">水实</div>
+                    <div class="biao-body">
+                    <div class="biao-row">
+                      <div class="biao-symptoms">
+<div class="chips">
+                          <button class="chip" type="button">小便不利</button>
+                          <button class="chip" type="button">心下悸</button>
+                          <button class="chip" type="button">痰多</button>
+                          <button class="chip" type="button">水肿</button>
+                          <button class="chip" type="button">呕吐清水</button>
+                          <button class="chip" type="button">身重</button>
+                          <button class="chip" type="button">饮水即胀</button>
+                          <button class="chip" type="button">咳喘痰白</button>
+                          <button class="chip" type="button">头眩</button>
+                          <button class="chip" type="button">脉沉滑</button>
+                        </div>
+                      </div>
+                      <div class="biao-input">
+<textarea class="textarea" placeholder="记录小便不利、痰饮、水肿及补充所见"></textarea>
+                      </div>
+                      <div class="biao-score">
+                        <div class="biao-input-title">病理打分</div>
+                        <input class="input score-input" type="number" min="0" max="100" placeholder="0" />
+                      </div>
+                    </div>
+                    </div>
+                  </div>
+                </div>
+              </section>
+
+              <section class="section" id="qizheng">
+                <div class="section-head">
+                  <div>
+                    <div class="section-name"><span class="num">6</span>气证采集</div>
+                    <p class="section-desc">分气虚、气实采集：左侧对照常见症状，右侧记录本例所见。</p>
+                  </div>
+                  <span class="tag green section-score-summary" aria-live="polite"></span>
+                </div>
+                <div class="section-content">
+                  <div class="biao-block">
+                    <div class="biao-label tone-green" aria-label="气虚">气虚</div>
+                    <div class="biao-body">
+                    <div class="biao-row">
+                      <div class="biao-symptoms">
+<div class="chips">
+                          <button class="chip" type="button">短气乏力</button>
+                          <button class="chip" type="button">声低</button>
+                          <button class="chip" type="button">懒言</button>
+                          <button class="chip" type="button">自汗</button>
+                          <button class="chip" type="button">动则喘</button>
+                          <button class="chip" type="button">面色白</button>
+                          <button class="chip" type="button">食欲差</button>
+                          <button class="chip" type="button">脉弱</button>
+                          <button class="chip" type="button">倦怠</button>
+                        </div>
+                      </div>
+                      <div class="biao-input">
+<textarea class="textarea" placeholder="记录短气乏力、懒言、自汗及补充所见"></textarea>
+                      </div>
+                      <div class="biao-score">
+                        <div class="biao-input-title">病理打分</div>
+                        <input class="input score-input" type="number" min="0" max="100" placeholder="0" />
+                      </div>
+                    </div>
+                    </div>
+                  </div>
+                  <div class="biao-block">
+                    <div class="biao-label tone-amber" aria-label="气实">气实</div>
+                    <div class="biao-body">
+                    <div class="biao-row">
+                      <div class="biao-symptoms">
+<div class="chips">
+                          <button class="chip" type="button">胀满</button>
+                          <button class="chip" type="button">嗳气</button>
+                          <button class="chip" type="button">气上冲</button>
+                          <button class="chip" type="button">胸闷</button>
+                          <button class="chip" type="button">咽中如有物</button>
+                          <button class="chip" type="button">叹息</button>
+                          <button class="chip" type="button">情绪加重</button>
+                          <button class="chip" type="button">胁胀</button>
+                          <button class="chip" type="button">胸满</button>
+                          <button class="chip" type="button">脉弦</button>
+                        </div>
+                      </div>
+                      <div class="biao-input">
+<textarea class="textarea" placeholder="记录胀满、嗳气、气上冲及补充所见"></textarea>
+                      </div>
+                      <div class="biao-score">
+                        <div class="biao-input-title">病理打分</div>
+                        <input class="input score-input" type="number" min="0" max="100" placeholder="0" />
+                      </div>
+                    </div>
+                    </div>
+                  </div>
+                </div>
+              </section>
+
+              <section class="section" id="xuezheng">
+                <div class="section-head">
+                  <div>
+                    <div class="section-name"><span class="num">7</span>血证采集</div>
+                    <p class="section-desc">分血虚、血实采集：左侧对照常见症状，右侧记录本例所见。</p>
+                  </div>
+                  <span class="tag red section-score-summary" aria-live="polite"></span>
+                </div>
+                <div class="section-content">
+                  <div class="biao-block">
+                    <div class="biao-label tone-green" aria-label="血虚">血虚</div>
+                    <div class="biao-body">
+                    <div class="biao-row">
+                      <div class="biao-symptoms">
+<div class="chips">
+                          <button class="chip" type="button">面色萎黄</button>
+                          <button class="chip" type="button">心悸失眠</button>
+                          <button class="chip" type="button">头晕</button>
+                          <button class="chip" type="button">经量少</button>
+                          <button class="chip" type="button">爪甲不荣</button>
+                          <button class="chip" type="button">唇色淡</button>
+                          <button class="chip" type="button">乏力</button>
+                          <button class="chip" type="button">脉细</button>
+                          <button class="chip" type="button">肌肤甲错</button>
+                        </div>
+                      </div>
+                      <div class="biao-input">
+<textarea class="textarea" placeholder="记录面色萎黄、心悸、经量少及补充所见"></textarea>
+                      </div>
+                      <div class="biao-score">
+                        <div class="biao-input-title">病理打分</div>
+                        <input class="input score-input" type="number" min="0" max="100" placeholder="0" />
+                      </div>
+                    </div>
+                    </div>
+                  </div>
+                  <div class="biao-block">
+                    <div class="biao-label tone-red" aria-label="血实">血实</div>
+                    <div class="biao-body">
+                    <div class="biao-row">
+                      <div class="biao-symptoms">
+<div class="chips">
+                          <button class="chip" type="button">刺痛固定</button>
+                          <button class="chip" type="button">少腹急结</button>
+                          <button class="chip" type="button">舌暗紫</button>
+                          <button class="chip" type="button">口唇暗</button>
+                          <button class="chip" type="button">经血块</button>
+                          <button class="chip" type="button">皮下瘀斑</button>
+                          <button class="chip" type="button">夜间痛甚</button>
+                          <button class="chip" type="button">出血</button>
+                          <button class="chip" type="button">脉涩</button>
+                          <button class="chip" type="button">拒按</button>
+                        </div>
+                      </div>
+                      <div class="biao-input">
+<textarea class="textarea" placeholder="记录刺痛、瘀血、出血及补充所见"></textarea>
+                      </div>
+                      <div class="biao-score">
+                        <div class="biao-input-title">病理打分</div>
+                        <input class="input score-input" type="number" min="0" max="100" placeholder="0" />
+                      </div>
+                    </div>
+                    </div>
+                  </div>
+                </div>
+              </section>
+
+              <section class="section" id="yinxing">
+                <div class="section-head">
+                  <div>
+                    <div class="section-name"><span class="num">8</span>阴性采集</div>
+                    <p class="section-desc">左侧对照常见阴性症状，右侧记录本例所见。</p>
+                  </div>
+                  <span class="tag amber section-score-summary" aria-live="polite"></span>
+                </div>
+                <div class="section-content">
+                  <div class="biao-block">
+                    <div class="biao-label tone-amber" aria-label="阴性">阴性</div>
+                    <div class="biao-body">
+                    <div class="biao-row">
+                      <div class="biao-symptoms">
+                        <div class="chips">
+                          <button class="chip warn" type="button">精神疲惫</button>
+                          <button class="chip warn" type="button">嗜睡</button>
+                          <button class="chip warn" type="button">萎靡</button>
+                          <button class="chip warn" type="button">懒言</button>
+                          <button class="chip warn" type="button">倦怠</button>
+                          <button class="chip warn" type="button">面色白</button>
+                          <button class="chip warn" type="button">声低</button>
+                          <button class="chip warn" type="button">脉微细</button>
+                          <button class="chip warn" type="button">不欲动</button>
+                        </div>
+                      </div>
+                      <div class="biao-input">
+                        <textarea class="textarea" placeholder="记录精神疲惫、嗜睡、脉微细及补充所见"></textarea>
+                      </div>
+                      <div class="biao-score">
+                        <div class="biao-input-title">病理打分</div>
+                        <input class="input score-input" type="number" min="0" max="100" placeholder="0" />
+                      </div>
+                    </div>
+                    </div>
+                  </div>
+                </div>
+              </section>
+
+              <section class="section" id="tongue">
+                <div class="section-head">
+                  <div>
+                    <div class="section-name"><span class="num">9</span>舌诊、脉诊、腹诊</div>
+                    <p class="section-desc">把望闻切信息结构化，作为 AI 分析和追问的证据来源。</p>
+                  </div>
+                  <span class="tag blue">证据补强</span>
+                </div>
+                <div class="section-content">
+                  <div class="form-grid">
+                    <div class="field">
+                      <div class="label">舌质</div>
+                      <select class="select"><option>舌质偏红</option><option>淡舌</option><option>暗紫</option><option>胖大齿痕</option></select>
+                    </div>
+                    <div class="field">
+                      <div class="label">舌苔</div>
+                      <select class="select"><option>薄黄腻</option><option>薄白</option><option>白厚腻</option><option>少苔</option></select>
+                    </div>
+                    <div class="field wide">
+                      <div class="label">舌照</div>
+                      <div class="tongue-upload">
+                        <input
+                          id="tongue-photo-input"
+                          class="tongue-upload-input"
+                          type="file"
+                          accept="image/jpeg,image/png,image/webp,image/*"
+                        />
+                        <div class="tongue-upload-panel">
+                          <div class="tongue-upload-empty" id="tongue-upload-empty">
+                            <div class="tongue-upload-trigger">
+                              <button id="tongue-upload-btn" class="btn ghost" type="button">上传舌照</button>
+                              <span class="tongue-upload-hint">支持 JPG、PNG、WebP，单张不超过 10MB</span>
+                            </div>
+                          </div>
+                          <div class="tongue-preview" id="tongue-preview">
+                            <img id="tongue-preview-img" alt="舌照预览" />
+                            <div class="tongue-preview-meta">
+                              <div class="tongue-preview-name" id="tongue-preview-name"></div>
+                              <div>
+                                <button id="tongue-replace-btn" class="btn ghost" type="button">更换</button>
+                                <button id="tongue-remove-btn" class="btn" type="button">移除</button>
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                    <div class="field">
+                      <div class="label">脉象</div>
+                      <input class="input" value="弦滑略数" />
+                    </div>
+                    <div class="field">
+                      <div class="label">腹诊</div>
+                      <input class="input" value="心下痞满，胸胁不舒" />
+                    </div>
+                    <div class="field wide">
+                      <div class="label">腹诊备注</div>
+                      <textarea class="textarea small">舌红苔薄黄腻；心下胀闷，按压不适但非剧痛拒按。</textarea>
+                    </div>
+                  </div>
+                </div>
+              </section>
+
+              <section class="section" id="prescription">
+                <div class="section-head">
+                  <div>
+                    <div class="section-name"><span class="num">10</span>处方</div>
+                    <p class="section-desc"></p>
+                  </div>
+                  <span class="tag green">开方</span>
+                </div>
+                <div class="section-content">
+                  <div class="prescription-block">
+                    <div class="prescription-block-title">
+                      <div class="prescription-title-main">
+                        <span>合方录入</span>
+                        <label class="prescription-target-wrap">
+                          目标用量
+                          <input class="input" id="prescription-target-dose" type="number" min="1" step="1" value="200" aria-label="目标用量(g)" />
+                          <span>g</span>
+                        </label>
+                        <span class="tag blue" id="dose-calc-mode-tag">—</span>
+                      </div>
+                      <button class="btn ghost compact" type="button" id="add-formula-row">+ 添加方剂</button>
+                    </div>
+                    <datalist id="formula-powder-options"></datalist>
+                    <div class="formula-table-wrap">
+                      <table class="formula-table">
+                        <colgroup>
+                          <col class="col-name" />
+                          <col class="col-pathology" />
+                          <col class="col-unit" />
+                          <col class="col-portions" />
+                          <col class="col-final" />
+                          <col class="col-action" />
+                        </colgroup>
+                        <thead>
+                          <tr>
+                            <th class="col-name">方剂名</th>
+                            <th class="col-pathology">病理</th>
+                            <th class="num">单方量</th>
+                            <th class="num">份数</th>
+                            <th class="num">最终用量</th>
+                            <th class="col-action" aria-label="操作"></th>
+                          </tr>
+                        </thead>
+                        <tbody id="formula-compose-list">
+                          <tr class="formula-table-row" data-unit-total="28">
+                            <td class="col-name">
+                              <input class="input formula-name-input" type="text" list="formula-powder-options" placeholder="方剂名" value="小柴胡汤" aria-label="方剂名" />
+                            </td>
+                            <td class="col-pathology"><span class="formula-pathology-cell"><span class="pathology-tag">半热</span><span class="pathology-tag">气实</span></span></td>
+                            <td class="num"><span class="formula-unit-total is-auto">28</span></td>
+                            <td class="num"><input class="input formula-dose-input" type="number" min="1" max="99" value="2" aria-label="份数" /></td>
+                            <td class="num"><strong class="formula-final-dose">—</strong></td>
+                            <td class="col-action"><button class="formula-remove-btn" type="button" aria-label="删除方剂" title="删除">×</button></td>
+                          </tr>
+                          <tr class="formula-table-row" data-unit-total="16">
+                            <td class="col-name">
+                              <input class="input formula-name-input" type="text" list="formula-powder-options" placeholder="方剂名" value="五苓散" aria-label="方剂名" />
+                            </td>
+                            <td class="col-pathology"><span class="formula-pathology-cell"><span class="pathology-tag">水实</span></span></td>
+                            <td class="num"><span class="formula-unit-total is-auto">16</span></td>
+                            <td class="num"><input class="input formula-dose-input" type="number" min="1" max="99" value="5" aria-label="份数" /></td>
+                            <td class="num"><strong class="formula-final-dose">—</strong></td>
+                            <td class="col-action"><button class="formula-remove-btn" type="button" aria-label="删除方剂" title="删除">×</button></td>
+                          </tr>
+                          <tr class="formula-table-row" data-unit-total="20">
+                            <td class="col-name">
+                              <input class="input formula-name-input" type="text" list="formula-powder-options" placeholder="方剂名" value="吴茱萸汤" aria-label="方剂名" />
+                            </td>
+                            <td class="col-pathology"><span class="formula-pathology-cell"><span class="pathology-tag">里寒</span><span class="pathology-tag">半热</span></span></td>
+                            <td class="num"><span class="formula-unit-total is-auto">20</span></td>
+                            <td class="num"><input class="input formula-dose-input" type="number" min="1" max="99" value="1" aria-label="份数" /></td>
+                            <td class="num"><strong class="formula-final-dose">—</strong></td>
+                            <td class="col-action"><button class="formula-remove-btn" type="button" aria-label="删除方剂" title="删除">×</button></td>
+                          </tr>
+                          <tr class="formula-table-row" data-unit-total="12">
+                            <td class="col-name">
+                              <input class="input formula-name-input" type="text" list="formula-powder-options" placeholder="方剂名" value="黄连解毒丸" aria-label="方剂名" />
+                            </td>
+                            <td class="col-pathology"><span class="formula-pathology-cell"><span class="pathology-tag">里热</span></span></td>
+                            <td class="num"><span class="formula-unit-total is-auto">12</span></td>
+                            <td class="num"><input class="input formula-dose-input" type="number" min="1" max="99" value="3" aria-label="份数" /></td>
+                            <td class="num"><strong class="formula-final-dose">—</strong></td>
+                            <td class="col-action"><button class="formula-remove-btn" type="button" aria-label="删除方剂" title="删除">×</button></td>
+                          </tr>
+                        </tbody>
+                        <tfoot>
+                          <tr class="total-row">
+                            <td colspan="4">合计</td>
+                            <td class="num" id="formula-dose-total">—</td>
+                            <td></td>
+                          </tr>
+                        </tfoot>
+                      </table>
+                    </div>
+                  </div>
+
+                  <div class="field wide prescription-note-field">
+                    <div class="label">处方备注</div>
+                    <textarea class="textarea small" id="prescription-note" placeholder="煎服法、忌口、复诊提醒等">每日 1 剂，水煎服，早晚分服；忌生冷油腻。</textarea>
+                  </div>
+                </div>
+              </section>
+            </div>
+            </div>
+
+            <div class="sticky-actions">
+              <div class="muted">完成手动采集后，AI 先做初步分析；信息不足时只追问 3-5 个关键问题。</div>
+              <div>
+                <button class="btn ghost">保存草稿</button>
+                <button class="btn primary">生成 AI 初步分析</button>
+              </div>
+            </div>
+          </section>
+
+          <aside class="panel analysis">
+            <div class="panel-head">
+              <div>
+                <div class="panel-title">AI 分析</div>
+                <div class="muted">摘要、病理、追问、方证候选</div>
+              </div>
+            </div>
+            <div class="analysis-body">
+              <div class="status-card analysis-lead">
+                <div class="status-title">
+                  <span>问诊摘要</span>
+                  <span class="tag blue">AI 预览</span>
+                </div>
+                <ul class="summary-list">
+                  <li>主诉：胃胀反酸，饭后明显，兼口苦胸闷。</li>
+                  <li>里证：食欲差、嗳气、饭后胀、大便偏干。</li>
+                  <li>半证：口苦、胸胁不舒、心烦，往来寒热未明。</li>
+                  <li>舌脉腹：舌红苔薄黄腻，脉弦滑略数，心下痞满。</li>
+                </ul>
+              </div>
+
+              <div class="status-card">
+                <div class="status-title">
+                  <span>十二字病理初判</span>
+                  <span class="tag amber">待校正</span>
+                </div>
+                <div class="pathology-grid">
+                  <div class="pathology"><strong>半热 <span>78</span></strong><div class="bar"><span style="width:78%"></span></div></div>
+                  <div class="pathology"><strong>气实 <span>72</span></strong><div class="bar"><span style="width:72%"></span></div></div>
+                  <div class="pathology"><strong>里热 <span>56</span></strong><div class="bar"><span style="width:56%"></span></div></div>
+                  <div class="pathology"><strong>水实 <span>34</span></strong><div class="bar"><span style="width:34%"></span></div></div>
+                </div>
+              </div>
+
+              <div class="status-card">
+                <div class="status-title">
+                  <span>关键追问</span>
+                  <span class="tag">3 题</span>
+                </div>
+                <div class="question">
+                  胸胁部是胀满不舒，还是固定刺痛？
+                  <small>用于区分气实与血实。</small>
+                </div>
+                <div class="question">
+                  口苦时是否伴咽干、目眩或往来寒热？
+                  <small>用于确认半证方向。</small>
+                </div>
+                <div class="question">
+                  大便偏干是偶发，还是长期需要用力排便？
+                  <small>用于判断里热里实边界。</small>
+                </div>
+              </div>
+
+              <div class="status-card">
+                <div class="status-title">
+                  <span>方证候选</span>
+                  <span class="tag blue">学习参考</span>
+                </div>
+                <div class="formula-row">
+                  <div>
+                    <div class="formula-head">
+                      <strong>小柴胡汤方向</strong>
+                      <span class="formula-pathology">
+                        <span class="pathology-tag">半热</span>
+                        <span class="pathology-tag">气实</span>
+                      </span>
+                    </div>
+                    <div class="muted">口苦、胸胁不舒、食欲差，需确认往来寒热。</div>
+                  </div>
+                  <span class="tag green">较高</span>
+                </div>
+                <div class="formula-row">
+                  <div>
+                    <div class="formula-head">
+                      <strong>半夏泻心汤方向</strong>
+                      <span class="formula-pathology">
+                        <span class="pathology-tag">半热</span>
+                        <span class="pathology-tag">里寒</span>
+                        <span class="pathology-tag">里热</span>
+                      </span>
+                    </div>
+                    <div class="muted">心下痞、胃胀反酸，需确认寒热错杂与下利。</div>
+                  </div>
+                  <span class="tag amber">待辨</span>
+                </div>
+                <div class="formula-row">
+                  <div>
+                    <div class="formula-head">
+                      <strong>大柴胡汤方向</strong>
+                      <span class="formula-pathology">
+                        <span class="pathology-tag">半热</span>
+                        <span class="pathology-tag">里实</span>
+                        <span class="pathology-tag">气实</span>
+                      </span>
+                    </div>
+                    <div class="muted">若胸胁苦满、便秘、拒按明显，再考虑。</div>
+                  </div>
+                  <span class="tag">边界</span>
+                </div>
+              </div>
+
+              <div class="notice">
+                出现持续高热、剧烈腹痛、胸痛、呕血便血、呼吸困难等情况，应及时线下就医；本页内容用于学习和辅助整理，不替代医生诊疗。
+              </div>
+            </div>
+          </aside>
+        </section>
+      </main>
+    </div>
+  </div>
+
+  <script>
+    const moduleNav = document.getElementById("module-nav");
+    const formSections = [...document.querySelectorAll(".form-body > .section")];
+
+    function setSectionCollapsed(section, collapsed) {
+      section.classList.toggle("is-collapsed", collapsed);
+      const head = section.querySelector(".section-head");
+      if (head) head.setAttribute("aria-expanded", String(!collapsed));
+      updateBulkToggleButton();
+    }
+
+    function getVisibleSections() {
+      return formSections.filter((section) => !section.classList.contains("is-hidden"));
+    }
+
+    function areAllVisibleSectionsCollapsed() {
+      const visible = getVisibleSections();
+      return visible.length > 0 && visible.every((section) => section.classList.contains("is-collapsed"));
+    }
+
+    function setVisibleSectionsCollapsed(collapsed) {
+      getVisibleSections().forEach((section) => {
+        section.classList.toggle("is-collapsed", collapsed);
+        const head = section.querySelector(".section-head");
+        if (head) head.setAttribute("aria-expanded", String(!collapsed));
+      });
+      updateBulkToggleButton();
+    }
+
+    function updateBulkToggleButton() {
+      const btn = document.getElementById("toggle-all-sections");
+      if (!btn) return;
+      const allCollapsed = areAllVisibleSectionsCollapsed();
+      btn.classList.toggle("expand-all", allCollapsed);
+      btn.classList.toggle("collapse-all", !allCollapsed);
+      const label = allCollapsed ? "展开全部" : "折叠全部";
+      btn.title = label;
+      btn.setAttribute("aria-label", label);
+      btn.setAttribute("aria-pressed", String(!allCollapsed));
+    }
+
+    function initSectionBulkToggle() {
+      const btn = document.getElementById("toggle-all-sections");
+      btn?.addEventListener("click", () => {
+        setVisibleSectionsCollapsed(!areAllVisibleSectionsCollapsed());
+      });
+      updateBulkToggleButton();
+    }
+
+    function initSectionCollapse() {
+      formSections.forEach((section) => {
+        const head = section.querySelector(".section-head");
+        if (!head || head.dataset.collapseReady) return;
+        head.dataset.collapseReady = "1";
+        head.setAttribute("role", "button");
+        head.setAttribute("tabindex", "0");
+        head.setAttribute("aria-expanded", "true");
+
+        const tag = head.querySelector(".tag");
+        const meta = document.createElement("div");
+        meta.className = "section-head-meta";
+        if (tag) meta.appendChild(tag);
+        const chevron = document.createElement("span");
+        chevron.className = "section-chevron";
+        chevron.setAttribute("aria-hidden", "true");
+        meta.appendChild(chevron);
+        head.appendChild(meta);
+
+        const toggle = () => setSectionCollapsed(section, !section.classList.contains("is-collapsed"));
+        head.addEventListener("click", toggle);
+        head.addEventListener("keydown", (event) => {
+          if (event.key === "Enter" || event.key === " ") {
+            event.preventDefault();
+            toggle();
+          }
+        });
+      });
+    }
+
+    function showModule(target) {
+      moduleNav.querySelectorAll(".module-nav-btn").forEach((btn) => {
+        btn.classList.toggle("active", btn.dataset.target === target);
+      });
+      formSections.forEach((section) => {
+        const hidden = target !== "all" && section.id !== target;
+        section.classList.toggle("is-hidden", hidden);
+        if (!hidden) setSectionCollapsed(section, false);
+      });
+      const collectScroll = document.getElementById("collect-scroll");
+      if (collectScroll) collectScroll.scrollTop = 0;
+      updateBulkToggleButton();
+    }
+
+    function buildSectionScoreSummary(section) {
+      const blocks = [...section.querySelectorAll(".biao-block")];
+      if (!blocks.length) return "";
+      return blocks.map((block) => {
+        const label = block.querySelector(".biao-label")?.textContent.trim() || "";
+        const raw = block.querySelector(".score-input")?.value.trim() ?? "";
+        const score = raw === "" ? "—" : raw;
+        return `<span class="score-item">${label} <strong>${score}</strong></span>`;
+      }).join('<span class="score-sep"> · </span>');
+    }
+
+    function updateSectionScoreSummary(section) {
+      const summary = section.querySelector(".section-score-summary");
+      if (!summary) return;
+      summary.innerHTML = buildSectionScoreSummary(section);
+    }
+
+    function initScoreSync() {
+      formSections.forEach((section) => {
+        if (!section.querySelector(".biao-block")) return;
+        section.querySelectorAll(".score-input").forEach((input) => {
+          input.addEventListener("input", () => updateSectionScoreSummary(section));
+        });
+        updateSectionScoreSummary(section);
+      });
+    }
+
+    const FORMULA_POWDER_DB = {
+      "小柴胡汤": { total: 28, pathology: ["半热", "气实"], herbs: "柴胡8+半夏3+黄芩3+人参3+甘草3+生姜3+大枣5" },
+      "当归芍药散": { total: 31, pathology: ["血虚", "水实"], herbs: "当归3+芍药16+川芎3+茯苓3+白术6+泽泻8" },
+      "桂枝茯苓丸": { total: 15, pathology: ["血实", "水实"], herbs: "桂枝3+芍药3+茯苓3+丹皮3+桃仁3" },
+      "吴茱萸汤": { total: 20, pathology: ["里寒", "半热"], herbs: "吴茱萸6+人参3+生姜6+大枣5" },
+      "半夏泻心汤": { total: 21, pathology: ["半热", "里热"], herbs: "半夏3+黄芩3+人参3+甘草3+干姜3+黄连1+大枣5" },
+      "五苓散": { total: 16, pathology: ["水实"], herbs: "猪苓3+茯苓3+白术3+泽泻5+桂枝2" },
+      "黄连解毒丸": { total: 12, pathology: ["里热"], herbs: "黄连3+黄柏3+黄芩3+栀子3" },
+      "四逆散": { total: 12, pathology: ["半热", "里实", "气实"], herbs: "炙甘草3+枳实3+柴胡3+芍药3" },
+      "半夏厚朴汤": { total: 22, pathology: ["水实", "气实"], herbs: "半夏8+厚朴3+茯苓4+生姜5+苏叶2" },
+      "葶苈大枣泻肺汤": { total: 10, pathology: ["水实", "半热"], herbs: "葶苈5+大枣5" },
+      "麻杏石甘汤": { total: 16, pathology: ["表实", "里热"], herbs: "麻黄4+杏仁2+炙甘草2+石膏8" },
+      "泽泻汤": { total: 7, pathology: ["水实"], herbs: "泽泻5+白术2" },
+      "炙甘草汤": { total: 51, pathology: ["里虚", "血虚"], herbs: "炙甘草4+生姜3+人参2+生地黄16+桂枝3+阿胶2+麦冬4+麻仁4+大枣13" },
+      "大柴胡汤": { total: 35, pathology: ["半热", "里实", "气实"], herbs: "柴胡8+黄芩3+半夏5+生姜3+大枣5+芍药3+枳实3" },
+      "桂枝汤": { total: 23, pathology: ["表虚", "气实"], herbs: "桂枝9+芍药9+生姜9+大枣9+炙甘草6" },
+      "葛根汤": { total: 28, pathology: ["表实", "气实"], herbs: "葛根12+麻黄6+桂枝6+芍药6+生姜6+大枣6+甘草6" },
+    };
+
+    function normalizeFormulaName(name) {
+      return (name || "").trim().replace(/\s+/g, "");
+    }
+
+    function lookupFormulaPowder(name) {
+      const normalized = normalizeFormulaName(name);
+      if (!normalized) return null;
+      if (FORMULA_POWDER_DB[normalized]) {
+        return { name: normalized, ...FORMULA_POWDER_DB[normalized] };
+      }
+      const hit = Object.keys(FORMULA_POWDER_DB).find((key) => {
+        const base = key.replace(/(汤|散|丸|方)$/u, "");
+        return normalized === key
+          || normalized.includes(key)
+          || key.includes(normalized)
+          || normalized === base
+          || normalized.startsWith(base);
+      });
+      return hit ? { name: hit, ...FORMULA_POWDER_DB[hit] } : null;
+    }
+
+    function formatDoseNumber(value) {
+      if (!Number.isFinite(value)) return "—";
+      const rounded = Math.round(value * 10) / 10;
+      return Number.isInteger(rounded) ? String(rounded) : rounded.toFixed(1);
+    }
+
+    function syncFormulaPowderOptions() {
+      const datalist = document.getElementById("formula-powder-options");
+      if (!datalist) return;
+      datalist.innerHTML = Object.keys(FORMULA_POWDER_DB)
+        .map((name) => `<option value="${name}"></option>`)
+        .join("");
+    }
+
+    function renderPathologyCell(row, tags) {
+      const cell = row.querySelector(".formula-pathology-cell");
+      if (!cell) return;
+      if (!tags?.length) {
+        cell.innerHTML = '<span class="muted">—</span>';
+        return;
+      }
+      cell.innerHTML = tags.map((tag) => `<span class="pathology-tag">${tag}</span>`).join("");
+    }
+
+    function setRowUnitTotal(row, total, isAuto = true) {
+      const unitEl = row.querySelector(".formula-unit-total");
+      if (unitEl) {
+        unitEl.textContent = total > 0 ? String(total) : "—";
+        unitEl.classList.toggle("is-auto", isAuto && total > 0);
+      }
+      if (total > 0) row.dataset.unitTotal = String(total);
+      else delete row.dataset.unitTotal;
+    }
+
+    function applyFormulaPowderLookup(row) {
+      const nameInput = row.querySelector(".formula-name-input");
+      if (!nameInput) return;
+      const hit = lookupFormulaPowder(nameInput.value);
+      if (hit) {
+        setRowUnitTotal(row, hit.total, true);
+        renderPathologyCell(row, hit.pathology || []);
+        row.dataset.herbs = hit.herbs || "";
+        row.classList.remove("is-missing-total");
+        return;
+      }
+      setRowUnitTotal(row, 0, false);
+      renderPathologyCell(row, []);
+      delete row.dataset.herbs;
+      row.classList.add("is-missing-total");
+    }
+
+    function bindFormulaRow(row) {
+      if (row.dataset.bound) return;
+      row.dataset.bound = "1";
+      const nameInput = row.querySelector(".formula-name-input");
+      const doseInput = row.querySelector(".formula-dose-input");
+      const removeBtn = row.querySelector(".formula-remove-btn");
+
+      const refresh = () => {
+        applyFormulaPowderLookup(row);
+        runDoseCalc();
+      };
+
+      nameInput?.addEventListener("change", refresh);
+      nameInput?.addEventListener("blur", refresh);
+      doseInput?.addEventListener("input", runDoseCalc);
+      removeBtn?.addEventListener("click", () => {
+        const list = document.getElementById("formula-compose-list");
+        if (!list || list.querySelectorAll(".formula-table-row").length <= 1) return;
+        row.remove();
+        updateFormulaRemoveButtons();
+        runDoseCalc();
+      });
+      applyFormulaPowderLookup(row);
+    }
+
+    function collectFormulaRows() {
+      return [...document.querySelectorAll(".formula-table-row")].map((row) => {
+        const name = row.querySelector(".formula-name-input")?.value.trim() || "";
+        const unitTotal = Number(row.dataset.unitTotal);
+        const portions = Number(row.querySelector(".formula-dose-input")?.value);
+        const weighted = unitTotal * portions;
+        return { row, name, unitTotal, portions, weighted };
+      }).filter((item) => item.name);
+    }
+
+    function runDoseCalc() {
+      const targetInput = document.getElementById("prescription-target-dose");
+      const totalEl = document.getElementById("formula-dose-total");
+      const modeTag = document.getElementById("dose-calc-mode-tag");
+      if (!targetInput) return;
+
+      const target = Number(targetInput.value);
+      const rows = collectFormulaRows();
+      const validRows = rows.filter((item) => item.unitTotal > 0 && item.portions > 0);
+
+      rows.forEach((item) => {
+        item.row.classList.toggle("is-missing-total", !(item.unitTotal > 0 && item.portions > 0));
+        const finalEl = item.row.querySelector(".formula-final-dose");
+        if (finalEl) finalEl.textContent = "—";
+      });
+
+      if (!target || !validRows.length) {
+        if (totalEl) totalEl.textContent = "—";
+        if (modeTag) modeTag.textContent = "—";
+        return;
+      }
+
+      const combinedWeighted = validRows.reduce((sum, item) => sum + item.weighted, 0);
+      const coefficient = target / combinedWeighted;
+      const equalPortions = validRows.every((item) => item.portions === 1);
+      const modeLabel = equalPortions ? "各一份" : "多份合方";
+
+      if (modeTag) {
+        modeTag.textContent = `${modeLabel} · k ${formatDoseNumber(coefficient)}`;
+      }
+
+      let sumFinal = 0;
+      validRows.forEach((item) => {
+        const finalDose = coefficient * item.weighted;
+        sumFinal += finalDose;
+        const finalEl = item.row.querySelector(".formula-final-dose");
+        if (finalEl) finalEl.textContent = formatDoseNumber(finalDose);
+      });
+      if (totalEl) totalEl.textContent = formatDoseNumber(sumFinal);
+    }
+
+    function updateFormulaRemoveButtons() {
+      const list = document.getElementById("formula-compose-list");
+      if (!list) return;
+      const rows = [...list.querySelectorAll(".formula-table-row")];
+      rows.forEach((row) => {
+        const btn = row.querySelector(".formula-remove-btn");
+        if (btn) btn.disabled = rows.length <= 1;
+      });
+    }
+
+    function createFormulaRow(name = "", dose = "1") {
+      const row = document.createElement("tr");
+      row.className = "formula-table-row";
+      row.innerHTML = `
+        <td class="col-name">
+          <input class="input formula-name-input" type="text" list="formula-powder-options" placeholder="方剂名" value="${name.replace(/"/g, "&quot;")}" aria-label="方剂名" />
+        </td>
+        <td class="col-pathology"><span class="formula-pathology-cell"><span class="muted">—</span></span></td>
+        <td class="num"><span class="formula-unit-total">—</span></td>
+        <td class="num"><input class="input formula-dose-input" type="number" min="1" max="99" value="${dose}" aria-label="份数" /></td>
+        <td class="num"><strong class="formula-final-dose">—</strong></td>
+        <td class="col-action"><button class="formula-remove-btn" type="button" aria-label="删除方剂" title="删除">×</button></td>
+      `;
+      bindFormulaRow(row);
+      return row;
+    }
+
+    function initFormulaCompose() {
+      const list = document.getElementById("formula-compose-list");
+      const addBtn = document.getElementById("add-formula-row");
+      const targetInput = document.getElementById("prescription-target-dose");
+      if (!list || !addBtn) return;
+
+      syncFormulaPowderOptions();
+      list.querySelectorAll(".formula-table-row").forEach((row) => bindFormulaRow(row));
+
+      addBtn.addEventListener("click", () => {
+        const row = createFormulaRow();
+        list.appendChild(row);
+        row.querySelector(".formula-name-input")?.focus();
+        updateFormulaRemoveButtons();
+        runDoseCalc();
+      });
+
+      targetInput?.addEventListener("input", runDoseCalc);
+
+      updateFormulaRemoveButtons();
+      runDoseCalc();
+    }
+
+    initSectionCollapse();
+    initSectionBulkToggle();
+    initScoreSync();
+    initFormulaCompose();
+
+    (function initTonguePhotoUpload() {
+      const input = document.getElementById("tongue-photo-input");
+      const empty = document.getElementById("tongue-upload-empty");
+      const preview = document.getElementById("tongue-preview");
+      const previewImg = document.getElementById("tongue-preview-img");
+      const previewName = document.getElementById("tongue-preview-name");
+      const uploadBtn = document.getElementById("tongue-upload-btn");
+      const replaceBtn = document.getElementById("tongue-replace-btn");
+      const removeBtn = document.getElementById("tongue-remove-btn");
+      if (!input || !empty || !preview || !previewImg) return;
+
+      let objectUrl = "";
+
+      function clearPreview() {
+        if (objectUrl) {
+          URL.revokeObjectURL(objectUrl);
+          objectUrl = "";
+        }
+        input.value = "";
+        previewImg.removeAttribute("src");
+        preview.classList.remove("has-image");
+        empty.classList.remove("is-hidden");
+        if (previewName) previewName.textContent = "";
+      }
+
+      function showPreview(file) {
+        if (!file || !file.type.startsWith("image/")) return;
+        if (file.size > 10 * 1024 * 1024) {
+          window.alert("图片不能超过 10MB");
+          input.value = "";
+          return;
+        }
+        if (objectUrl) URL.revokeObjectURL(objectUrl);
+        objectUrl = URL.createObjectURL(file);
+        previewImg.src = objectUrl;
+        if (previewName) previewName.textContent = file.name;
+        preview.classList.add("has-image");
+        empty.classList.add("is-hidden");
+      }
+
+      uploadBtn?.addEventListener("click", () => input.click());
+      replaceBtn?.addEventListener("click", () => input.click());
+      removeBtn?.addEventListener("click", clearPreview);
+      input.addEventListener("change", () => {
+        const file = input.files?.[0];
+        if (file) showPreview(file);
+      });
+    })();
+
+    moduleNav?.addEventListener("click", (event) => {
+      const btn = event.target.closest(".module-nav-btn");
+      if (!btn) return;
+      showModule(btn.dataset.target || "all");
+    });
+
+    function getChipText(chip) {
+      const textEl = chip.querySelector?.(".chip-text") || chip;
+      return textEl.textContent.replace(/\s+/g, " ").trim();
+    }
+
+    function getChipTextEl(chip) {
+      return chip.querySelector?.(".chip-text") || chip;
+    }
+
+    function splitSymptomText(value) {
+      return value.split(/[、，,；;]+/).map((item) => item.trim()).filter(Boolean);
+    }
+
+    function syncBiaoTextarea(block, chip) {
+      const textarea = block.querySelector(".biao-input textarea");
+      if (!textarea) return;
+      const text = getChipText(chip);
+      if (!text) return;
+      const parts = splitSymptomText(textarea.value);
+      const index = parts.indexOf(text);
+      if (chip.classList.contains("active")) {
+        if (index < 0) parts.push(text);
+      } else if (index >= 0) {
+        parts.splice(index, 1);
+      }
+      textarea.value = parts.join("、");
+    }
+
+    function renameChipInTextarea(block, oldText, newText) {
+      const textarea = block.querySelector(".biao-input textarea");
+      if (!textarea || !oldText || !newText || oldText === newText) return;
+      const parts = splitSymptomText(textarea.value);
+      const index = parts.indexOf(oldText);
+      if (index >= 0) parts[index] = newText;
+      textarea.value = parts.join("、");
+    }
+
+    function removeChipFromTextarea(block, text) {
+      const textarea = block.querySelector(".biao-input textarea");
+      if (!textarea || !text) return;
+      const parts = splitSymptomText(textarea.value).filter((item) => item !== text);
+      textarea.value = parts.join("、");
+    }
+
+    function selectChipContents(textEl) {
+      const range = document.createRange();
+      range.selectNodeContents(textEl);
+      const selection = window.getSelection();
+      selection?.removeAllRanges();
+      selection?.addRange(range);
+    }
+
+    function removeChipItem(item, block) {
+      const text = getChipText(item);
+      if (item.classList.contains("active")) {
+        removeChipFromTextarea(block, text);
+      }
+      item.remove();
+    }
+
+    function createChipItem(text, block) {
+      const item = document.createElement("span");
+      item.className = "chip-item";
+      item.setAttribute("role", "group");
+
+      const drag = document.createElement("span");
+      drag.className = "chip-drag";
+      drag.setAttribute("aria-label", "拖拽排序");
+      drag.setAttribute("title", "拖拽排序");
+      drag.textContent = "⋮⋮";
+
+      const textEl = document.createElement("span");
+      textEl.className = "chip-text";
+      textEl.contentEditable = "false";
+      textEl.spellcheck = false;
+      textEl.textContent = text;
+
+      const removeBtn = document.createElement("button");
+      removeBtn.type = "button";
+      removeBtn.className = "chip-remove";
+      removeBtn.setAttribute("aria-label", "删除症状");
+      removeBtn.setAttribute("title", "删除");
+      removeBtn.textContent = "×";
+
+      item.append(drag, textEl, removeBtn);
+      bindChipItem(item, block);
+      return item;
+    }
+
+    function bindChipItem(item, block) {
+      if (item.dataset.bound) return;
+      item.dataset.bound = "1";
+
+      const textEl = getChipTextEl(item);
+      const removeBtn = item.querySelector(".chip-remove");
+      const drag = item.querySelector(".chip-drag");
+
+      item.draggable = false;
+
+      drag?.addEventListener("mousedown", () => {
+        item.draggable = true;
+      });
+      item.addEventListener("dragend", () => {
+        item.draggable = false;
+        item.classList.remove("is-dragging");
+      });
+
+      textEl.addEventListener("click", (event) => {
+        if (textEl.classList.contains("is-editing")) {
+          event.stopPropagation();
+          return;
+        }
+        item.classList.toggle("active");
+        syncBiaoTextarea(block, item);
+      });
+
+      textEl.addEventListener("dblclick", (event) => {
+        const symptoms = item.closest(".biao-symptoms");
+        if (!symptoms?.classList.contains("is-editing")) return;
+        event.preventDefault();
+        event.stopPropagation();
+        textEl.classList.add("is-editing");
+        textEl.dataset.editStart = getChipText(item);
+        textEl.focus();
+        selectChipContents(textEl);
+      });
+
+      textEl.addEventListener("keydown", (event) => {
+        if (event.key === "Enter") {
+          event.preventDefault();
+          textEl.blur();
+        }
+        if (event.key === "Escape") {
+          event.preventDefault();
+          if (textEl.dataset.editStart !== undefined) {
+            textEl.textContent = textEl.dataset.editStart;
+          }
+          textEl.classList.remove("is-editing");
+          textEl.blur();
+        }
+      });
+
+      textEl.addEventListener("blur", () => {
+        const wasEditing = textEl.classList.contains("is-editing") || textEl.dataset.editStart !== undefined;
+        if (!wasEditing) return;
+        const oldText = textEl.dataset.editStart ?? "";
+        textEl.classList.remove("is-editing");
+        const newText = getChipText(item);
+        if (!newText) {
+          removeChipItem(item, block);
+          delete textEl.dataset.editStart;
+          return;
+        }
+        if (item.classList.contains("active") && oldText && oldText !== newText) {
+          renameChipInTextarea(block, oldText, newText);
+        }
+        delete textEl.dataset.editStart;
+      });
+
+      removeBtn?.addEventListener("click", (event) => {
+        event.preventDefault();
+        event.stopPropagation();
+        removeChipItem(item, block);
+      });
+    }
+
+    function initChipDragSort(chipsWrap) {
+      if (chipsWrap.dataset.dragReady) return;
+      chipsWrap.dataset.dragReady = "1";
+
+      let dragged = null;
+
+      chipsWrap.addEventListener("dragstart", (event) => {
+        const handle = event.target.closest(".chip-drag");
+        const item = handle?.closest(".chip-item");
+        if (!item) {
+          event.preventDefault();
+          return;
+        }
+        dragged = item;
+        item.classList.add("is-dragging");
+        event.dataTransfer.effectAllowed = "move";
+        event.dataTransfer.setData("text/plain", getChipText(item));
+      });
+
+      chipsWrap.addEventListener("dragend", () => {
+        dragged?.classList.remove("is-dragging");
+        chipsWrap.querySelectorAll(".chip-item.is-drop-target").forEach((el) => {
+          el.classList.remove("is-drop-target");
+        });
+        dragged = null;
+      });
+
+      chipsWrap.addEventListener("dragover", (event) => {
+        if (!dragged) return;
+        event.preventDefault();
+        const item = event.target.closest(".chip-item");
+        chipsWrap.querySelectorAll(".chip-item.is-drop-target").forEach((el) => {
+          el.classList.remove("is-drop-target");
+        });
+        if (!item || item === dragged) return;
+        item.classList.add("is-drop-target");
+      });
+
+      chipsWrap.addEventListener("drop", (event) => {
+        event.preventDefault();
+        if (!dragged) return;
+        const target = event.target.closest(".chip-item");
+        const addBtn = chipsWrap.querySelector(".chip-add");
+        if (target && target !== dragged) {
+          const rect = target.getBoundingClientRect();
+          const before = event.clientX < rect.left + rect.width / 2;
+          if (before) chipsWrap.insertBefore(dragged, target);
+          else chipsWrap.insertBefore(dragged, target.nextSibling);
+        }
+        if (addBtn) chipsWrap.appendChild(addBtn);
+        chipsWrap.querySelectorAll(".chip-item.is-drop-target").forEach((el) => {
+          el.classList.remove("is-drop-target");
+        });
+        dragged.classList.remove("is-dragging");
+        dragged = null;
+      });
+    }
+
+    function normalizeLegacyChip(chip, block) {
+      if (chip.classList.contains("chip-item")) {
+        bindChipItem(chip, block);
+        return;
+      }
+      const text = chip.textContent.trim();
+      chip.replaceWith(createChipItem(text, block));
+    }
+
+    function setSymptomsEditMode(symptoms, editing) {
+      if (!editing) {
+        symptoms.querySelectorAll(".chip-text.is-editing").forEach((textEl) => textEl.blur());
+      }
+      symptoms.classList.toggle("is-editing", editing);
+      const hint = symptoms.querySelector(".biao-symptoms-hint");
+      const editBtn = symptoms.querySelector(".symptoms-edit-btn");
+      if (hint) {
+        hint.textContent = editing ? "双击改文字 · 可拖拽排序" : "点击选择";
+      }
+      if (editBtn) {
+        editBtn.textContent = editing ? "完成" : "编辑";
+        editBtn.setAttribute("aria-pressed", String(editing));
+      }
+      symptoms.querySelectorAll(".chip-text").forEach((textEl) => {
+        textEl.contentEditable = editing ? "true" : "false";
+        if (!editing) {
+          textEl.classList.remove("is-editing");
+          delete textEl.dataset.editStart;
+        }
+      });
+    }
+
+    function initEditableSymptoms() {
+      document.querySelectorAll(".biao-block").forEach((block) => {
+        const symptoms = block.querySelector(".biao-symptoms");
+        const chipsWrap = symptoms?.querySelector(".chips");
+        if (!symptoms || !chipsWrap) return;
+
+        if (!symptoms.querySelector(".biao-symptoms-head")) {
+          const head = document.createElement("div");
+          head.className = "biao-symptoms-head";
+          head.innerHTML = `
+            <span class="biao-symptoms-title-text">常见症状<span class="biao-symptoms-hint">点击选择</span></span>
+            <button class="symptoms-edit-btn" type="button" aria-pressed="false">编辑</button>
+          `;
+          symptoms.insertBefore(head, chipsWrap);
+        } else {
+          const hint = symptoms.querySelector(".biao-symptoms-hint");
+          if (hint) hint.textContent = "点击选择";
+          if (!symptoms.querySelector(".symptoms-edit-btn")) {
+            const editBtn = document.createElement("button");
+            editBtn.type = "button";
+            editBtn.className = "symptoms-edit-btn";
+            editBtn.setAttribute("aria-pressed", "false");
+            editBtn.textContent = "编辑";
+            symptoms.querySelector(".biao-symptoms-head")?.appendChild(editBtn);
+          }
+        }
+
+        const editBtn = symptoms.querySelector(".symptoms-edit-btn");
+        if (editBtn && !editBtn.dataset.bound) {
+          editBtn.dataset.bound = "1";
+          editBtn.addEventListener("click", (event) => {
+            event.stopPropagation();
+            const next = !symptoms.classList.contains("is-editing");
+            setSymptomsEditMode(symptoms, next);
+          });
+        }
+
+        chipsWrap.querySelectorAll(".chip:not(.chip-add), .chip-item").forEach((chip) => {
+          normalizeLegacyChip(chip, block);
+        });
+
+        initChipDragSort(chipsWrap);
+
+        if (!chipsWrap.querySelector(".chip-add")) {
+          const addBtn = document.createElement("button");
+          addBtn.type = "button";
+          addBtn.className = "chip chip-add";
+          addBtn.textContent = "+ 添加";
+          addBtn.addEventListener("click", (event) => {
+            event.stopPropagation();
+            const item = createChipItem("新症状", block);
+            chipsWrap.insertBefore(item, addBtn);
+            setSymptomsEditMode(symptoms, true);
+            const textEl = getChipTextEl(item);
+            textEl.classList.add("is-editing");
+            textEl.dataset.editStart = "";
+            textEl.focus();
+            selectChipContents(textEl);
+          });
+          chipsWrap.appendChild(addBtn);
+        }
+      });
+    }
+
+    initEditableSymptoms();
+
+    document.querySelectorAll(".chip").forEach((chip) => {
+      if (chip.closest(".biao-symptoms")) return;
+      chip.addEventListener("click", () => chip.classList.toggle("active"));
+    });
+    document.querySelectorAll(".scale button").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        btn.parentElement.querySelectorAll("button").forEach((item) => item.classList.remove("active"));
+        btn.classList.add("active");
+      });
+    });
+  </script>
+</body>
+</html>

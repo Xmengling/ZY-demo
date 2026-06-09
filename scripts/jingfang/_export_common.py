@@ -1,11 +1,10 @@
 # -*- coding: utf-8 -*-
-"""方剂卡片 PDF 导出：优先复用 ZY-Study 网页预览（:5188），与线上一致。"""
+"""方剂卡片 PDF 导出：复用 ai-medical-consultant 网页预览。"""
 
 from __future__ import annotations
 
 import json
 import os
-import shutil
 import sqlite3
 import subprocess
 import sys
@@ -17,38 +16,23 @@ import urllib.error
 import urllib.request
 
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
-ZY_STUDY_ROOT = Path(os.getenv("ZY_STUDY_ROOT", "/Users/qingling/梦玲/ZY-Study"))
+SCRIPTS_DIR = Path(__file__).resolve().parent
 
 # ZY-demo 源数据
 DB_PATH = PROJECT_ROOT / "ai-medical-consultant/backend/data/jingfang.sqlite3"
-HERB_DIR_DEMO = PROJECT_ROOT / "ai-medical-consultant/backend/data/herbs"
+HERB_DIR = PROJECT_ROOT / "ai-medical-consultant/backend/data/herbs"
+HERB_DIR_DEMO = HERB_DIR
 
-# ZY-Study 网页导出栈（与 scripts/export_formula_cards_*_from_web.py 配套）
-ZY_DB_PATH = ZY_STUDY_ROOT / "web/db/jingfang.sqlite3"
-ZY_HERB_DIR = ZY_STUDY_ROOT / "img/伤寒金匮方剂思维导图"
-ZY_SERVER = ZY_STUDY_ROOT / "web/server.py"
-URL = "http://127.0.0.1:5188"
+EXPORT_SERVER = SCRIPTS_DIR / "export_web_server.py"
+EXPORT_PORT = int(os.getenv("JINGFANG_EXPORT_PORT", "15188"))
+URL = f"http://127.0.0.1:{EXPORT_PORT}"
 
 OUT_DIR = PROJECT_ROOT / "docs/exports/formula_cards"
 
 
-def sync_to_zy_study() -> None:
-    """把 ZY-demo 数据库与中药图同步到 ZY-Study，供 :5188 网页导出使用。"""
+def load_formula_summary() -> list[dict]:
     if not DB_PATH.exists():
         raise FileNotFoundError(f"未找到数据库：{DB_PATH}")
-    ZY_DB_PATH.parent.mkdir(parents=True, exist_ok=True)
-    shutil.copy2(DB_PATH, ZY_DB_PATH)
-    if HERB_DIR_DEMO.exists():
-        ZY_HERB_DIR.mkdir(parents=True, exist_ok=True)
-        for item in HERB_DIR_DEMO.iterdir():
-            if item.is_file():
-                target = ZY_HERB_DIR / item.name
-                if not target.exists():
-                    shutil.copy2(item, target)
-
-
-def load_formula_summary() -> list[dict]:
-    sync_to_zy_study()
     with sqlite3.connect(DB_PATH) as conn:
         rows = conn.execute(
             "select payload, updated_at from formulas order by updated_at desc"
@@ -99,28 +83,38 @@ def wait_for_url(url: str, timeout: float = 30.0, processes: Iterable[subprocess
         if processes:
             for proc in processes:
                 if proc.poll() is not None:
-                    raise RuntimeError(f"ZY-Study Web 服务启动失败：{proc.args}")
+                    raise RuntimeError(f"方剂导出 Web 服务启动失败：{proc.args}")
         if url_ready(url, timeout=1.5):
             return
         time.sleep(0.25)
-    raise RuntimeError(f"等待 ZY-Study Web 服务超时：{url}")
+    raise RuntimeError(f"等待方剂导出 Web 服务超时：{url}")
 
 
 def start_server() -> subprocess.Popen | None:
-    """启动或复用 ZY-Study :5188 网页（export_formula_cards_*_from_web 所需）。"""
-    if not ZY_SERVER.exists():
-        raise FileNotFoundError(f"未找到 ZY-Study 网页服务：{ZY_SERVER}")
-    sync_to_zy_study()
+    """启动或复用本地方剂导出网页（export_formula_cards_*_from_web 所需）。"""
+    if not EXPORT_SERVER.exists():
+        raise FileNotFoundError(f"未找到导出网页服务：{EXPORT_SERVER}")
     if url_ready(URL):
         return None
+
+    env = os.environ.copy()
+    env.setdefault("JINGFANG_EXPORT_PORT", str(EXPORT_PORT))
+    env.setdefault("NO_PROXY", "127.0.0.1,localhost")
+    backend_root = PROJECT_ROOT / "ai-medical-consultant/backend"
+    env["PYTHONPATH"] = os.pathsep.join(
+        [str(backend_root), env.get("PYTHONPATH", "")]
+    ).strip(os.pathsep)
+
     kwargs: dict = {
-        "cwd": str(ZY_STUDY_ROOT),
+        "cwd": str(PROJECT_ROOT),
         "stdout": subprocess.DEVNULL,
-        "stderr": subprocess.DEVNULL,
+        "stderr": subprocess.PIPE,
+        "env": env,
     }
     if sys.platform == "win32":
         kwargs["creationflags"] = subprocess.CREATE_NO_WINDOW  # type: ignore[attr-defined]
-    process = subprocess.Popen([sys.executable, str(ZY_SERVER)], **kwargs)
+
+    process = subprocess.Popen([sys.executable, str(EXPORT_SERVER)], **kwargs)
     deadline = time.time() + 30
     while time.time() < deadline:
         if url_ready(URL):
@@ -128,14 +122,15 @@ def start_server() -> subprocess.Popen | None:
                 return None
             return process
         if process.poll() is not None:
-            if url_ready(URL):
-                return None
+            stderr = (process.stderr.read() or b"").decode("utf-8", errors="replace").strip()
+            detail = stderr or "进程已退出"
             raise RuntimeError(
-                "ZY-Study Web 服务未能启动；请手动运行："
-                f"cd {ZY_STUDY_ROOT} && python3 web/server.py"
+                "方剂导出 Web 服务未能启动；请手动运行："
+                f"python {EXPORT_SERVER}\n{detail}"
             )
         time.sleep(0.25)
-    raise RuntimeError(f"等待 ZY-Study Web 服务超时：{URL}")
+    process.terminate()
+    raise RuntimeError(f"等待方剂导出 Web 服务超时：{URL}")
 
 
 def stop_server(process: subprocess.Popen | None) -> None:

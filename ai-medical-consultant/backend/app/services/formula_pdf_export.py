@@ -43,7 +43,10 @@ def export_formula_cards_pdf(mode: str = "searchable") -> Path:
 
     env = os.environ.copy()
     env.setdefault("NO_PROXY", "127.0.0.1,localhost")
-    env.setdefault("ZY_STUDY_ROOT", "/Users/qingling/梦玲/ZY-Study")
+    backend_root = PROJECT_ROOT / "ai-medical-consultant/backend"
+    env["PYTHONPATH"] = os.pathsep.join(
+        [str(backend_root), env.get("PYTHONPATH", "")]
+    ).strip(os.pathsep)
 
     try:
         proc = subprocess.run(

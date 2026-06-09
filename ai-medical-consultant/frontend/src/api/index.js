@@ -28,10 +28,17 @@ export const authApi = {
   me: () => api.get('/v1/user/me')
 }
 
+export const formulasApi = {
+  list: () => api.get('/v1/formulas')
+}
+
 export const consultApi = {
   listSessions: () => api.get('/v1/consult/sessions'),
+  symptomPresets: () => api.get('/v1/consult/symptom-presets'),
+  updateModuleHints: (moduleKey, data) => api.put(`/v1/consult/module-hints/${moduleKey}`, data),
   getSession: (id) => api.get(`/v1/consult/sessions/${id}`),
   createSession: (data) => api.post('/v1/consult/sessions', data),
+  saveIntake: (id, data) => api.patch(`/v1/consult/sessions/${id}/intake`, data),
   deleteSession: (id) => api.delete(`/v1/consult/sessions/${id}`),
   chat: (data) => api.post('/v1/consult/chat', data)
 }

@@ -31,6 +31,15 @@ class ConsultSession(Base):
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
     user_id: Mapped[int] = mapped_column(ForeignKey("users.id"), index=True)
     title: Mapped[str] = mapped_column(String(128), default="新的问诊")
+    patient_name: Mapped[str] = mapped_column(String(64), default="")
+    phone: Mapped[str] = mapped_column(String(32), default="")
+    address: Mapped[str] = mapped_column(String(256), default="")
+    gender: Mapped[str] = mapped_column(String(16), default="")
+    age: Mapped[str] = mapped_column(String(16), default="")
+    modern_diagnosis: Mapped[str] = mapped_column(String(256), default="")
+    status: Mapped[str] = mapped_column(String(32), default="collecting")
+    intake_data: Mapped[str] = mapped_column(Text, default="")
+    case_text: Mapped[str] = mapped_column(Text, default="")
     # 结构化分诊结论（JSON 字符串），由 Agent 写入
     triage: Mapped[str] = mapped_column(Text, default="")
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
@@ -60,6 +69,35 @@ class Message(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
 
     session: Mapped["ConsultSession"] = relationship(back_populates="messages")
+
+
+class ConsultModuleHint(Base):
+    """各证候采集模块后的问诊提示，可在页面编辑。"""
+
+    __tablename__ = "consult_module_hints"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    module_key: Mapped[str] = mapped_column(String(32), unique=True, index=True)
+    module_order: Mapped[int] = mapped_column(Integer, default=0)
+    hints: Mapped[str] = mapped_column(Text, default="[]")
+    updated_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+
+class ConsultSymptomPreset(Base):
+    """问诊常见症状预设，供前端采集表动态读取。"""
+
+    __tablename__ = "consult_symptom_presets"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    module_key: Mapped[str] = mapped_column(String(32), index=True)
+    module_order: Mapped[int] = mapped_column(Integer, default=0)
+    module_title: Mapped[str] = mapped_column(String(64))
+    module_tag: Mapped[str] = mapped_column(String(64), default="")
+    module_tone: Mapped[str] = mapped_column(String(32), default="")
+    block_label: Mapped[str] = mapped_column(String(32), index=True)
+    block_order: Mapped[int] = mapped_column(Integer, default=0)
+    symptoms: Mapped[str] = mapped_column(Text, default="[]")
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
 
 
 class KnowledgeCategory(Base):
