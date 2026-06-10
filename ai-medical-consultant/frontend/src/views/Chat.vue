@@ -1,9 +1,32 @@
 <template>
-  <div class="consult-page">
-    <section class="collector panel consult-form">
+  <div class="consult-page" :class="{ 'is-summary-docked-left': summaryDockedLeft }">
+    <section class="collector panel consult-form" :class="{ 'has-summary-overlay': summaryDockedLeft }">
       <div class="collector-hero">
         <div class="hero-top">
           <h2>问诊信息采集</h2>
+          <nav v-if="sessionId" class="case-nav" aria-label="医案切换">
+            <button
+              type="button"
+              class="case-nav-btn"
+              :disabled="!prevSessionId"
+              :title="adjacentCaseHint.prev ? `上一则：${adjacentCaseHint.prev}` : '已是第一则（最新）'"
+              @click="goAdjacentSession('prev')"
+            >
+              <el-icon :size="14"><ArrowLeft /></el-icon>
+              <span class="case-nav-btn-text">上一则</span>
+            </button>
+            <span class="case-nav-pos" :title="caseNavTitle">{{ caseNavPosition }}</span>
+            <button
+              type="button"
+              class="case-nav-btn"
+              :disabled="!nextSessionId"
+              :title="adjacentCaseHint.next ? `下一则：${adjacentCaseHint.next}` : '已是最后一则（最早）'"
+              @click="goAdjacentSession('next')"
+            >
+              <span class="case-nav-btn-text">下一则</span>
+              <el-icon :size="14"><ArrowRight /></el-icon>
+            </button>
+          </nav>
           <div class="hero-top-right">
             <el-button size="small" type="primary" plain @click="fillDialogVisible = true">粘贴自动填充</el-button>
             <el-tag :type="sessionId ? 'success' : 'warning'" effect="light">
@@ -330,17 +353,29 @@
           <el-button type="primary" :loading="saving" @click="saveIntake">保存问诊</el-button>
         </div>
       </div>
+
     </section>
 
     <aside class="analysis panel">
-      <div class="analysis-body">
-        <div class="status-card summary-card">
+      <div class="analysis-body" :class="{ 'is-chat-expanded': summaryDockedLeft }">
+        <div class="status-card summary-card" :class="{ 'is-docked-left': summaryDockedLeft }">
           <div class="status-title">
             <span>病例摘要</span>
-            <el-button size="small" text :disabled="!hasConsultSummary" @click="copyCaseSummary">
-              <el-icon><DocumentCopy /></el-icon>
-              复制
-            </el-button>
+            <div class="status-title-actions">
+              <el-button
+                size="small"
+                text
+                :title="summaryDockedLeft ? '放回右侧上方' : '翻到左侧覆盖问诊区'"
+                @click="summaryDockedLeft = !summaryDockedLeft"
+              >
+                <el-icon><component :is="summaryDockedLeft ? ArrowRight : ArrowLeft" /></el-icon>
+                {{ summaryDockedLeft ? '右侧' : '左侧' }}
+              </el-button>
+              <el-button size="small" text :disabled="!hasConsultSummary" @click="copyCaseSummary">
+                <el-icon><DocumentCopy /></el-icon>
+                复制
+              </el-button>
+            </div>
           </div>
           <ul class="summary-list">
             <li v-if="!hasConsultSummary" class="is-empty">左侧录入后，这里会生成病例摘要。</li>
@@ -360,11 +395,13 @@
           </ul>
         </div>
 
-        <ConsultAiChat
-          :session-id="sessionId"
-          :case-context="caseSummaryText"
-          @session-created="onAiSessionCreated"
-        />
+        <div class="consult-ai-chat-wrap">
+          <ConsultAiChat
+            :session-id="sessionId"
+            :case-context="caseSummaryText"
+            @session-created="onAiSessionCreated"
+          />
+        </div>
       </div>
     </aside>
 
@@ -387,10 +424,10 @@
 </template>
 
 <script setup>
-import { computed, onMounted, reactive, ref, watch } from 'vue'
+import { computed, nextTick, onMounted, reactive, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
-import { DocumentCopy, Download } from '@element-plus/icons-vue'
+import { ArrowLeft, ArrowRight, DocumentCopy, Download } from '@element-plus/icons-vue'
 import { consultApi, formulasApi } from '../api'
 import SymptomChips from '../components/consult/SymptomChips.vue'
 import PrescriptionBlock from '../components/consult/PrescriptionBlock.vue'
@@ -412,6 +449,7 @@ const pathologyToneClass = getPathologyToneClass
 const route = useRoute()
 const router = useRouter()
 const sessionId = ref(route.params.id ? Number(route.params.id) : null)
+const summaryDockedLeft = ref(false)
 const activeModule = ref('all')
 const saving = ref(false)
 const draftSavedAt = ref('')
@@ -421,6 +459,7 @@ const formulaNames = ref([])
 const fillDialogVisible = ref(false)
 const fillText = ref('')
 const autoFilling = ref(false)
+const sessionNavList = ref([])
 const collapsed = reactive({
   base: false,
   tongue: false,
@@ -597,6 +636,64 @@ const prescriptionSectionTags = computed(() =>
 
 const caseSummaryText = computed(() => formatConsultSummaryText(consultSummaryLines.value))
 
+function sessionNavLabel(row) {
+  if (!row) return ''
+  const chief = String(row.chief_complaint || row.title || '').trim()
+  const patient = String(row.patient_name || '').trim()
+  if (chief && patient) return `${patient} · ${chief}`
+  return chief || patient || `医案 #${row.id}`
+}
+
+const currentNavIndex = computed(() => {
+  if (!sessionId.value) return -1
+  return sessionNavList.value.findIndex((item) => item.id === sessionId.value)
+})
+
+const prevSessionId = computed(() => {
+  const idx = currentNavIndex.value
+  if (idx <= 0) return null
+  return sessionNavList.value[idx - 1]?.id ?? null
+})
+
+const nextSessionId = computed(() => {
+  const idx = currentNavIndex.value
+  if (idx < 0 || idx >= sessionNavList.value.length - 1) return null
+  return sessionNavList.value[idx + 1]?.id ?? null
+})
+
+const caseNavPosition = computed(() => {
+  const idx = currentNavIndex.value
+  if (idx < 0 || !sessionNavList.value.length) return '—'
+  return `${idx + 1} / ${sessionNavList.value.length}`
+})
+
+const caseNavTitle = computed(() => sessionNavLabel(sessionNavList.value[currentNavIndex.value]))
+
+const adjacentCaseHint = computed(() => {
+  const idx = currentNavIndex.value
+  if (idx < 0) return { prev: '', next: '' }
+  return {
+    prev: sessionNavLabel(sessionNavList.value[idx - 1]),
+    next: sessionNavLabel(sessionNavList.value[idx + 1])
+  }
+})
+
+async function loadSessionNavList() {
+  try {
+    sessionNavList.value = await consultApi.listSessions()
+  } catch {
+    sessionNavList.value = []
+  }
+}
+
+function goAdjacentSession(direction) {
+  const targetId = direction === 'prev' ? prevSessionId.value : nextSessionId.value
+  if (!targetId) return
+  const query = { ...route.query }
+  delete query.module
+  router.push({ path: `/consult/${targetId}`, query })
+}
+
 const hasCaseContent = computed(() => {
   return Boolean(
     form.patient_name ||
@@ -738,6 +835,18 @@ function showModule(key) {
     sectionCollapseManual[k] = true
   })
   formScrollRef.value?.scrollTo({ top: 0, behavior: 'smooth' })
+}
+
+function focusConsultModule(moduleKey = 'base') {
+  const key = moduleKey || 'base'
+  showModule(key)
+  if (key === 'base') {
+    collapsed.base = false
+    sectionCollapseManual.base = true
+  }
+  nextTick(() => {
+    formScrollRef.value?.scrollTo({ top: 0, behavior: 'smooth' })
+  })
 }
 
 function toggleSection(key) {
@@ -1047,6 +1156,7 @@ async function saveIntake() {
     localStorage.removeItem('consult-draft-new')
     saveDraft()
     router.replace(`/consult/${saved.id}`)
+    await loadSessionNavList()
     ElMessage.success('问诊已保存')
   } finally {
     saving.value = false
@@ -1054,20 +1164,24 @@ async function saveIntake() {
 }
 
 async function loadSession(id) {
-  const detail = await consultApi.getSession(id)
-  const data = detail.intake_data || {}
-  Object.assign(form, emptyForm(), data)
-  if (!form.prescription || !Array.isArray(form.prescription.rows)) {
-    form.prescription = { ...defaultPrescription(), ...(form.prescription || {}) }
-    if (!Array.isArray(form.prescription.rows)) form.prescription.rows = []
+  try {
+    const detail = await consultApi.getSession(id)
+    const data = detail.intake_data || {}
+    Object.assign(form, emptyForm(), data)
+    if (!form.prescription || !Array.isArray(form.prescription.rows)) {
+      form.prescription = { ...defaultPrescription(), ...(form.prescription || {}) }
+      if (!Array.isArray(form.prescription.rows)) form.prescription.rows = []
+    }
+    form.patient_name = detail.patient_name || form.patient_name
+    form.phone = detail.phone || form.phone
+    form.address = detail.address || form.address
+    form.gender = detail.gender || form.gender
+    form.age = detail.age || form.age
+    form.modern_diagnosis = detail.modern_diagnosis || form.modern_diagnosis
+    resetBlockCollapseState()
+  } catch {
+    ElMessage.error('加载问诊记录失败')
   }
-  form.patient_name = detail.patient_name || form.patient_name
-  form.phone = detail.phone || form.phone
-  form.address = detail.address || form.address
-  form.gender = detail.gender || form.gender
-  form.age = detail.age || form.age
-  form.modern_diagnosis = detail.modern_diagnosis || form.modern_diagnosis
-  resetBlockCollapseState()
 }
 
 async function loadSymptomPresets() {
@@ -1109,9 +1223,9 @@ async function loadFormulas() {
 
 watch(
   () => [route.params.id, route.query.from],
-  async (id) => {
-    const routeId = Array.isArray(id) ? id[0] : id
-    sessionId.value = routeId ? Number(routeId) : null
+  async ([routeId]) => {
+    const id = routeId ? Number(routeId) : null
+    sessionId.value = id
     if (sessionId.value) {
       await loadSession(sessionId.value)
     } else if (!loadDraft()) {
@@ -1123,11 +1237,22 @@ watch(
   }
 )
 
+watch(
+  () => route.query.module,
+  (moduleKey) => {
+    if (!moduleKey || !sessionId.value) return
+    focusConsultModule(String(moduleKey))
+  }
+)
+
 onMounted(async () => {
-  await Promise.all([loadSymptomPresets(), loadFormulas()])
+  await Promise.all([loadSymptomPresets(), loadFormulas(), loadSessionNavList()])
   if (sessionId.value) await loadSession(sessionId.value)
   else if (loadDraft()) resetBlockCollapseState()
   else initBlockCollapseState()
+  if (route.query.module && sessionId.value) {
+    focusConsultModule(String(route.query.module))
+  }
 })
 </script>
 

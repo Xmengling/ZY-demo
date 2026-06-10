@@ -52,25 +52,33 @@ button {
 }
 
 .main-workspace {
+  --ws-pad: 12px;
+  --list-col: 280px;
+  --ws-gap: 12px;
+  --toggle-w: 24px;
+  --toggle-h: 48px;
   position: relative;
   display: grid;
-  grid-template-columns: 300px 460px auto;
-  align-items: flex-start;
-  gap: 12px;
-  width: max-content;
+  grid-template-columns: var(--list-col) minmax(480px, 520px) minmax(0, 1fr);
+  grid-template-rows: minmax(0, 1fr);
+  align-items: stretch;
+  gap: var(--ws-gap);
+  width: 100%;
   max-width: 100%;
-  margin: 0 auto;
+  margin: 0;
   min-height: 0;
-  padding: 12px;
+  padding: var(--ws-pad);
+  box-sizing: border-box;
 }
 
 .workspace-toggle {
   position: absolute;
-  left: 8px;
-  top: 18px;
-  z-index: 10;
-  width: 26px;
-  height: 52px;
+  left: calc(var(--ws-pad) + var(--list-col) + var(--ws-gap) / 2 - var(--toggle-w) / 2);
+  top: 50%;
+  transform: translateY(-50%);
+  z-index: 20;
+  width: var(--toggle-w);
+  height: var(--toggle-h);
   border: 1px solid #bad0ff;
   border-radius: 999px;
   background: #fff;
@@ -78,6 +86,8 @@ button {
   display: grid;
   place-items: center;
   padding: 0;
+  box-shadow: 0 4px 14px rgba(34, 70, 130, 0.12);
+  transition: left 0.18s ease, box-shadow 0.18s ease;
 }
 
 .workspace-toggle span::before {
@@ -88,21 +98,25 @@ button {
 
 .workspace-toggle:hover {
   background: #f6f9ff;
+  box-shadow: 0 6px 18px rgba(34, 70, 130, 0.16);
 }
 
 .list-panel {
-  width: 300px;
-  min-width: 300px;
+  width: auto;
+  min-width: 0;
+  max-width: 300px;
 }
 
 .editor-panel {
-  width: 460px;
-  min-width: 460px;
+  width: auto;
+  min-width: 480px;
+  max-width: 520px;
 }
 
 .preview-panel {
-  width: max-content;
+  width: auto;
   min-width: 0;
+  max-width: 100%;
 }
 
 .list-panel {
@@ -383,9 +397,11 @@ h2 {
 }
 
 .primary.small {
-  min-height: 34px;
-  padding: 0 13px;
-  font-size: 14px;
+  min-height: 28px;
+  padding: 0 10px;
+  font-size: 12px;
+  border-radius: 6px;
+  font-weight: 800;
 }
 
 .ghost {
@@ -423,9 +439,11 @@ h2 {
 }
 
 .danger.small {
-  min-height: 34px;
-  padding: 0 13px;
-  font-size: 14px;
+  min-height: 28px;
+  padding: 0 10px;
+  font-size: 12px;
+  border-radius: 6px;
+  font-weight: 800;
 }
 
 .field {
@@ -552,6 +570,52 @@ textarea:focus {
   background: #fbfdff;
 }
 
+.formula-subgroup-wrap {
+  display: grid;
+  gap: 8px;
+}
+
+.formula-subgroup + .formula-subgroup {
+  margin-top: 2px;
+}
+
+.formula-subgroup-title {
+  margin: 0 0 4px;
+  padding: 0 4px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  font-size: 11px;
+  font-weight: 800;
+  color: #5a7fbf;
+  letter-spacing: 0.02em;
+}
+
+.formula-subgroup-count {
+  min-width: 20px;
+  min-height: 18px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 6px;
+  border-radius: 999px;
+  background: #eef4ff;
+  color: #5a7fbf;
+  font-size: 10px;
+  font-weight: 900;
+  line-height: 1;
+}
+
+.formula-subgroup-uncategorized .formula-subgroup-title {
+  color: #98a2b3;
+}
+
+.formula-subgroup-uncategorized .formula-subgroup-count {
+  background: #f2f4f7;
+  color: #98a2b3;
+}
+
 .accordion-item.collapsed .accordion-panel {
   display: none;
 }
@@ -596,43 +660,43 @@ textarea:focus {
 
 .pathology-choice-panel {
   display: grid;
-  gap: 10px;
+  gap: 8px;
   border: 1px solid #c8d9ff;
   border-radius: 8px;
-  padding: 12px;
+  padding: 10px;
   background: #fbfdff;
 }
 
 .pathology-choice-row {
   display: grid;
-  grid-template-columns: 72px 1fr;
-  gap: 10px;
+  grid-template-columns: 56px 1fr;
+  gap: 8px;
   align-items: start;
 }
 
 .pathology-choice-row strong {
-  min-height: 32px;
+  min-height: 26px;
   display: inline-flex;
   align-items: center;
   color: var(--muted);
-  font-size: 14px;
+  font-size: 12px;
 }
 
 .pathology-radio-group {
   display: flex;
   flex-wrap: wrap;
-  gap: 10px 12px;
+  gap: 6px 8px;
 }
 
 .pathology-radio-subgroup {
   display: inline-flex;
   flex-wrap: wrap;
-  gap: 8px;
-  padding-right: 10px;
+  gap: 5px;
+  padding-right: 8px;
 }
 
 .pathology-radio-subgroup + .pathology-radio-subgroup {
-  padding-left: 12px;
+  padding-left: 8px;
   border-left: 1px dashed #bad0ff;
 }
 
@@ -641,14 +705,14 @@ textarea:focus {
   align-items: center;
   justify-content: center;
   gap: 0;
-  min-height: 38px;
-  padding: 0 16px;
+  min-height: 26px;
+  padding: 0 10px;
   border: 1px solid #bad0ff;
   border-radius: 999px;
   background: #fff;
   color: var(--muted);
-  font-size: 14px;
-  font-weight: 800;
+  font-size: 12px;
+  font-weight: 700;
 }
 
 .pathology-radio-group label:has(input:checked) {
@@ -673,13 +737,13 @@ textarea:focus {
 
 .pathology-symptom-panel {
   display: grid;
-  gap: 10px;
+  gap: 8px;
 }
 
 .pathology-symptom-row {
   display: grid;
-  grid-template-columns: 90px 1fr;
-  gap: 10px;
+  grid-template-columns: 68px 1fr;
+  gap: 8px;
   align-items: center;
 }
 
@@ -687,16 +751,20 @@ textarea:focus {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  min-height: 38px;
-  border: 2px dotted var(--blue);
-  border-radius: 7px;
+  min-height: 28px;
+  padding: 2px 4px;
+  border: 1px dotted var(--blue);
+  border-radius: 6px;
   background: #fff;
   color: var(--ink);
-  font-weight: 900;
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 1.2;
 }
 
 .pathology-symptom-row input {
-  min-height: 40px;
+  min-height: 34px;
+  font-size: 13px;
 }
 
 .field-label-row {
@@ -777,6 +845,7 @@ textarea:focus {
 }
 
 .formula-item {
+  position: relative;
   width: 100%;
   min-height: 38px;
   border: 1px solid transparent;
@@ -785,7 +854,7 @@ textarea:focus {
   display: grid;
   grid-template-columns: 28px 1fr;
   gap: 8px;
-  align-items: center;
+  align-items: start;
   background: #fff;
   color: var(--ink);
   text-align: left;
@@ -809,6 +878,7 @@ textarea:focus {
   align-items: center;
   justify-content: center;
   min-height: 24px;
+  margin-top: 1px;
   border-radius: 6px;
   background: #f0f5ff;
   color: #7b8ba6;
@@ -823,27 +893,58 @@ textarea:focus {
   color: #fff;
 }
 
+.formula-item:not(.is-proofread) {
+  padding-right: 42px;
+}
+
 .formula-item-body {
+  display: block;
+  min-width: 0;
+}
+
+.formula-item-main {
   display: flex;
-  align-items: center;
-  gap: 6px;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 3px;
+  width: 100%;
   min-width: 0;
 }
 
 .formula-item-name {
   display: block;
-  flex: 1;
-  min-width: 0;
-  font-size: 14px;
-  font-weight: 900;
-  line-height: 1.25;
+  width: 100%;
+  font-size: 13px;
+  font-weight: 800;
+  line-height: 1.2;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
-.formula-item-flag {
+.formula-item-pathology {
+  display: flex;
+  flex-wrap: nowrap;
+  align-items: center;
+  gap: 3px;
+  width: 100%;
+  max-width: 100%;
+  overflow: visible;
+}
+
+.formula-item-pathology .pathology-tag {
   flex-shrink: 0;
+  padding: 0 5px;
+  font-size: 8px;
+  font-weight: 700;
+  line-height: 1.25;
+}
+
+.formula-item-flag {
+  position: absolute;
+  top: 7px;
+  right: 8px;
+  z-index: 1;
   min-height: 18px;
   padding: 0 6px;
   border-radius: 999px;
@@ -889,12 +990,24 @@ textarea:focus {
   gap: 14px;
   max-height: calc(100vh - 24px);
   min-height: 0;
-  overflow: auto;
+  overflow-x: hidden;
+  overflow-y: auto;
   padding: 0 4px 8px 0;
+  scrollbar-width: thin;
+  scrollbar-color: #b8cff5 transparent;
+}
+
+.preview-panel::-webkit-scrollbar {
+  width: 8px;
+}
+
+.preview-panel::-webkit-scrollbar-thumb {
+  border-radius: 999px;
+  background: #b8cff5;
 }
 
 .main-workspace.list-collapsed {
-  grid-template-columns: 460px minmax(0, 1fr);
+  grid-template-columns: minmax(500px, 520px) minmax(0, 1fr);
   width: 100%;
   max-width: 100%;
 }
@@ -903,17 +1016,22 @@ textarea:focus {
   display: none;
 }
 
+.main-workspace.list-collapsed .workspace-toggle {
+  left: calc(var(--ws-pad) - 2px);
+}
+
 .main-workspace.list-collapsed .workspace-toggle span::before {
   content: "▶";
 }
 
 .main-workspace.list-collapsed .editor-panel {
-  width: 460px;
-  min-width: 460px;
+  width: auto;
+  min-width: 500px;
+  max-width: 520px;
 }
 
 .main-workspace.list-collapsed .preview-panel {
-  width: 100%;
+  width: auto;
   min-width: 0;
   max-width: 100%;
   overflow-x: hidden;
@@ -923,7 +1041,7 @@ textarea:focus {
 .main-workspace.list-collapsed .preview-card-area {
   width: 100%;
   max-width: 100%;
-  justify-content: center;
+  justify-content: flex-start;
   overflow: visible;
 }
 
@@ -932,8 +1050,10 @@ textarea:focus {
   flex-wrap: nowrap;
   align-items: flex-start;
   gap: 8px;
-  width: max-content;
+  width: 100%;
+  max-width: 100%;
   min-height: 0;
+  flex: 1 0 auto;
   justify-content: flex-start;
 }
 
@@ -941,7 +1061,7 @@ textarea:focus {
   flex-shrink: 0;
   display: flex;
   flex-direction: column;
-  gap: 14px;
+  gap: 8px;
   padding-top: 8px;
   position: sticky;
   top: 8px;
@@ -950,17 +1070,18 @@ textarea:focus {
 }
 
 .side-action-btn {
-  min-height: 114px;
-  min-width: 44px;
+  min-height: 84px;
+  min-width: 34px;
   border: 1px solid var(--blue);
-  border-radius: 8px;
-  padding: 8px 6px;
+  border-radius: 6px;
+  padding: 6px 4px;
   background: var(--blue);
   color: #fff;
-  font-weight: 900;
+  font-size: 12px;
+  font-weight: 800;
   writing-mode: vertical-rl;
   text-orientation: mixed;
-  letter-spacing: 1px;
+  letter-spacing: 0.5px;
 }
 
 .side-action-btn:hover {
@@ -968,9 +1089,9 @@ textarea:focus {
 }
 
 .formula-card-viewport {
-  flex: 0 0 auto;
+  flex: 1 1 auto;
+  min-width: 0;
   min-height: 0;
-  max-width: 100%;
   margin: 0;
   position: relative;
   overflow: hidden;
@@ -1212,7 +1333,7 @@ textarea:focus {
   white-space: nowrap;
 }
 
-.pathology-tag {
+#formula-card .pathology-tag {
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -1419,9 +1540,9 @@ textarea:focus {
 
   .main-workspace,
   .main-workspace.list-collapsed {
-    width: max-content;
+    width: 100%;
     max-width: 100%;
-    margin: 0 auto;
+    margin: 0;
   }
 
   .list-panel,
@@ -1453,10 +1574,10 @@ textarea:focus {
 
   .main-workspace,
   .main-workspace.list-collapsed {
-    grid-template-columns: 300px 460px auto;
-    width: max-content;
-    max-width: none;
-    margin: 0 auto;
+    grid-template-columns: 1fr;
+    width: 100%;
+    max-width: 100%;
+    margin: 0;
     padding: 10px;
   }
 
@@ -1482,8 +1603,9 @@ textarea:focus {
   }
 
   .side-action-btn {
-    min-height: 38px;
-    min-width: 112px;
+    min-height: 32px;
+    min-width: 96px;
+    font-size: 12px;
     writing-mode: horizontal-tb;
     letter-spacing: 0;
   }
@@ -1519,11 +1641,31 @@ textarea:focus {
 
 .app-shell-embedded {
   min-height: 100%;
+  height: 100vh;
   padding: 0;
   gap: 0;
+  align-items: stretch;
+  overflow: hidden;
 }
 
 .app-shell-embedded .main-workspace {
-  width: max-content;
+  width: 100%;
   max-width: 100%;
+  flex: 1;
+  min-height: 0;
+  height: 100%;
+  max-height: 100vh;
+  overflow: hidden;
+}
+
+.app-shell-embedded .list-panel,
+.app-shell-embedded .editor-panel,
+.app-shell-embedded .preview-panel {
+  min-height: 0;
+  max-height: 100%;
+}
+
+.app-shell-embedded .preview-panel {
+  overflow-x: hidden;
+  overflow-y: auto;
 }

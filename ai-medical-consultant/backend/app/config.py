@@ -38,7 +38,7 @@ class Settings(BaseSettings):
     knowledge_file: str = str(BASE_DIR / "data" / "tcm_knowledge.json")
     knowledge_upload_dir: str = str(BASE_DIR / "data" / "knowledge_uploads")
 
-    # 100 首方剂解读（SQLite + 中药图片）
+    # 方剂梳理（SQLite + 中药图片）
     jingfang_db_path: str = str(BASE_DIR / "data" / "jingfang.sqlite3")
     jingfang_source_db: str = "/Users/qingling/梦玲/ZY-Study/web/db/jingfang.sqlite3"
     jingfang_herb_dir: str = str(BASE_DIR / "data" / "herbs")

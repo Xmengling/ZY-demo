@@ -41,7 +41,7 @@ npm run dev
 ```
 
 - 前端：http://127.0.0.1:5173
-- 方剂解读：http://127.0.0.1:5173/formulas
+- 方剂梳理：http://127.0.0.1:5173/formulas
 - API 文档：http://127.0.0.1:8000/docs
 - 演示账号：`demo` / `demo123`
 

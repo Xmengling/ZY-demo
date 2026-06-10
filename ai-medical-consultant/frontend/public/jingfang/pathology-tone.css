@@ -1,0 +1,178 @@
+/* 病理标签 — 同族大色阶拉开，便于同屏辨认 */
+
+/* —— 热：深红 ↔ 橙红 —— */
+.path-tone-heat,
+.path-tone-heat-1 {
+  --path-bg: #feeceb;
+  --path-fg: #b42318;
+  --path-border: #f5a8a0;
+  --path-bar: #e05245;
+  --path-glow: rgba(180, 35, 24, 0.2);
+  --path-ring: rgba(245, 168, 160, 0.9);
+}
+.path-tone-heat-2 {
+  --path-bg: #fff0e6;
+  --path-fg: #c2410c;
+  --path-border: #fdba74;
+  --path-bar: #ea580c;
+  --path-glow: rgba(194, 65, 12, 0.2);
+  --path-ring: rgba(253, 186, 116, 0.95);
+}
+
+/* —— 寒：蓝系 —— */
+.path-tone-cold,
+.path-tone-cold-1 {
+  --path-bg: #e8f2ff;
+  --path-fg: #1d5fad;
+  --path-border: #93c5fd;
+  --path-bar: #3b82f6;
+  --path-glow: rgba(29, 95, 173, 0.18);
+  --path-ring: rgba(147, 197, 253, 0.95);
+}
+
+/* —— 虚：薄荷绿 → 翠绿 → 青绿 → 水绿 → 草绿 → 橄榄绿 —— */
+.path-tone-deficiency,
+.path-tone-deficiency-1 {
+  --path-bg: #e6faf1;
+  --path-fg: #047857;
+  --path-border: #6ee7b7;
+  --path-bar: #10b981;
+  --path-glow: rgba(4, 120, 87, 0.16);
+  --path-ring: rgba(110, 231, 183, 0.9);
+}
+.path-tone-deficiency-2 {
+  --path-bg: #dcf9e8;
+  --path-fg: #059669;
+  --path-border: #34d399;
+  --path-bar: #14b87a;
+  --path-glow: rgba(5, 150, 105, 0.16);
+  --path-ring: rgba(52, 211, 153, 0.9);
+}
+.path-tone-deficiency-3 {
+  --path-bg: #d4f5ef;
+  --path-fg: #0d9488;
+  --path-border: #2dd4bf;
+  --path-bar: #14b8a6;
+  --path-glow: rgba(13, 148, 136, 0.16);
+  --path-ring: rgba(45, 212, 191, 0.9);
+}
+.path-tone-deficiency-4 {
+  --path-bg: #cff4f8;
+  --path-fg: #0e7490;
+  --path-border: #22d3ee;
+  --path-bar: #06b6d4;
+  --path-glow: rgba(14, 116, 144, 0.16);
+  --path-ring: rgba(34, 211, 238, 0.9);
+}
+.path-tone-deficiency-5 {
+  --path-bg: #e8f8dc;
+  --path-fg: #3f7f1f;
+  --path-border: #86efac;
+  --path-bar: #22c55e;
+  --path-glow: rgba(63, 127, 31, 0.15);
+  --path-ring: rgba(134, 239, 172, 0.9);
+}
+.path-tone-deficiency-6 {
+  --path-bg: #f2f8dc;
+  --path-fg: #5c6b1a;
+  --path-border: #bef264;
+  --path-bar: #84cc16;
+  --path-glow: rgba(92, 107, 26, 0.14);
+  --path-ring: rgba(190, 242, 100, 0.9);
+}
+
+/* —— 实：浅黄 → 金黄 → 橙黄 → 赭黄 → 棕黄 —— */
+.path-tone-excess,
+.path-tone-excess-1 {
+  --path-bg: #fffde7;
+  --path-fg: #a16207;
+  --path-border: #fde047;
+  --path-bar: #eab308;
+  --path-glow: rgba(161, 98, 7, 0.16);
+  --path-ring: rgba(253, 224, 71, 0.95);
+}
+.path-tone-excess-2 {
+  --path-bg: #fff4cc;
+  --path-fg: #ca8a04;
+  --path-border: #facc15;
+  --path-bar: #f59e0b;
+  --path-glow: rgba(202, 138, 4, 0.17);
+  --path-ring: rgba(250, 204, 21, 0.95);
+}
+.path-tone-excess-3 {
+  --path-bg: #ffe8b8;
+  --path-fg: #d97706;
+  --path-border: #fb923c;
+  --path-bar: #f97316;
+  --path-glow: rgba(217, 119, 6, 0.18);
+  --path-ring: rgba(251, 146, 60, 0.95);
+}
+.path-tone-excess-4 {
+  --path-bg: #ffddb8;
+  --path-fg: #b45309;
+  --path-border: #f59e0b;
+  --path-bar: #ea580c;
+  --path-glow: rgba(180, 83, 9, 0.18);
+  --path-ring: rgba(245, 158, 11, 0.95);
+}
+.path-tone-excess-5 {
+  --path-bg: #f5e0c8;
+  --path-fg: #92400e;
+  --path-border: #d97706;
+  --path-bar: #c2410c;
+  --path-glow: rgba(146, 64, 14, 0.16);
+  --path-ring: rgba(217, 119, 6, 0.9);
+}
+
+/* —— 半表：紫系 —— */
+.path-tone-half,
+.path-tone-half-1 {
+  --path-bg: #ede9fe;
+  --path-fg: #6d28d9;
+  --path-border: #c4b5fd;
+  --path-bar: #8b5cf6;
+  --path-glow: rgba(109, 40, 217, 0.16);
+  --path-ring: rgba(196, 181, 253, 0.95);
+}
+
+.path-tone-yin {
+  --path-bg: #eef2f6;
+  --path-fg: #475569;
+  --path-border: #cbd5e1;
+  --path-bar: #94a3b8;
+  --path-glow: rgba(71, 85, 105, 0.14);
+  --path-ring: rgba(203, 213, 225, 0.95);
+}
+.path-tone-neutral {
+  --path-bg: #f1f5f9;
+  --path-fg: #475569;
+  --path-border: #cbd5e1;
+  --path-bar: #94a3b8;
+  --path-glow: rgba(71, 85, 105, 0.12);
+  --path-ring: rgba(203, 213, 225, 0.95);
+}
+
+.pathology-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 2px 9px;
+  border-radius: 999px;
+  border: 1px solid var(--path-border);
+  background: var(--path-bg);
+  color: var(--path-fg);
+  font-size: 11px;
+  font-weight: 700;
+  line-height: 1.35;
+  white-space: nowrap;
+  letter-spacing: 0.02em;
+}
+.pathology-tag__score {
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+  opacity: 0.92;
+}
+.pathology-tag__score.is-empty {
+  opacity: 0.45;
+  font-weight: 700;
+}

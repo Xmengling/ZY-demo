@@ -11,10 +11,17 @@ from sqlalchemy.orm import Session
 from ..database import get_db
 from ..deps import get_current_user
 from ..models import User
-from ..schemas import KnowledgeFileOut, KnowledgeFilePreviewOut
+from ..schemas import KnowledgeFileOut, KnowledgeFilePreviewOut, KnowledgeFileRenameIn
 from ..services.file_parser import FileParseError
 from ..services.consult_knowledge import consult_knowledge
-from ..services.knowledge_files import delete_file, get_file, list_files, read_file_preview, save_upload
+from ..services.knowledge_files import (
+    delete_file,
+    get_file,
+    list_files,
+    read_file_preview,
+    rename_file,
+    save_upload,
+)
 
 router = APIRouter(prefix="/api/v1/knowledge", tags=["knowledge"])
 
@@ -49,6 +56,23 @@ def preview_knowledge_file(file_id: int, db: Session = Depends(get_db)):
     except FileParseError as exc:
         raise HTTPException(status.HTTP_400_BAD_REQUEST, str(exc)) from exc
     return KnowledgeFilePreviewOut.model_validate(preview)
+
+
+@router.patch("/files/{file_id}", response_model=KnowledgeFileOut)
+def rename_knowledge_file(
+    file_id: int,
+    body: KnowledgeFileRenameIn,
+    db: Session = Depends(get_db),
+    _user: User = Depends(get_current_user),
+):
+    try:
+        row = rename_file(db, file_id, body.filename)
+    except FileParseError as exc:
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, str(exc)) from exc
+    if not row:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "文件不存在")
+    consult_knowledge.invalidate()
+    return KnowledgeFileOut.model_validate(row)
 
 
 @router.delete("/files/{file_id}")

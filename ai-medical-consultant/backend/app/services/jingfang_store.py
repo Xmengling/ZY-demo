@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-"""100 首方剂解读：SQLite 存储与中药图片索引。"""
+"""方剂梳理：SQLite 存储与中药图片索引。"""
 
 from __future__ import annotations
 

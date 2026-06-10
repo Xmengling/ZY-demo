@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-"""问诊 AI 问答专用知识检索：仅来自上传资料、100首方剂、伤寒论条文。"""
+"""问诊 AI 问答专用知识检索：仅来自上传资料、方剂梳理、伤寒论条文。"""
 
 from __future__ import annotations
 
@@ -14,8 +14,10 @@ from .knowledge_files import list_files, resolve_file_path
 from .vector_store import FaissVectorStore
 
 MARKUP_RE = re.compile(r"\[\[\*\*(.+?)\*\*\]\]")
+PRESCRIPTION_SEGMENT_RE = re.compile(r"^(.+?)(\d+份)?$")
 MAX_DOC_CHARS = 6000
 MAX_CONTEXT_CHARS = 1400
+MAX_RETRIEVE_DOCS = 10
 
 FORMULA_FIELDS = [
     ("组成", "composition"),
@@ -39,6 +41,188 @@ def strip_markup(text: str) -> str:
     if not text:
         return ""
     return MARKUP_RE.sub(r"\1", str(text))
+
+
+def _normalize_formula_name(name: str) -> str:
+    return re.sub(r"\s+", "", str(name or "").strip())
+
+
+def _parse_prescription_segment(segment: str) -> str:
+    text = str(segment or "").strip()
+    if not text:
+        return ""
+    match = PRESCRIPTION_SEGMENT_RE.match(text)
+    if match:
+        return str(match.group(1) or "").strip()
+    return text
+
+
+def parse_prescription_names_from_context(case_context: str) -> List[str]:
+    """从病例摘要「方剂：」行解析全部用方名。"""
+    names: List[str] = []
+    for line in str(case_context or "").splitlines():
+        stripped = line.strip()
+        if not stripped.startswith("方剂："):
+            continue
+        body = stripped.removeprefix("方剂：").strip()
+        if not body:
+            continue
+        for segment in re.split(r"[，,、]", body):
+            name = _parse_prescription_segment(segment)
+            if name:
+                names.append(name)
+    return _dedupe_names(names)
+
+
+def parse_prescription_names_from_intake(intake: dict) -> List[str]:
+    prescription = intake.get("prescription") or {}
+    rows = prescription.get("rows") or []
+    names: List[str] = []
+    for row in rows:
+        if not isinstance(row, dict):
+            continue
+        name = str(row.get("name") or "").strip()
+        if name:
+            names.append(name)
+    return _dedupe_names(names)
+
+
+def _dedupe_names(names: List[str]) -> List[str]:
+    seen: set[str] = set()
+    result: List[str] = []
+    for name in names:
+        key = _normalize_formula_name(name)
+        if not key or key in seen:
+            continue
+        seen.add(key)
+        result.append(name.strip())
+    return result
+
+
+def _formula_name_index() -> dict[str, dict]:
+    index: dict[str, dict] = {}
+    for formula in jingfang_store.list_formulas():
+        name = str(formula.get("name") or "").strip()
+        if not name:
+            continue
+        index[_normalize_formula_name(name)] = formula
+    return index
+
+
+def lookup_formula_docs_by_names(names: List[str]) -> List[Dict]:
+    if not names:
+        return []
+    index = _formula_name_index()
+    docs: List[Dict] = []
+    for name in names:
+        formula = index.get(_normalize_formula_name(name))
+        if formula:
+            docs.append(formula_to_doc(formula))
+    return docs
+
+
+def merge_retrieved_docs(*groups: List[Dict], limit: int = MAX_RETRIEVE_DOCS) -> List[Dict]:
+    merged: List[Dict] = []
+    seen: set[str] = set()
+    for group in groups:
+        for doc in group:
+            title = str(doc.get("title") or "").strip()
+            key = _normalize_formula_name(title) or title
+            if key in seen:
+                continue
+            seen.add(key)
+            merged.append(doc)
+            if len(merged) >= limit:
+                return merged
+    return merged
+
+
+def parse_prescription_display_from_context(case_context: str) -> List[str]:
+    """解析病例摘要「方剂：」行，保留「方名+份数」原文片段。"""
+    displays: List[str] = []
+    for line in str(case_context or "").splitlines():
+        stripped = line.strip()
+        if not stripped.startswith("方剂："):
+            continue
+        body = stripped.removeprefix("方剂：").strip()
+        if not body:
+            continue
+        for segment in re.split(r"[，,、]", body):
+            text = str(segment or "").strip()
+            if text:
+                displays.append(text)
+    return displays
+
+
+def parse_prescription_display_from_intake(intake: dict) -> List[str]:
+    prescription = intake.get("prescription") or {}
+    rows = prescription.get("rows") or []
+    displays: List[str] = []
+    for row in rows:
+        if not isinstance(row, dict):
+            continue
+        name = str(row.get("name") or "").strip()
+        if not name:
+            continue
+        portions = int(row.get("portions") or 1)
+        displays.append(f"{name}{portions}份")
+    return displays
+
+
+def extract_prescription_line(case_context: str) -> str:
+    for line in str(case_context or "").splitlines():
+        stripped = line.strip()
+        if stripped.startswith("方剂：") and stripped.removeprefix("方剂：").strip():
+            return stripped
+    return ""
+
+
+def collect_prescription_names(case_context: str = "", intake: dict | None = None) -> List[str]:
+    """优先采用本次前端传来的病例摘要，避免数据库旧 intake 覆盖当前用方。"""
+    from_context = parse_prescription_names_from_context(case_context)
+    if from_context:
+        return from_context
+    if intake:
+        return parse_prescription_names_from_intake(intake)
+    return []
+
+
+def collect_prescription_display_items(case_context: str = "", intake: dict | None = None) -> List[str]:
+    from_context = parse_prescription_display_from_context(case_context)
+    if from_context:
+        return from_context
+    if intake:
+        return parse_prescription_display_from_intake(intake)
+    return []
+
+
+def build_prescription_notice(display_items: List[str]) -> str:
+    if not display_items:
+        return ""
+    lines = [
+        f"【当前病例用方】（共 {len(display_items)} 个，分析时必须全部提及，不得遗漏或替换方名）",
+    ]
+    for index, item in enumerate(display_items, 1):
+        lines.append(f"  {index}. {item}")
+    lines.append(
+        "说明：以上为用方唯一权威清单；不得沿用历史对话中的旧用方，"
+        "不得将检索摘录中的相似方名（如大柴胡汤与小柴胡汤）替换上述方名。"
+    )
+    return "\n".join(lines)
+
+
+def build_prescription_authority_block(case_context: str, display_items: List[str]) -> str:
+    if not display_items:
+        return ""
+    line = extract_prescription_line(case_context)
+    if not line:
+        line = "方剂：" + "，".join(display_items)
+    return (
+        "【本次问诊用方（唯一权威来源）】\n"
+        f"{line}\n"
+        "回答涉及「当前用方」「处方是否合理」时，必须先原样复述以上全部方名与份数，"
+        "再展开分析；不得删减、不得替换、不得只提其中一两个。"
+    )
 
 
 def _stringify_value(value) -> str:
@@ -72,7 +256,7 @@ def formula_to_doc(formula: dict) -> Dict:
         content = content[:MAX_DOC_CHARS] + "…"
     return {
         "title": name,
-        "category": "100首方剂解读",
+        "category": "方剂梳理",
         "department": categories,
         "content": content or name,
         "source": "jingfang",
@@ -191,6 +375,17 @@ class ConsultKnowledgeRetriever:
             return []
         return self._store.search(q, k=k)
 
+    def search_with_prescriptions(
+        self,
+        db: Session,
+        query: str,
+        prescription_names: List[str],
+        k: int = 6,
+    ) -> List[Dict]:
+        prescription_docs = lookup_formula_docs_by_names(prescription_names)
+        vector_docs = self.search(db, query, k=k) if (query or "").strip() else []
+        return merge_retrieved_docs(prescription_docs, vector_docs)
+
     @staticmethod
     def build_context(docs: List[Dict]) -> str:
         if not docs:
@@ -245,7 +440,7 @@ class ConsultKnowledgeRetriever:
             lines.append("  （暂无上传文件）")
 
         lines.append("")
-        lines.append(f"二、100首方剂解读（{len(formulas)} 个方剂）")
+        lines.append(f"二、方剂梳理（{len(formulas)} 个方剂）")
         if formulas:
             lines.append("  " + "、".join(formulas))
         else:

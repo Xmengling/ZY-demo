@@ -131,7 +131,7 @@ def cover_html(formulas: list[dict], total_pages: int) -> str:
     exported_at = datetime.now().strftime("%Y-%m-%d %H:%M")
     body = f"""
     <main class="page">
-      <h1>100首方剂解读</h1>
+      <h1>方剂梳理</h1>
       <h2>方剂卡片合集 PDF 可搜索版</h2>
       <div class="line"></div>
       <div class="row"><span class="label">当前导出</span><span class="value">{len(formulas)} 首</span></div>

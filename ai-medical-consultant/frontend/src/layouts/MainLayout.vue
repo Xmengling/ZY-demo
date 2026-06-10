@@ -16,10 +16,10 @@
         active-text-color="#fff"
       >
         <el-menu-item index="/"><el-icon><HomeFilled /></el-icon><span>AI 问答</span></el-menu-item>
-        <el-menu-item index="/consult"><el-icon><ChatDotRound /></el-icon><span>智能问诊</span></el-menu-item>
+        <el-menu-item index="/consult"><el-icon><ChatDotRound /></el-icon><span>{{ consultMenuLabel }}</span></el-menu-item>
         <el-menu-item index="/records"><el-icon><Tickets /></el-icon><span>医案记录</span></el-menu-item>
         <el-menu-item index="/knowledge"><el-icon><Reading /></el-icon><span>知识库</span></el-menu-item>
-        <el-menu-item index="/formulas"><el-icon><Collection /></el-icon><span>100首方剂解读</span></el-menu-item>
+        <el-menu-item index="/formulas"><el-icon><Collection /></el-icon><span>方剂梳理</span></el-menu-item>
         <el-menu-item index="/shanghan"><el-icon><Reading /></el-icon><span>伤寒论条文解读</span></el-menu-item>
       </el-menu>
       <button type="button" class="collapse-btn" :title="collapsed ? '展开菜单' : '折叠菜单'" @click="toggleCollapse">
@@ -74,8 +74,25 @@ function toggleCollapse() {
   localStorage.setItem(SIDEBAR_COLLAPSED_KEY, collapsed.value ? '1' : '0')
 }
 
-const titles = { home: 'AI 问答', consult: '智能问诊', records: '医案记录', knowledge: '知识库', formulas: '100首方剂解读', shanghan: '伤寒论条文解读' }
-const pageTitle = computed(() => titles[route.name] || '')
+const titles = { home: 'AI 问答', records: '医案记录', knowledge: '知识库', formulas: '方剂梳理', shanghan: '伤寒论条文解读' }
+
+const isConsultEdit = computed(() => {
+  if (!route.path.startsWith('/consult')) return false
+  const raw = route.params.id
+  const id = Number(Array.isArray(raw) ? raw[0] : raw)
+  return Number.isFinite(id) && id > 0
+})
+
+const consultTitle = computed(() => (isConsultEdit.value ? '编辑问诊' : '新建问诊'))
+
+const consultMenuLabel = computed(() =>
+  route.path.startsWith('/consult') ? consultTitle.value : '新建问诊'
+)
+
+const pageTitle = computed(() => {
+  if (route.name === 'consult') return consultTitle.value
+  return titles[route.name] || ''
+})
 const activeMenu = computed(() => {
   if (route.path.startsWith('/consult')) return '/consult'
   return route.path

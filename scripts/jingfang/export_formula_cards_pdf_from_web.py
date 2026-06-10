@@ -88,7 +88,7 @@ def cover_page(formulas: list[dict]) -> Image.Image:
     d = ImageDraw.Draw(img)
     d.rounded_rectangle((34, 34, W - 34, H - 34), radius=12, fill=PAPER, outline=BLUE, width=5)
     d.rounded_rectangle((58, 58, W - 58, H - 58), radius=10, outline=LINE, width=3)
-    d.text((96, 140), "100首方剂解读", font=F_TITLE, fill=INK)
+    d.text((96, 140), "方剂梳理", font=F_TITLE, fill=INK)
     d.text((100, 230), "方剂卡片合集 PDF 预览版", font=F_H1, fill=BLUE_DARK)
     d.line((96, 310, W - 96, 310), fill=LINE, width=3)
 

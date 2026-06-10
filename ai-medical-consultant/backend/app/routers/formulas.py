@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-"""100 首方剂解读 API。"""
+"""方剂梳理 API。"""
 
 from __future__ import annotations
 

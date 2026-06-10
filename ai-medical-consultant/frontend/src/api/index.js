@@ -45,7 +45,9 @@ export const consultApi = {
   deleteSession: (id) => api.delete(`/v1/consult/sessions/${id}`),
   autoFill: (data) => api.post('/v1/consult/auto-fill', data, { silent: true, timeout: 90000 }),
   chat: (data) => api.post('/v1/consult/chat', data),
-  assistantChat: (data) => api.post('/v1/consult/assistant', data, { timeout: 180000 })
+  assistantChat: (data) => api.post('/v1/consult/assistant', data, { timeout: 180000 }),
+  assistantChatStream: (data, handlers, signal) =>
+    import('../utils/assistantChatStream').then((m) => m.assistantChatStream(data, handlers, signal))
 }
 
 export const knowledgeApi = {
@@ -59,6 +61,7 @@ export const knowledgeApi = {
     })
   },
   deleteFile: (id) => api.delete(`/v1/knowledge/files/${id}`),
+  renameFile: (id, filename) => api.patch(`/v1/knowledge/files/${id}`, { filename }),
   previewFile: (id) => api.get(`/v1/knowledge/files/${id}/preview`)
 }
 

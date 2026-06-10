@@ -4,11 +4,11 @@
       v-if="ready"
       class="formulas-frame"
       src="/jingfang/index.html"
-      title="100首方剂解读"
+      title="方剂梳理"
     />
     <div v-else class="formulas-loading">
       <el-icon class="spin"><Loading /></el-icon>
-      <span>加载方剂解读…</span>
+      <span>加载方剂梳理…</span>
     </div>
   </div>
 </template>
@@ -25,7 +25,7 @@ onMounted(() => {
 
 <style scoped>
 .formulas-shell {
-  height: calc(100vh - 60px);
+  height: calc(100vh - 44px);
   background: #f4f6f9;
 }
 .formulas-frame {

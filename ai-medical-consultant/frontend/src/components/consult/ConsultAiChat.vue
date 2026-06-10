@@ -10,10 +10,20 @@
           <div class="ai-chat-subtitle">基于本地知识库 · 上传资料 / 方剂 / 伤寒论</div>
         </div>
       </div>
-      <span class="ai-chat-pill" :class="{ online: aiReady }">
-        <i class="ai-chat-pill-dot" />
-        {{ aiReady ? '在线' : '未配置' }}
-      </span>
+      <div class="ai-chat-head-actions">
+        <button
+          v-if="showCaseLink"
+          type="button"
+          class="ai-chat-case-btn"
+          @click="goToCase"
+        >
+          进入医案
+        </button>
+        <span class="ai-chat-pill" :class="{ online: aiReady }">
+          <i class="ai-chat-pill-dot" />
+          {{ aiReady ? '在线' : '未配置' }}
+        </span>
+      </div>
     </header>
 
     <div ref="messageBoxRef" class="ai-chat-body">
@@ -55,10 +65,37 @@
             />
           </div>
           <div v-if="displayContent(msg)" class="ai-chat-text">{{ displayContent(msg) }}</div>
+          <div
+            v-if="msg.role === 'assistant' && msg.references?.length"
+            class="ai-chat-refs"
+          >
+            <span class="ai-chat-refs-label">参考来源</span>
+            <div class="ai-chat-refs-list">
+              <template v-for="(ref, refIndex) in msg.references" :key="`${index}-ref-${refIndex}`">
+                <router-link
+                  v-if="referenceRoute(ref)"
+                  :to="referenceRoute(ref)"
+                  class="ai-chat-ref-chip"
+                  :title="refHint(ref)"
+                >
+                  <span class="ai-chat-ref-cat">{{ referenceCategoryLabel(ref) }}</span>
+                  <span class="ai-chat-ref-title">{{ referenceDisplayTitle(ref) }}</span>
+                </router-link>
+                <span
+                  v-else
+                  class="ai-chat-ref-chip is-static"
+                  :title="refHint(ref)"
+                >
+                  <span class="ai-chat-ref-cat">{{ referenceCategoryLabel(ref) }}</span>
+                  <span class="ai-chat-ref-title">{{ referenceDisplayTitle(ref) }}</span>
+                </span>
+              </template>
+            </div>
+          </div>
         </div>
       </div>
 
-      <div v-if="sending" class="ai-chat-row assistant pending">
+      <div v-if="sending && !isStreamingReply" class="ai-chat-row assistant pending">
         <div class="ai-chat-avatar assistant">
           <el-icon :size="14"><ChatDotRound /></el-icon>
         </div>
@@ -128,8 +165,15 @@ import { useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import { ChatDotRound, Picture, Promotion, User } from '@element-plus/icons-vue'
 import { consultApi } from '../../api'
+import {
+  normalizeReferences,
+  referenceCategoryLabel,
+  referenceDisplayTitle,
+  referenceRoute
+} from '../../utils/aiReferences'
 import { formatAiReply } from '../../utils/aiReplyFormat'
 import { MAX_IMAGES, readImageAsDataUrl, validateImageFile } from '../../utils/imageUpload'
+import { isLinkedCaseSession } from '../../utils/sessionCase'
 
 const props = defineProps({
   sessionId: { type: Number, default: null },
@@ -148,8 +192,8 @@ const suggestions = computed(() => (props.welcomeMode === 'home' ? homeSuggestio
 
 const welcomeText = computed(() =>
   props.welcomeMode === 'home'
-    ? '仅依据知识库上传资料、100首方剂解读、伤寒论条文解读作答。'
-    : '仅依据知识库上传资料、100首方剂解读、伤寒论条文解读作答；发送时会附带当前病例摘要。'
+    ? '仅依据知识库上传资料、方剂梳理、伤寒论条文解读作答。'
+    : '仅依据知识库上传资料、方剂梳理、伤寒论条文解读作答；发送时会附带当前病例摘要。'
 )
 
 const router = useRouter()
@@ -160,9 +204,18 @@ const sending = ref(false)
 const messageBoxRef = ref(null)
 const fileInputRef = ref(null)
 const aiReady = ref(true)
+const linkedCase = ref(false)
 const maxImages = MAX_IMAGES
 
 const canSend = computed(() => Boolean(draft.value.trim() || pendingImages.value.length))
+const showCaseLink = computed(
+  () => props.welcomeMode === 'home' && Boolean(props.sessionId) && linkedCase.value
+)
+
+function goToCase() {
+  if (!props.sessionId) return
+  router.push({ path: `/consult/${props.sessionId}`, query: { module: 'base' } })
+}
 
 function scrollToBottom() {
   nextTick(() => {
@@ -176,27 +229,44 @@ function applySuggestion(text) {
 }
 
 function displayContent(msg) {
-  if (!msg?.content) return ''
-  return msg.role === 'assistant' ? formatAiReply(msg.content) : msg.content
+  if (!msg?.content && !msg?.streaming) return ''
+  if (msg.role === 'assistant') {
+    return msg.streaming ? msg.content : formatAiReply(msg.content)
+  }
+  return msg.content
+}
+
+const isStreamingReply = computed(() =>
+  messages.value.some((msg) => msg.role === 'assistant' && msg.streaming)
+)
+
+function refHint(ref) {
+  const parts = [referenceCategoryLabel(ref), referenceDisplayTitle(ref)]
+  if (ref?.score > 0) parts.push(`相关度 ${ref.score}`)
+  return parts.filter(Boolean).join(' · ')
 }
 
 async function loadMessages(id) {
   if (!id) {
     messages.value = []
+    linkedCase.value = false
     return
   }
   try {
     const detail = await consultApi.getSession(id)
+    linkedCase.value = isLinkedCaseSession(detail)
     messages.value = (detail.messages || [])
       .filter((m) => m.role === 'user' || m.role === 'assistant')
       .map((m) => ({
         role: m.role,
         content: m.content,
-        images: Array.isArray(m.meta?.images) ? m.meta.images : []
+        images: Array.isArray(m.meta?.images) ? m.meta.images : [],
+        references: m.role === 'assistant' ? normalizeReferences(m.meta?.references) : []
       }))
     scrollToBottom()
   } catch {
     messages.value = []
+    linkedCase.value = false
   }
 }
 
@@ -257,28 +327,60 @@ async function send() {
   scrollToBottom()
 
   try {
-    let sid = props.sessionId
-    if (!sid) {
-      const created = await consultApi.createSession({ title: text.slice(0, 20) || '图片问诊' })
-      sid = created.id
-      emit('session-created', sid)
-      if (props.redirectToConsult) {
-        router.replace({ path: `/consult/${sid}`, query: router.currentRoute.value.query })
-      }
-    }
+    let sid = props.sessionId || null
 
-    const res = await consultApi.assistantChat({
-      session_id: sid,
-      message: text,
-      images,
-      case_context: props.caseContext || ''
+    const assistantIndex = messages.value.length
+    messages.value.push({
+      role: 'assistant',
+      content: '',
+      references: [],
+      streaming: true
     })
-    messages.value.push({ role: 'assistant', content: res.reply })
-    aiReady.value = true
-    emit('message-sent', sid)
     scrollToBottom()
+
+    await consultApi.assistantChatStream(
+      {
+        session_id: sid,
+        message: text,
+        images,
+        case_context: props.caseContext || ''
+      },
+      {
+        onStart(payload) {
+          if (payload?.session_id) {
+            sid = payload.session_id
+            if (!props.sessionId) {
+              emit('session-created', sid)
+              if (props.redirectToConsult) {
+                router.replace({ path: `/consult/${sid}`, query: router.currentRoute.value.query })
+              }
+            }
+          }
+        },
+        onToken(token) {
+          const msg = messages.value[assistantIndex]
+          if (!msg) return
+          msg.content += token
+          scrollToBottom()
+        },
+        onDone(payload) {
+          const msg = messages.value[assistantIndex]
+          if (!msg) return
+          msg.content = payload.reply || msg.content
+          msg.references = normalizeReferences(payload.references)
+          msg.streaming = false
+          sid = payload.session_id || sid
+          aiReady.value = true
+          emit('message-sent', sid)
+          scrollToBottom()
+        }
+      }
+    )
   } catch (err) {
-    if (messages.value.at(-1)?.role === 'user') messages.value.pop()
+    const last = messages.value.at(-1)
+    const prev = messages.value.at(-2)
+    if (last?.role === 'assistant' && last.streaming) messages.value.pop()
+    if (prev?.role === 'user') messages.value.pop()
     draft.value = text
     pendingImages.value = images.map((url, index) => ({ id: `restore-${index}`, url }))
     const status = err?.response?.status
@@ -362,6 +464,31 @@ watch(
   font-size: 11px;
   color: #7b8794;
   line-height: 1.3;
+}
+
+.ai-chat-head-actions {
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.ai-chat-case-btn {
+  height: 28px;
+  padding: 0 12px;
+  border: 1px solid #bfe8cf;
+  border-radius: 999px;
+  background: linear-gradient(180deg, #fff 0%, #f3fbf7 100%);
+  color: #0f7c43;
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: background 0.15s ease, border-color 0.15s ease;
+}
+
+.ai-chat-case-btn:hover {
+  background: #ecfdf3;
+  border-color: #9fd4b6;
 }
 
 .ai-chat-pill {
@@ -619,6 +746,70 @@ watch(
   word-break: break-word;
   line-height: 1.75;
   letter-spacing: 0.01em;
+}
+
+.ai-chat-refs {
+  margin-top: 8px;
+  padding-top: 8px;
+  border-top: 1px dashed #e8eef6;
+}
+
+.ai-chat-refs-label {
+  display: block;
+  margin-bottom: 6px;
+  font-size: 10px;
+  font-weight: 700;
+  color: #98a2b3;
+  letter-spacing: 0.04em;
+}
+
+.ai-chat-refs-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+}
+
+.ai-chat-ref-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  max-width: 100%;
+  padding: 2px 7px 2px 5px;
+  border: 1px solid #d6e4ff;
+  border-radius: 999px;
+  background: #f6f9ff;
+  color: #344054;
+  font-size: 10px;
+  line-height: 1.35;
+  text-decoration: none;
+  transition: background 0.15s ease, border-color 0.15s ease, color 0.15s ease;
+}
+
+.ai-chat-ref-chip:hover {
+  border-color: #9ebfff;
+  background: #edf4ff;
+  color: #245ed6;
+}
+
+.ai-chat-ref-chip.is-static {
+  cursor: default;
+}
+
+.ai-chat-ref-cat {
+  flex-shrink: 0;
+  padding: 1px 5px;
+  border-radius: 999px;
+  background: #e8f0ff;
+  color: #477cff;
+  font-size: 9px;
+  font-weight: 700;
+}
+
+.ai-chat-ref-title {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-weight: 600;
 }
 
 .ai-chat-composer-box {

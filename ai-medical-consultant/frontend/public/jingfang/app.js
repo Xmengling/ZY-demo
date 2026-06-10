@@ -52,18 +52,122 @@ const fields = {
   caution: $("#field-caution"),
 };
 
-const PATHOLOGY_OPTIONS = {
-  表证: ["表实", "表虚"],
-  里证: ["里虚", "里实", "里寒", "里热"],
-  半证: ["半热"],
+const PATHOLOGY_OPTION_GROUPS = {
+  表证: [["表虚"], ["表实"]],
+  里证: [["里寒"], ["里热"], ["里虚"], ["里实"]],
+  半证: [["半热"]],
+  水证: [["水虚"], ["水实"]],
+  血证: [["血虚"], ["血实"]],
+  气证: [["气虚"], ["气实"]],
+  阴证: [["阴证"]],
+};
+
+/** 侧栏方剂列表：大类下按病理子类再分组；半证/阴证不分子类 */
+const SIDEBAR_SUBGROUPS = {
+  表证: ["表虚", "表实"],
+  里证: ["里寒", "里热", "里虚", "里实"],
   水证: ["水虚", "水实"],
   血证: ["血虚", "血实"],
   气证: ["气虚", "气实"],
-  阴证: ["阴证"],
 };
 
 function pathologyOptionGroups(category) {
-  return [PATHOLOGY_OPTIONS[category] || [category]];
+  return PATHOLOGY_OPTION_GROUPS[category] || [[category]];
+}
+
+function sidebarSubgroups(category) {
+  return SIDEBAR_SUBGROUPS[category] || null;
+}
+
+/** 病理配色：与问诊页 pathologyTone.js 保持一致 */
+const PATHOLOGY_TONE_EXACT = {
+  阴性: "path-tone-yin",
+  虚寒: "path-tone-yin",
+  阴证: "path-tone-yin",
+  半表: "path-tone-half-1",
+  里热: "path-tone-heat-1",
+  半热: "path-tone-heat-2",
+  里寒: "path-tone-cold-1",
+  表虚: "path-tone-deficiency-1",
+  里虚: "path-tone-deficiency-2",
+  半虚: "path-tone-deficiency-3",
+  水虚: "path-tone-deficiency-4",
+  气虚: "path-tone-deficiency-5",
+  血虚: "path-tone-deficiency-6",
+  表实: "path-tone-excess-1",
+  里实: "path-tone-excess-2",
+  水实: "path-tone-excess-3",
+  水证: "path-tone-excess-3",
+  气实: "path-tone-excess-4",
+  血实: "path-tone-excess-5",
+};
+
+const PATHOLOGY_TONE_SUFFIX = [
+  ["热", "heat"],
+  ["寒", "cold"],
+  ["虚", "deficiency"],
+  ["实", "excess"],
+];
+
+const PATHOLOGY_TONE_PREFIX = { 表: 1, 半: 2, 里: 3, 水: 4, 气: 5, 血: 6 };
+
+function getPathologyToneClass(label) {
+  const text = String(label || "").trim();
+  if (!text) return "path-tone-neutral";
+  if (PATHOLOGY_TONE_EXACT[text]) return PATHOLOGY_TONE_EXACT[text];
+
+  let family = "neutral";
+  for (const [suffix, key] of PATHOLOGY_TONE_SUFFIX) {
+    if (text.endsWith(suffix)) {
+      family = key;
+      break;
+    }
+  }
+  if (family === "neutral") return "path-tone-neutral";
+  if (text === "阴性" || text === "虚寒") return "path-tone-yin";
+
+  const prefix = text.charAt(0);
+  const variant = PATHOLOGY_TONE_PREFIX[prefix] || 1;
+  const maxVariants = { heat: 2, cold: 1, deficiency: 6, excess: 5, half: 1 };
+  const cap = maxVariants[family] || 1;
+  return `path-tone-${family}-${Math.min(variant, cap)}`;
+}
+
+function formulaPathologyLabels(formula) {
+  const seen = new Set();
+  const labels = [];
+  (formula.pathology || []).forEach((item) => {
+    const label = String(item?.label || "").trim();
+    if (!label || seen.has(label)) return;
+    seen.add(label);
+    labels.push(label);
+  });
+  return labels;
+}
+
+function compareFormulasByPathologyCount(a, b) {
+  const diff = formulaPathologyLabels(a).length - formulaPathologyLabels(b).length;
+  if (diff !== 0) return diff;
+  return String(a.name || "").localeCompare(String(b.name || ""), "zh");
+}
+
+function sortFormulasForList(formulas) {
+  return [...formulas].sort(compareFormulasByPathologyCount);
+}
+
+function renderFormulaPathologyTags(formula) {
+  const labels = formulaPathologyLabels(formula);
+  if (!labels.length) return "";
+  return `<span class="formula-item-pathology">${labels.map((label) => (
+    `<span class="pathology-tag ${getPathologyToneClass(label)}">${escapeHtml(label)}</span>`
+  )).join("")}</span>`;
+}
+
+function pathologyLabelsInCategory(formula, category) {
+  return (formula.pathology || [])
+    .filter((item) => (item.category || "") === category)
+    .map((item) => item.label)
+    .filter(Boolean);
 }
 
 function requiredPathologyCount(categories = []) {
@@ -645,6 +749,76 @@ function updateFormulaListSummary() {
     : `共 ${total} 首方剂，未校对 ${unproofread} 首`;
 }
 
+function renderFormulaItemButton(formula, index) {
+  const pathologyLabels = formulaPathologyLabels(formula);
+  const title = pathologyLabels.length
+    ? `${formula.name} · ${pathologyLabels.join("、")}`
+    : formula.name;
+  return `<button type="button" class="formula-item${formula.id === state.selectedId ? " active" : ""}${isFormulaProofread(formula) ? " is-proofread" : ""}" data-id="${escapeHtml(formula.id)}" title="${escapeHtml(title)}">
+    <span class="formula-item-index">${String(index + 1).padStart(2, "0")}</span>
+    <span class="formula-item-body">
+      <span class="formula-item-main">
+        <span class="formula-item-name">${escapeHtml(formula.name)}</span>
+        ${renderFormulaPathologyTags(formula)}
+      </span>
+      ${isFormulaProofread(formula) ? "" : '<span class="formula-item-flag">未校</span>'}
+    </span>
+  </button>`;
+}
+
+function renderFormulaListHtml(formulas, startIndex = 0) {
+  if (!formulas.length) return '<p class="empty-hint">暂无方剂</p>';
+  return formulas.map((formula, offset) => renderFormulaItemButton(formula, startIndex + offset)).join("");
+}
+
+function renderCategoryPanelContent(category, formulas) {
+  const subgroups = sidebarSubgroups(category);
+  if (!subgroups?.length) {
+    return `<div class="formula-list" data-category="${escapeHtml(category)}">${renderFormulaListHtml(sortFormulasForList(formulas))}</div>`;
+  }
+
+  let index = 0;
+  const sections = subgroups.map((subgroup) => {
+    const items = sortFormulasForList(
+      formulas.filter((formula) => pathologyLabelsInCategory(formula, category).includes(subgroup)),
+    );
+    if (!items.length) return "";
+    const html = `
+      <section class="formula-subgroup" data-subgroup="${escapeHtml(subgroup)}">
+        <h4 class="formula-subgroup-title">
+          <span>${escapeHtml(subgroup)}</span>
+          <span class="formula-subgroup-count">${items.length}</span>
+        </h4>
+        <div class="formula-list" data-category="${escapeHtml(category)}" data-subgroup="${escapeHtml(subgroup)}">
+          ${renderFormulaListHtml(items, index)}
+        </div>
+      </section>`;
+    index += items.length;
+    return html;
+  }).filter(Boolean);
+
+  const uncategorized = sortFormulasForList(formulas.filter((formula) => {
+    const labels = pathologyLabelsInCategory(formula, category);
+    return !labels.some((label) => subgroups.includes(label));
+  }));
+  if (uncategorized.length) {
+    sections.push(`
+      <section class="formula-subgroup formula-subgroup-uncategorized" data-subgroup="未标注">
+        <h4 class="formula-subgroup-title">
+          <span>未标注</span>
+          <span class="formula-subgroup-count">${uncategorized.length}</span>
+        </h4>
+        <div class="formula-list" data-category="${escapeHtml(category)}" data-subgroup="未标注">
+          ${renderFormulaListHtml(uncategorized, index)}
+        </div>
+      </section>`);
+  }
+
+  return sections.length
+    ? `<div class="formula-subgroup-wrap">${sections.join("")}</div>`
+    : '<p class="empty-hint">该分类暂无方剂</p>';
+}
+
 function renderFormulaList() {
   const container = $("#category-formula-accordions");
   const categories = visibleFormulaCategories();
@@ -663,26 +837,14 @@ function renderFormulaList() {
     const open = isAccordionOpen(key, containsSelected);
 
     return `
-      <section class="accordion-item ${state.accordionOpen[key] ? "" : "collapsed"}" data-accordion="${escapeHtml(key)}">
-        <button class="accordion-trigger" type="button" aria-expanded="${state.accordionOpen[key]}" aria-controls="accordion-${escapeHtml(key)}-panel">
+      <section class="accordion-item ${open ? "" : "collapsed"}" data-accordion="${escapeHtml(key)}">
+        <button class="accordion-trigger" type="button" aria-expanded="${open}" aria-controls="accordion-${escapeHtml(key)}-panel">
           <span class="accordion-trigger-label">${escapeHtml(category)}</span>
           <span class="accordion-count">${formulas.length}</span>
           <span class="accordion-caret" aria-hidden="true">▾</span>
         </button>
         <div id="accordion-${escapeHtml(key)}-panel" class="accordion-panel">
-          <div class="formula-list" data-category="${escapeHtml(category)}">
-            ${formulas.length
-              ? formulas.map((formula, index) => (
-                `<button type="button" class="formula-item${formula.id === state.selectedId ? " active" : ""}${isFormulaProofread(formula) ? " is-proofread" : ""}" data-id="${escapeHtml(formula.id)}" title="${escapeHtml(formula.name)}">
-                  <span class="formula-item-index">${String(index + 1).padStart(2, "0")}</span>
-                  <span class="formula-item-body">
-                    <span class="formula-item-name">${escapeHtml(formula.name)}</span>
-                    ${isFormulaProofread(formula) ? "" : '<span class="formula-item-flag">未校</span>'}
-                  </span>
-                </button>`
-              )).join("")
-              : '<p class="empty-hint">该分类暂无方剂</p>'}
-          </div>
+          ${renderCategoryPanelContent(category, formulas)}
         </div>
       </section>`;
   }).join("");
@@ -696,20 +858,31 @@ function renderFormulaList() {
   updateFormulaListSummary();
 }
 
-function getFormulaPreviewMaxWidth(collapsed) {
-  const actions = document.querySelector(".preview-card-area .card-side-actions");
-  const actionsWidth = (actions?.offsetWidth || 52) + 8;
+function getFormulaPreviewMaxWidth() {
+  const area = document.querySelector(".preview-card-area");
+  const actions = area?.querySelector(".card-side-actions");
+  const gap = 8;
+  const actionsWidth = actions?.offsetWidth || 52;
+  if (area?.clientWidth) {
+    return Math.max(240, area.clientWidth - actionsWidth - gap);
+  }
+  const previewEl = document.querySelector(".preview-panel");
+  if (previewEl?.clientWidth) {
+    return Math.max(240, previewEl.clientWidth - actionsWidth - gap - 8);
+  }
   const workspace = document.querySelector(".main-workspace");
+  const listEl = document.querySelector(".list-panel");
+  const editorEl = document.querySelector(".editor-panel");
+  const collapsed = workspace?.classList.contains("list-collapsed");
   const workspacePadding = workspace
     ? parseFloat(getComputedStyle(workspace).paddingLeft) + parseFloat(getComputedStyle(workspace).paddingRight)
     : 24;
-  const listWidth = collapsed ? 0 : 300;
-  const editorWidth = 460;
-  const gap = collapsed ? 12 : 24;
-  const shellPadding = 12;
+  const listWidth = collapsed ? 0 : (listEl?.offsetWidth || 280);
+  const editorWidth = editorEl?.offsetWidth || (collapsed ? 520 : 500);
+  const gridGap = collapsed ? 12 : 12;
   return Math.max(
     240,
-    window.innerWidth - listWidth - editorWidth - gap - workspacePadding - actionsWidth - shellPadding,
+    window.innerWidth - listWidth - editorWidth - gridGap - workspacePadding - actionsWidth - gap,
   );
 }
 
@@ -717,23 +890,17 @@ function fitFormulaCardPreview() {
   const viewport = $(".formula-card-viewport");
   const card = $("#formula-card");
   if (!viewport || !card) return;
-  const workspace = document.querySelector(".main-workspace");
-  const collapsed = workspace?.classList.contains("list-collapsed");
 
   card.style.transform = "none";
   viewport.style.height = "auto";
   viewport.style.width = "auto";
   const naturalHeight = Math.max(card.offsetHeight, card.scrollHeight, CARD_EXPORT_HEIGHT);
   const naturalWidth = CARD_EXPORT_WIDTH;
-  const maxWidth = getFormulaPreviewMaxWidth(collapsed);
-  const scaleByWidth = maxWidth / naturalWidth;
-  const scaleByHeight = (window.innerHeight - 112) / naturalHeight;
-  const scale = collapsed
-    ? scaleByWidth
-    : Math.min(scaleByWidth, scaleByHeight, 1);
+  const maxWidth = getFormulaPreviewMaxWidth();
+  const scale = maxWidth / naturalWidth;
   card.style.transform = `scale(${scale})`;
+  viewport.style.width = `${maxWidth}px`;
   viewport.style.height = `${naturalHeight * scale}px`;
-  viewport.style.width = `${naturalWidth * scale}px`;
 }
 
 function setListPanelCollapsed(collapsed) {
@@ -1908,6 +2075,10 @@ initSidebarAccordion();
 updateProofreadFilterButton();
 setListPanelCollapsed(false);
 window.addEventListener("resize", fitFormulaCardPreview);
+const previewCardArea = document.querySelector(".preview-card-area");
+if (previewCardArea && typeof ResizeObserver !== "undefined") {
+  new ResizeObserver(() => requestAnimationFrame(fitFormulaCardPreview)).observe(previewCardArea);
+}
 window.addEventListener("resize", () => requestAnimationFrame(layoutLogicMapLines));
 window.addEventListener("resize", () => resizeAutoTextareas());
 

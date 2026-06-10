@@ -7,6 +7,7 @@ import json
 from typing import Any, List
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
+from fastapi.responses import StreamingResponse
 from sqlalchemy import exists, select
 from sqlalchemy.orm import Session
 
@@ -34,7 +35,13 @@ from ..schemas import (
 from ..services.agent import medical_agent
 from ..services.consult_autofill import build_autofill_examples_prompt, load_autofill_examples
 from ..services.ai_reply_format import format_ai_reply
-from ..services.consult_knowledge import consult_knowledge
+from ..services.consult_knowledge import (
+    build_prescription_authority_block,
+    build_prescription_notice,
+    collect_prescription_display_items,
+    collect_prescription_names,
+    consult_knowledge,
+)
 from ..services.image_chat import ImageValidationError, build_user_content, message_to_llm, validate_image_data_urls
 from ..services.llm_service import llm_service
 
@@ -210,6 +217,49 @@ def _normalize_auto_fill_payload(
     }
 
 
+def _intake_has_case_content(intake: dict[str, Any]) -> bool:
+    if not intake:
+        return False
+    text_fields = (
+        "patient_name",
+        "chief_complaint",
+        "history",
+        "doctor",
+        "phone",
+        "address",
+        "gender",
+        "age",
+        "modern_diagnosis",
+        "pulse",
+        "abdominal",
+        "tongue_image",
+        "visit_time",
+    )
+    if any(str(intake.get(field) or "").strip() for field in text_fields):
+        return True
+    selected = intake.get("selected") or {}
+    if any(selected.values()):
+        return True
+    notes = intake.get("notes") or {}
+    if any(str(value).strip() for value in notes.values()):
+        return True
+    prescription = intake.get("prescription") or {}
+    rows = prescription.get("rows") or []
+    return any(str(row.get("name") or "").strip() for row in rows)
+
+
+def _session_linked_case(s: ConsultSession) -> bool:
+    if (s.patient_name or "").strip() or (s.case_text or "").strip():
+        return True
+    if _intake_has_case_content(_loads(s.intake_data)):
+        return True
+    for message in s.messages:
+        meta = _loads(message.meta)
+        if meta.get("case_linked"):
+            return True
+    return False
+
+
 def _session_out(s: ConsultSession) -> SessionOut:
     intake = _loads(s.intake_data)
     return SessionOut(
@@ -224,6 +274,7 @@ def _session_out(s: ConsultSession) -> SessionOut:
         age=s.age or "",
         modern_diagnosis=s.modern_diagnosis or "",
         status=s.status or "collecting",
+        linked_case=_session_linked_case(s),
         created_at=s.created_at,
         updated_at=s.updated_at,
     )
@@ -291,7 +342,7 @@ def list_sessions(
             Message.role == "assistant",
         ))
         query = query.filter(assistant_exists)
-    rows = query.order_by(ConsultSession.updated_at.desc()).all()
+    rows = query.order_by(ConsultSession.created_at.desc()).all()
     result = [_session_out(s) for s in rows]
     chief_q = (chief_complaint or "").strip()
     patient_q = (patient_name or "").strip()
@@ -507,7 +558,7 @@ def delete_session(
 ASSISTANT_SYSTEM_PROMPT = """你是中医经方学习与问诊助手，帮助医生整理思路、补充问诊与方证参考。
 
 请严格遵守：
-1. 仅可依据【本地知识库】中的内容作答，来源限于：用户上传资料、100首方剂解读、伤寒论条文解读。
+1. 仅可依据【本地知识库】中的内容作答，来源限于：用户上传资料、方剂梳理、伤寒论条文解读。
 2. 不得引用互联网、通用教材或知识库中未出现的方剂、条文、药味、剂量与病机说法。
 3. 结合【当前病例摘要】与对话历史作答；可提示还需追问的舌脉腹、寒热汗出、二便等信息。
 4. 若知识库未检索到相关内容，应明确说明「当前知识库中未检索到相关内容」，不要编造。
@@ -515,15 +566,16 @@ ASSISTANT_SYSTEM_PROMPT = """你是中医经方学习与问诊助手，帮助医
 6. 用简洁中文，条理清楚；方证建议标注为「学习参考」，不下确定性诊断，不开具具体处方剂量。
 7. 出现危急症状时，优先建议及时就医。
 8. 若用户上传舌象、检查单等图片，可结合图片可见信息分析，但方证判断仍须以【本地知识库】为准，不得脱离知识库臆测。
-9. 输出格式：纯中文纯文本，禁止使用 Markdown；不要用 #、*、-、> 等符号；分点用「1. 2.」或「一是…二是…」；需要小标题时直接写「标题：」即可，不要加粗、不要项目符号堆砌。"""
+9. 输出格式：纯中文纯文本，禁止使用 Markdown；不要用 #、*、-、> 等符号；分点用「1. 2.」或「一是…二是…」；需要小标题时直接写「标题：」即可，不要加粗、不要项目符号堆砌。
+10. 若【当前病例用方】或病例摘要「方剂」行列出多个用方，必须全部纳入分析，不得只回答其中一两个。
+11. 涉及「当前用方」「处方是否合理」时，必须以【本次问诊用方】与病例摘要「方剂」行为准；历史对话中的旧用方无效；不得把检索摘录里的相似方名（如大柴胡汤与小柴胡汤）当成当前用方。"""
 
 
-@router.post("/assistant", response_model=ChatResponse)
-def assistant_chat(
+def _prepare_assistant_chat(
+    db: Session,
+    user: User,
     payload: AssistantChatRequest,
-    db: Session = Depends(get_db),
-    user: User = Depends(get_current_user),
-):
+) -> dict[str, Any]:
     text = (payload.message or "").strip()
     try:
         images = validate_image_data_urls(payload.images or [])
@@ -535,12 +587,12 @@ def assistant_chat(
         raise HTTPException(status.HTTP_503_SERVICE_UNAVAILABLE, "AI 未配置，请设置 OPENAI_API_KEY")
 
     if payload.session_id:
-        s = _get_owned_session(db, payload.session_id, user)
+        session = _get_owned_session(db, payload.session_id, user)
     else:
-        s = ConsultSession(user_id=user.id, title=text[:20] or "图片问诊")
-        db.add(s)
+        session = ConsultSession(user_id=user.id, title=text[:20] or "图片问诊")
+        db.add(session)
         db.commit()
-        db.refresh(s)
+        db.refresh(session)
 
     user_display = text or "（已发送图片）"
     user_meta: dict[str, Any] = {}
@@ -548,60 +600,152 @@ def assistant_chat(
         user_meta["images"] = images
 
     case_context = (payload.case_context or "").strip()
-    retrieve_query = " ".join(part for part in (text, case_context[:800]) if part) or "舌象 脉象 症状"
+    if case_context:
+        user_meta["case_linked"] = True
+
+    intake_data = _loads(session.intake_data) if session.intake_data else None
+    prescription_names = collect_prescription_names(case_context, intake_data)
+    prescription_items = collect_prescription_display_items(case_context, intake_data)
+
+    prescription_query = " ".join(prescription_names)
+    retrieve_query = " ".join(
+        part for part in (text, prescription_query, case_context[:1200]) if part
+    ) or "舌象 脉象 症状"
     inventory = consult_knowledge.build_inventory(db)
-    docs = consult_knowledge.search(db, retrieve_query, k=6)
+    docs = consult_knowledge.search_with_prescriptions(
+        db, retrieve_query, prescription_names, k=6
+    )
     kb_context = consult_knowledge.build_context(docs)
     references = consult_knowledge.build_references(docs)
 
     system_content = ASSISTANT_SYSTEM_PROMPT
+    prescription_notice = build_prescription_notice(prescription_items)
+    prescription_authority = build_prescription_authority_block(case_context, prescription_items)
+    if prescription_notice:
+        system_content += f"\n\n{prescription_notice}"
     if case_context:
         system_content += f"\n\n【当前病例摘要】\n{case_context}"
 
-    messages: list[dict[str, Any]] = [{"role": "system", "content": system_content}]
-    for m in s.messages[-12:]:
-        if m.role not in ("user", "assistant"):
+    llm_messages: list[dict[str, Any]] = [{"role": "system", "content": system_content}]
+    for message in session.messages[-12:]:
+        if message.role not in ("user", "assistant"):
             continue
-        messages.append(message_to_llm(m.role, m.content, _loads(m.meta)))
+        llm_messages.append(message_to_llm(message.role, message.content, _loads(message.meta)))
 
     question_text = text or "请结合上传的图片（如舌象、检查单等）与病例摘要，给出辨证与方证学习参考。"
-    user_block = (
-        f"{inventory}\n\n"
-        f"【与问题相关的检索摘录（仅 {len(docs)} 条，不等于全部资料）】\n{kb_context}\n\n"
-        f"【用户问题】\n{question_text}"
+    user_parts = [inventory]
+    if prescription_authority:
+        user_parts.append(prescription_authority)
+    user_parts.append(
+        f"【与问题相关的检索摘录（仅 {len(docs)} 条，不等于全部资料；不得当作当前用方清单）】\n{kb_context}"
     )
-    messages.append({"role": "user", "content": build_user_content(user_block, images)})
+    user_parts.append(f"【用户问题】\n{question_text}")
+    user_block = "\n\n".join(user_parts)
+    llm_messages.append({"role": "user", "content": build_user_content(user_block, images)})
 
-    try:
-        reply = format_ai_reply(llm_service.chat(messages, temperature=0.3))
-    except Exception as exc:
-        db.rollback()
-        raise HTTPException(status.HTTP_502_BAD_GATEWAY, "AI 回复失败，请稍后重试") from exc
+    return {
+        "session": session,
+        "messages": llm_messages,
+        "references": references,
+        "user_display": user_display,
+        "user_meta": user_meta,
+        "text": text,
+    }
+
+
+def _save_assistant_exchange(db: Session, ctx: dict[str, Any], reply: str) -> ConsultSession:
+    session: ConsultSession = ctx["session"]
+    user_meta: dict[str, Any] = ctx["user_meta"]
+    references: list[dict[str, Any]] = ctx["references"]
+    text: str = ctx["text"]
+    user_display: str = ctx["user_display"]
 
     db.add(
         Message(
-            session_id=s.id,
+            session_id=session.id,
             role="user",
             content=user_display,
             meta=json.dumps(user_meta, ensure_ascii=False) if user_meta else "",
         )
     )
-
-    meta = {"references": references}
     db.add(
         Message(
-            session_id=s.id,
+            session_id=session.id,
             role="assistant",
             content=reply,
-            meta=json.dumps(meta, ensure_ascii=False),
+            meta=json.dumps({"references": references}, ensure_ascii=False),
         )
     )
-    if s.title in ("新的问诊", "") or len(s.title or "") < 3:
-        intake = _loads(s.intake_data)
-        s.title = str(intake.get("chief_complaint") or text[:20] or user_display[:20] or "新的问诊")[:40]
+    if session.title in ("新的问诊", "") or len(session.title or "") < 3:
+        intake = _loads(session.intake_data)
+        session.title = str(intake.get("chief_complaint") or text[:20] or user_display[:20] or "新的问诊")[:40]
     db.commit()
+    db.refresh(session)
+    return session
 
-    return ChatResponse(session_id=s.id, reply=reply, references=references)
+
+@router.post("/assistant", response_model=ChatResponse)
+def assistant_chat(
+    payload: AssistantChatRequest,
+    db: Session = Depends(get_db),
+    user: User = Depends(get_current_user),
+):
+    ctx = _prepare_assistant_chat(db, user, payload)
+    try:
+        reply = format_ai_reply(llm_service.chat(ctx["messages"], temperature=0.3))
+    except Exception as exc:
+        db.rollback()
+        raise HTTPException(status.HTTP_502_BAD_GATEWAY, "AI 回复失败，请稍后重试") from exc
+
+    session = _save_assistant_exchange(db, ctx, reply)
+    return ChatResponse(session_id=session.id, reply=reply, references=ctx["references"])
+
+
+@router.post("/assistant/stream")
+def assistant_chat_stream(
+    payload: AssistantChatRequest,
+    db: Session = Depends(get_db),
+    user: User = Depends(get_current_user),
+):
+    ctx = _prepare_assistant_chat(db, user, payload)
+    session_id = ctx["session"].id
+    references = ctx["references"]
+
+    def event_stream():
+        parts: list[str] = []
+        yield f"data: {json.dumps({'type': 'start', 'session_id': session_id}, ensure_ascii=False)}\n\n"
+        try:
+            for token in llm_service.stream(ctx["messages"], temperature=0.3):
+                parts.append(token)
+                yield f"data: {json.dumps({'type': 'token', 'content': token}, ensure_ascii=False)}\n\n"
+            reply = format_ai_reply("".join(parts))
+            _save_assistant_exchange(db, ctx, reply)
+            yield (
+                "data: "
+                + json.dumps(
+                    {
+                        "type": "done",
+                        "session_id": session_id,
+                        "reply": reply,
+                        "references": references,
+                    },
+                    ensure_ascii=False,
+                )
+                + "\n\n"
+            )
+        except Exception:
+            db.rollback()
+            yield f"data: {json.dumps({'type': 'error', 'message': 'AI 回复失败，请稍后重试'}, ensure_ascii=False)}\n\n"
+
+    return StreamingResponse(
+        event_stream(),
+        media_type="text/event-stream; charset=utf-8",
+        headers={
+            "Cache-Control": "no-cache",
+            "Connection": "keep-alive",
+            "X-Accel-Buffering": "no",
+        },
+    )
 
 
 @router.post("/chat", response_model=ChatResponse)

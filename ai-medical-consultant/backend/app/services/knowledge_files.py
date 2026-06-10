@@ -78,6 +78,46 @@ def list_files(db: Session) -> list[KnowledgeFile]:
     )
 
 
+def rename_file(db: Session, file_id: int, new_filename: str) -> KnowledgeFile | None:
+    row = get_file(db, file_id)
+    if not row:
+        return None
+
+    name = (new_filename or "").strip()
+    if not name:
+        raise FileParseError("文件名不能为空")
+
+    old_ext = get_ext(row.filename)
+    new_ext = get_ext(name)
+    if not new_ext and old_ext:
+        name = f"{name}{old_ext}"
+    elif new_ext and old_ext and new_ext != old_ext:
+        raise FileParseError(f"不能修改文件扩展名，须保持 {old_ext}")
+
+    safe_name = _safe_filename(name)
+    if not safe_name:
+        raise FileParseError("文件名无效")
+
+    ext = get_ext(safe_name)
+    if ext not in ALLOWED_EXTS:
+        raise FileParseError(
+            f"不支持的文件类型：{ext or '未知'}（仅支持 {', '.join(sorted(ALLOWED_EXTS))}）"
+        )
+
+    duplicate = (
+        db.query(KnowledgeFile)
+        .filter(KnowledgeFile.filename == safe_name, KnowledgeFile.id != file_id)
+        .first()
+    )
+    if duplicate:
+        raise FileParseError(f"已存在同名文件「{safe_name}」")
+
+    row.filename = safe_name
+    db.commit()
+    db.refresh(row)
+    return row
+
+
 def delete_file(db: Session, file_id: int) -> KnowledgeFile | None:
     row = db.get(KnowledgeFile, file_id)
     if not row:

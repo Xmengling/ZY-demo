@@ -248,7 +248,7 @@ def draw_cover(formulas: list[dict]) -> Image.Image:
     d.rounded_rectangle((34, 34, W - 34, H - 34), radius=12, fill=PAPER, outline=BLUE, width=5)
     d.rounded_rectangle((58, 58, W - 58, H - 58), radius=10, outline=LINE, width=3)
 
-    d.text((92, 132), "100首方剂解读", font=F["cover_title"], fill=INK)
+    d.text((92, 132), "方剂梳理", font=F["cover_title"], fill=INK)
     d.text((96, 214), "方剂卡片合集 PDF 预览版", font=F["cover_subtitle"], fill=BLUE_DARK)
     d.line((92, 282, W - 92, 282), fill=LINE, width=3)
 

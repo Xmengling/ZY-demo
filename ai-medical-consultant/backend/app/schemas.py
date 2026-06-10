@@ -64,6 +64,7 @@ class SessionOut(BaseModel):
     age: str = ""
     modern_diagnosis: str = ""
     status: str = "collecting"
+    linked_case: bool = False
     created_at: datetime
     updated_at: datetime
 
@@ -166,6 +167,10 @@ class KnowledgeFileOut(BaseModel):
 
     class Config:
         from_attributes = True
+
+
+class KnowledgeFileRenameIn(BaseModel):
+    filename: str
 
 
 class KnowledgeFilePreviewOut(BaseModel):
