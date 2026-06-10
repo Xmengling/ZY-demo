@@ -10,6 +10,7 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from ..deps import get_current_user
 from ..models import User
 from ..services import shanghan_store
+from ..services.consult_knowledge import consult_knowledge
 
 router = APIRouter(prefix="/api/v1/shanghan", tags=["shanghan"])
 
@@ -21,7 +22,9 @@ def list_articles():
 
 @router.post("", status_code=status.HTTP_201_CREATED)
 def create_article(payload: dict, _user: User = Depends(get_current_user)):
-    return shanghan_store.save_article(payload)
+    saved = shanghan_store.save_article(payload)
+    consult_knowledge.invalidate()
+    return saved
 
 
 @router.put("/{article_id}")
@@ -31,7 +34,9 @@ def update_article(
     _user: User = Depends(get_current_user),
 ):
     payload["id"] = unquote(article_id)
-    return shanghan_store.save_article(payload)
+    saved = shanghan_store.save_article(payload)
+    consult_knowledge.invalidate()
+    return saved
 
 
 @router.delete("/{article_id}")
@@ -39,4 +44,5 @@ def remove_article(article_id: str, _user: User = Depends(get_current_user)):
     deleted = shanghan_store.delete_article(unquote(article_id))
     if not deleted:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "article not found")
+    consult_knowledge.invalidate()
     return {"ok": True, "id": article_id}

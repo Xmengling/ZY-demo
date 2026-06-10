@@ -15,7 +15,6 @@
           />
           <span>g</span>
         </label>
-        <span class="mode-tag">{{ calc.modeLabel }}</span>
       </div>
       <el-button size="small" class="add-btn" @click="addRow">+ 添加方剂</el-button>
     </div>
@@ -25,6 +24,7 @@
         <colgroup>
           <col class="col-name" />
           <col class="col-pathology" />
+          <col class="col-main-symptoms" />
           <col class="col-unit" />
           <col class="col-portions" />
           <col class="col-final" />
@@ -32,8 +32,9 @@
         </colgroup>
         <thead>
           <tr>
-            <th>方剂名</th>
-            <th>病理</th>
+            <th class="col-name">方剂名</th>
+            <th class="col-pathology">病理</th>
+            <th class="col-main-symptoms">主要症状</th>
             <th class="num">单方量</th>
             <th class="num">份数</th>
             <th class="num">最终用量</th>
@@ -42,7 +43,7 @@
         </thead>
         <tbody>
           <tr v-if="!modelValue.rows.length" class="formula-empty-row">
-            <td colspan="6">暂未添加方剂，点击「+ 添加方剂」开始录入</td>
+            <td colspan="7">暂未添加方剂，点击「+ 添加方剂」开始录入</td>
           </tr>
           <tr
             v-for="(row, index) in modelValue.rows"
@@ -68,6 +69,14 @@
                 <PathologyTag v-for="tag in rowMeta(row).pathology" :key="tag" :label="tag" />
               </span>
             </td>
+            <td class="col-main-symptoms">
+              <span
+                class="formula-main-symptoms-cell"
+                :title="rowMeta(row).mainSymptomsText || undefined"
+              >
+                {{ rowMeta(row).mainSymptomsText || '—' }}
+              </span>
+            </td>
             <td class="num">
               <span class="formula-unit-total" :class="{ 'is-auto': rowMeta(row).unitTotal > 0 }">
                 {{ rowMeta(row).unitTotal > 0 ? rowMeta(row).unitTotal : '—' }}
@@ -91,13 +100,6 @@
             </td>
           </tr>
         </tbody>
-        <tfoot>
-          <tr class="total-row">
-            <td colspan="4">合计</td>
-            <td class="num">{{ calc.total }}</td>
-            <td />
-          </tr>
-        </tfoot>
       </table>
     </div>
 
@@ -117,7 +119,7 @@
 <script setup>
 import { computed, ref, watch } from 'vue'
 import PathologyTag from './PathologyTag.vue'
-import { lookupFormulaPowder, runDoseCalc } from '../../utils/formulaPowder'
+import { formatMainSymptomsText, lookupFormulaPowder, runDoseCalc } from '../../utils/formulaPowder'
 
 const props = defineProps({
   modelValue: {
@@ -166,9 +168,13 @@ function rowMeta(row) {
   const hit = lookupFormulaPowder(props.formulaIndex, row.name)
   const unitTotal = hit?.total || 0
   const calcRow = finalMap.value.get(row.id)
+  const mainSymptomsText = hit
+    ? formatMainSymptomsText(hit.mainSymptoms, hit.clinicalSymptoms)
+    : ''
   return {
     unitTotal,
     pathology: hit?.pathology || [],
+    mainSymptomsText,
     finalDose: calcRow?.finalDose ?? '—',
     missing: calcRow?.missing ?? true
   }
@@ -258,17 +264,6 @@ watch(
 .target-input :deep(.el-input__wrapper) {
   padding: 0 8px;
 }
-.mode-tag {
-  height: 24px;
-  display: inline-flex;
-  align-items: center;
-  padding: 0 10px;
-  border-radius: 999px;
-  background: #f1f5f9;
-  color: #475467;
-  font-size: 12px;
-  font-weight: 600;
-}
 .add-btn {
   border-color: #d7e8de;
   color: #0f7c43;
@@ -280,15 +275,24 @@ watch(
 }
 .formula-table {
   width: 100%;
-  min-width: 620px;
+  min-width: 820px;
   border-collapse: collapse;
   table-layout: fixed;
   font-size: 12px;
 }
+.formula-table .col-name {
+  width: 16%;
+}
+.formula-table .col-pathology {
+  width: 22%;
+}
+.formula-table .col-main-symptoms {
+  width: 30%;
+}
 .formula-table th,
 .formula-table td {
   border-bottom: 1px solid #eef2f6;
-  padding: 9px 10px;
+  padding: 8px 10px;
   vertical-align: middle;
   background: #fff;
 }
@@ -297,16 +301,28 @@ watch(
   color: #667085;
   font-size: 11px;
   font-weight: 600;
+}
+.formula-table th.col-name,
+.formula-table td.col-name {
   text-align: left;
 }
+.formula-table th.col-pathology,
+.formula-table td.col-pathology,
+.formula-table th.col-main-symptoms,
+.formula-table td.col-main-symptoms {
+  text-align: left;
+  vertical-align: top;
+}
 .formula-table td.num,
-.formula-table th.num {
-  text-align: right;
+.formula-table th.num,
+.formula-table td.col-action,
+.formula-table th.col-action {
+  text-align: center;
+  vertical-align: middle;
   font-variant-numeric: tabular-nums;
 }
 .formula-table .col-action {
   width: 44px;
-  text-align: center;
 }
 .formula-table tbody tr:hover td {
   background: #fbfcfd;
@@ -324,9 +340,12 @@ watch(
 .name-input {
   width: 100%;
 }
+.name-input :deep(.el-input__inner) {
+  text-align: left;
+}
 .portions-input {
   width: 64px;
-  margin-left: auto;
+  margin: 0 auto;
 }
 .portions-input :deep(.el-input__inner) {
   text-align: center;
@@ -335,6 +354,15 @@ watch(
   display: inline-flex;
   flex-wrap: wrap;
   gap: 4px;
+  justify-content: flex-start;
+}
+.formula-main-symptoms-cell {
+  display: block;
+  color: #475467;
+  line-height: 1.35;
+  white-space: normal;
+  word-break: break-word;
+  text-align: left;
 }
 .formula-unit-total {
   color: #475467;
@@ -361,15 +389,6 @@ watch(
   color: #c2410c;
   border-color: #f3d8cf;
   background: #fff7f4;
-}
-.formula-table tfoot .total-row td {
-  background: #f8fafc;
-  font-weight: 700;
-  border-top: 1px solid #e4e9ef;
-}
-.formula-table tfoot .num {
-  color: #0f7c43;
-  font-size: 13px;
 }
 .muted {
   color: #98a2b3;

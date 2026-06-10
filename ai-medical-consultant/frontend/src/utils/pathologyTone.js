@@ -19,6 +19,7 @@ const EXACT_CLASS = {
   表实: 'path-tone-excess-1',
   里实: 'path-tone-excess-2',
   水实: 'path-tone-excess-3',
+  水证: 'path-tone-excess-3',
   气实: 'path-tone-excess-4',
   血实: 'path-tone-excess-5'
 }

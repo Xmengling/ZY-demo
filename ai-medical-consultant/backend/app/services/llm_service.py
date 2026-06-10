@@ -3,7 +3,7 @@
 
 from __future__ import annotations
 
-from typing import Iterator, List, Dict
+from typing import Any, Dict, Iterator, List
 
 from ..config import settings
 
@@ -29,23 +29,37 @@ class LLMService:
     def available(self) -> bool:
         return self._client is not None
 
-    def chat(self, messages: List[Dict[str, str]], temperature: float = 0.3) -> str:
+    def _pick_model(self, messages: List[Dict[str, Any]]) -> str:
+        has_image = False
+        for msg in messages:
+            content = msg.get("content")
+            if isinstance(content, list):
+                has_image = any(
+                    isinstance(part, dict) and part.get("type") == "image_url" for part in content
+                )
+            if has_image:
+                break
+        if has_image and settings.openai_vision_model:
+            return settings.openai_vision_model
+        return settings.openai_chat_model
+
+    def chat(self, messages: List[Dict[str, Any]], temperature: float = 0.3) -> str:
         """非流式对话。不可用时抛异常，由调用方降级。"""
         if self._client is None:
             raise RuntimeError("LLM 未配置")
         resp = self._client.chat.completions.create(
-            model=settings.openai_chat_model,
+            model=self._pick_model(messages),
             messages=messages,
             temperature=temperature,
         )
         return (resp.choices[0].message.content or "").strip()
 
-    def stream(self, messages: List[Dict[str, str]], temperature: float = 0.3) -> Iterator[str]:
+    def stream(self, messages: List[Dict[str, Any]], temperature: float = 0.3) -> Iterator[str]:
         """流式对话，逐 token 产出。"""
         if self._client is None:
             raise RuntimeError("LLM 未配置")
         stream = self._client.chat.completions.create(
-            model=settings.openai_chat_model,
+            model=self._pick_model(messages),
             messages=messages,
             temperature=temperature,
             stream=True,

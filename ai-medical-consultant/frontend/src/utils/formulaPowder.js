@@ -20,6 +20,30 @@ export function extractPathologyLabels(pathology) {
   return [...new Set(pathology.map((p) => (typeof p === 'string' ? p : p?.label)).filter(Boolean))]
 }
 
+/** 去掉方剂卡片中的 [[**重点**]] 标记，用于列表展示 */
+export function stripFormulaMarkup(text) {
+  return String(text || '')
+    .replace(/\[\[\*\*([^*]+)\*\*\]\]/g, '$1')
+    .replace(/\[\[([^\]]+)\]\]/g, '$1')
+    .trim()
+}
+
+/** 主要症状：优先 mainSymptoms，否则取临床症状前几条 */
+export function formatMainSymptomsText(mainSymptoms, clinicalSymptoms, maxItems = 6) {
+  const source =
+    Array.isArray(mainSymptoms) && mainSymptoms.length
+      ? mainSymptoms
+      : Array.isArray(clinicalSymptoms)
+        ? clinicalSymptoms
+        : []
+  if (!source.length) return ''
+  return source
+    .slice(0, maxItems)
+    .map(stripFormulaMarkup)
+    .filter(Boolean)
+    .join('、')
+}
+
 export function normalizeFormulaName(name) {
   return (name || '').trim().replace(/\s+/g, '')
 }
@@ -33,7 +57,9 @@ export function buildFormulaPowderIndex(formulas = []) {
       name: f.name,
       total: parseCompositionTotal(f.composition),
       pathology: extractPathologyLabels(f.pathology),
-      herbs: f.composition || ''
+      herbs: f.composition || '',
+      mainSymptoms: Array.isArray(f.mainSymptoms) ? f.mainSymptoms : [],
+      clinicalSymptoms: Array.isArray(f.clinicalSymptoms) ? f.clinicalSymptoms : []
     })
   }
   return index
@@ -77,13 +103,11 @@ export function runDoseCalc(rows, targetDose) {
 
   const valid = parsed.filter((r) => r.unitTotal > 0 && r.portions > 0)
   if (!target || !valid.length) {
-    return { modeLabel: '—', coefficient: null, total: '—', rows: parsed.map((r) => ({ ...r, finalDose: '—' })) }
+    return { coefficient: null, total: '—', rows: parsed.map((r) => ({ ...r, finalDose: '—' })) }
   }
 
   const combinedWeighted = valid.reduce((sum, r) => sum + r.unitTotal * r.portions, 0)
   const coefficient = target / combinedWeighted
-  const equalPortions = valid.every((r) => r.portions === 1)
-  const modeLabel = `${equalPortions ? '各一份' : '多份合方'} · k ${formatDoseNumber(coefficient)}`
 
   let sumFinal = 0
   const resultMap = new Map()
@@ -94,7 +118,6 @@ export function runDoseCalc(rows, targetDose) {
   })
 
   return {
-    modeLabel,
     coefficient,
     total: formatDoseNumber(sumFinal),
     rows: parsed.map((r) => ({

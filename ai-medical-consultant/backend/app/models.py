@@ -110,6 +110,19 @@ class KnowledgeCategory(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
 
 
+class KnowledgeFile(Base):
+    """知识库上传的原始文件（整文件存储，不切片）。"""
+
+    __tablename__ = "knowledge_files"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    filename: Mapped[str] = mapped_column(String(256), index=True)
+    stored_path: Mapped[str] = mapped_column(String(512), unique=True)
+    file_size: Mapped[int] = mapped_column(Integer, default=0)
+    content_type: Mapped[str] = mapped_column(String(128), default="")
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+
+
 class KnowledgeDoc(Base):
     __tablename__ = "knowledge_docs"
 

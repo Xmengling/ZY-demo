@@ -6,7 +6,7 @@ from __future__ import annotations
 from datetime import datetime
 from typing import Any, List, Optional
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, model_validator
 
 
 # ---------- 用户 / 认证 ----------
@@ -55,7 +55,9 @@ class MessageOut(BaseModel):
 class SessionOut(BaseModel):
     id: int
     title: str
+    chief_complaint: str = ""
     patient_name: str = ""
+    doctor: str = ""
     phone: str = ""
     address: str = ""
     gender: str = ""
@@ -88,6 +90,23 @@ class SessionIntakeUpdate(BaseModel):
     case_text: str = ""
 
 
+class ConsultAutoFillRequest(BaseModel):
+    raw_text: str = Field("", max_length=12000)
+
+
+class ConsultAutoFillResponse(BaseModel):
+    fields: dict[str, str] = {}
+    symptoms: list[str] = []
+    pathology_notes: dict[str, str] = {}
+    source: str = "ai"
+    notes: list[str] = []
+
+
+class ConsultAutoFillExampleOut(BaseModel):
+    title: str
+    raw_text: str
+
+
 class SymptomPresetBlock(BaseModel):
     label: str
     tone: str = ""
@@ -118,6 +137,19 @@ class ChatRequest(BaseModel):
     message: str
 
 
+class AssistantChatRequest(BaseModel):
+    session_id: Optional[int] = None
+    message: str = Field("", max_length=4000)
+    case_context: str = Field("", max_length=12000)
+    images: List[str] = Field(default_factory=list, max_length=4)
+
+    @model_validator(mode="after")
+    def validate_content(self):
+        if not (self.message or "").strip() and not self.images:
+            raise ValueError("消息与图片不能同时为空")
+        return self
+
+
 class ChatResponse(BaseModel):
     session_id: int
     reply: str
@@ -125,6 +157,25 @@ class ChatResponse(BaseModel):
 
 
 # ---------- 知识库 ----------
+class KnowledgeFileOut(BaseModel):
+    id: int
+    filename: str
+    file_size: int
+    content_type: str = ""
+    created_at: datetime
+
+    class Config:
+        from_attributes = True
+
+
+class KnowledgeFilePreviewOut(BaseModel):
+    id: int
+    filename: str
+    format: str = "text"
+    content: str
+    truncated: bool = False
+
+
 class KnowledgeOut(BaseModel):
     id: int
     category: str

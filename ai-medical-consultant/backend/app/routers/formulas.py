@@ -12,6 +12,7 @@ from fastapi.responses import FileResponse
 from ..deps import get_current_user
 from ..models import User
 from ..services import jingfang_store
+from ..services.consult_knowledge import consult_knowledge
 from ..services.formula_pdf_export import export_formula_cards_pdf
 
 router = APIRouter(prefix="/api/v1/formulas", tags=["formulas"])
@@ -28,7 +29,9 @@ def list_formulas():
 
 @router.post("", status_code=status.HTTP_201_CREATED)
 def create_formula(payload: dict, _user: User = Depends(get_current_user)):
-    return jingfang_store.save_formula(payload)
+    saved = jingfang_store.save_formula(payload)
+    consult_knowledge.invalidate()
+    return saved
 
 
 @router.put("/{formula_id}")
@@ -38,7 +41,9 @@ def update_formula(
     _user: User = Depends(get_current_user),
 ):
     payload["id"] = unquote(formula_id)
-    return jingfang_store.save_formula(payload)
+    saved = jingfang_store.save_formula(payload)
+    consult_knowledge.invalidate()
+    return saved
 
 
 @router.delete("/{formula_id}")
@@ -46,6 +51,7 @@ def remove_formula(formula_id: str, _user: User = Depends(get_current_user)):
     deleted = jingfang_store.delete_formula(unquote(formula_id))
     if not deleted:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "formula not found")
+    consult_knowledge.invalidate()
     return {"ok": True, "id": formula_id}
 
 

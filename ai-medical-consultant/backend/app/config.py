@@ -23,6 +23,8 @@ class Settings(BaseSettings):
     openai_api_key: str = ""
     openai_api_base: str = "https://dashscope.aliyuncs.com/compatible-mode/v1"
     openai_chat_model: str = "qwen-plus"
+    # 含图片问答时优先使用；留空则沿用 openai_chat_model（需模型本身支持识图）
+    openai_vision_model: str = ""
 
     # App
     database_url: str = "sqlite:///./medical.db"
@@ -34,6 +36,7 @@ class Settings(BaseSettings):
     vectorstore_dir: str = str(BASE_DIR / "vectorstore")
     # 知识库种子文件：默认中医方证知识库（由 ingest_tcm.py 生成）
     knowledge_file: str = str(BASE_DIR / "data" / "tcm_knowledge.json")
+    knowledge_upload_dir: str = str(BASE_DIR / "data" / "knowledge_uploads")
 
     # 100 首方剂解读（SQLite + 中药图片）
     jingfang_db_path: str = str(BASE_DIR / "data" / "jingfang.sqlite3")

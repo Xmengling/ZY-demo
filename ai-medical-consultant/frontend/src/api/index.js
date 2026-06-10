@@ -17,7 +17,9 @@ api.interceptors.response.use(
       localStorage.removeItem('token')
       if (location.pathname !== '/login') location.href = '/login'
     }
-    ElMessage.error(typeof msg === 'string' ? msg : '请求失败')
+    if (!err?.config?.silent) {
+      ElMessage.error(typeof msg === 'string' ? msg : '请求失败')
+    }
     return Promise.reject(err)
   }
 )
@@ -33,59 +35,31 @@ export const formulasApi = {
 }
 
 export const consultApi = {
-  listSessions: () => api.get('/v1/consult/sessions'),
+  listSessions: (params = {}) => api.get('/v1/consult/sessions', { params }),
+  listAiChats: () => api.get('/v1/consult/sessions', { params: { ai_chat: true } }),
   symptomPresets: () => api.get('/v1/consult/symptom-presets'),
   updateModuleHints: (moduleKey, data) => api.put(`/v1/consult/module-hints/${moduleKey}`, data),
   getSession: (id) => api.get(`/v1/consult/sessions/${id}`),
   createSession: (data) => api.post('/v1/consult/sessions', data),
   saveIntake: (id, data) => api.patch(`/v1/consult/sessions/${id}/intake`, data),
   deleteSession: (id) => api.delete(`/v1/consult/sessions/${id}`),
-  chat: (data) => api.post('/v1/consult/chat', data)
+  autoFill: (data) => api.post('/v1/consult/auto-fill', data, { silent: true, timeout: 90000 }),
+  chat: (data) => api.post('/v1/consult/chat', data),
+  assistantChat: (data) => api.post('/v1/consult/assistant', data, { timeout: 180000 })
 }
 
 export const knowledgeApi = {
-  list: ({ category, page = 1, pageSize = 20 } = {}) =>
-    api.get('/v1/knowledge', {
-      params: {
-        category: category || undefined,
-        page,
-        page_size: pageSize
-      }
-    }),
-  categories: () => api.get('/v1/knowledge/categories'),
-  createCategory: (name) => api.post('/v1/knowledge/categories', { name }),
-  renameCategory: (oldName, newName) =>
-    api.patch('/v1/knowledge/categories', { old_name: oldName, new_name: newName }),
-  search: (q, k = 5) => api.get('/v1/knowledge/search', { params: { q, k } }),
-  create: (data) => api.post('/v1/knowledge', data),
-  upload: (file, category, chunk) => {
-    const form = buildUploadForm(file, category, chunk)
+  listFiles: () => api.get('/v1/knowledge/files'),
+  upload: (file) => {
+    const form = new FormData()
+    form.append('file', file)
     return api.post('/v1/knowledge/upload', form, {
       headers: { 'Content-Type': 'multipart/form-data' },
       timeout: 120000
     })
   },
-  preview: (file, category, chunk) => {
-    const form = buildUploadForm(file, category, chunk)
-    return api.post('/v1/knowledge/preview', form, {
-      headers: { 'Content-Type': 'multipart/form-data' },
-      timeout: 120000
-    })
-  },
-  sources: () => api.get('/v1/knowledge/sources'),
-  deleteSource: (source) => api.delete('/v1/knowledge/source', { params: { source } }),
-  deleteCategory: (category) => api.delete('/v1/knowledge/category', { params: { category } })
-}
-
-function buildUploadForm(file, category, chunk = {}) {
-  const form = new FormData()
-  form.append('file', file)
-  form.append('category', category || '上传资料')
-  form.append('chunk_strategy', chunk.strategy || 'fixed')
-  form.append('chunk_size', chunk.size ?? 600)
-  form.append('chunk_overlap', chunk.overlap ?? 100)
-  form.append('separators', chunk.separators || '')
-  return form
+  deleteFile: (id) => api.delete(`/v1/knowledge/files/${id}`),
+  previewFile: (id) => api.get(`/v1/knowledge/files/${id}/preview`)
 }
 
 export default api

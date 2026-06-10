@@ -4,9 +4,12 @@
       <div class="collector-hero">
         <div class="hero-top">
           <h2>问诊信息采集</h2>
-          <el-tag :type="sessionId ? 'success' : 'warning'" effect="light">
-            {{ sessionId ? '已建档' : draftSavedAt ? '草稿已保存' : '未保存' }}
-          </el-tag>
+          <div class="hero-top-right">
+            <el-button size="small" type="primary" plain @click="fillDialogVisible = true">粘贴自动填充</el-button>
+            <el-tag :type="sessionId ? 'success' : 'warning'" effect="light">
+              {{ sessionId ? '已建档' : draftSavedAt ? '草稿已保存' : '未保存' }}
+            </el-tag>
+          </div>
         </div>
       </div>
 
@@ -39,15 +42,17 @@
         <!-- 基础信息 -->
         <section
           v-show="isSectionVisible('base')"
-          class="form-section"
+          class="form-section collect-section"
           :class="{ 'is-collapsed': collapsed.base }"
         >
           <div class="section-head" role="button" tabindex="0" @click="toggleSection('base')" @keydown.enter="toggleSection('base')">
             <div class="section-head-main">
-              <div class="section-name"><span class="num">1</span>基础信息与主诉</div>
+              <div class="section-name">
+                <span class="num">1</span>
+                <span class="section-title-text">基础信息与主诉</span>
+              </div>
             </div>
             <div class="section-head-meta">
-              <el-tag type="warning" effect="light">必填</el-tag>
               <span class="section-chevron" aria-hidden="true" />
             </div>
           </div>
@@ -77,26 +82,40 @@
                 <el-input v-model="form.address" placeholder="住址或地区" />
               </div>
               <div class="field slim">
+                <label>就诊时间</label>
+                <el-date-picker
+                  v-model="form.visit_time"
+                  type="date"
+                  value-format="YYYY-MM-DD"
+                  placeholder="选择日期"
+                  style="width: 100%"
+                />
+              </div>
+              <div class="field slim">
+                <label>主诊医生</label>
+                <el-input v-model="form.doctor" placeholder="主诊医生" />
+              </div>
+              <div class="field slim">
                 <label>现代诊断</label>
                 <el-input v-model="form.modern_diagnosis" placeholder="现代诊断/检查" />
               </div>
-              <div class="field wide">
+              <div class="field half">
                 <label>主诉</label>
                 <el-input
                   v-model="form.chief_complaint"
                   class="consult-textarea"
                   type="textarea"
-                  :rows="2"
+                  :rows="3"
                   placeholder="最困扰的症状、开始时间、加重或缓解因素"
                 />
               </div>
-              <div class="field wide label-wide">
+              <div class="field half label-wide">
                 <label>病程/诱因/既往史/用药史</label>
                 <el-input
                   v-model="form.history"
                   class="consult-textarea"
                   type="textarea"
-                  :rows="2"
+                  :rows="3"
                   placeholder="病程、诱因、既往病史、正在用药、过敏史"
                 />
               </div>
@@ -122,7 +141,7 @@
             <div class="section-head-main">
               <div class="section-name">
                 <span class="num">{{ section.order }}</span>
-                <span class="section-title-text">{{ section.title }}</span>
+                <span class="section-title-text">{{ sectionDisplayTitle(section.title) }}</span>
                 <InquiryHints
                   :module-key="section.key"
                   :hints="section.inquiry_hints || []"
@@ -148,10 +167,31 @@
                 v-for="block in section.blocks"
                 :key="block.label"
                 class="biao-block"
-                :class="pathologyToneClass(block.label)"
+                :class="[
+                  pathologyToneClass(block.label),
+                  { 'is-block-collapsed': isBlockCollapsed(block.label) }
+                ]"
               >
-                <div class="biao-label">{{ block.label }}</div>
-                <div class="biao-body">
+                <div
+                  class="biao-label"
+                  role="button"
+                  tabindex="0"
+                  @click="toggleBlock(block.label)"
+                  @keydown.enter="toggleBlock(block.label)"
+                >
+                  {{ block.label }}
+                </div>
+                <div
+                  v-if="isBlockCollapsed(block.label)"
+                  class="biao-collapsed-bar"
+                  role="button"
+                  tabindex="0"
+                  @click="toggleBlock(block.label)"
+                  @keydown.enter="toggleBlock(block.label)"
+                >
+                  <span class="biao-block-preview">{{ blockPreview(block) || '暂无症状，点击展开' }}</span>
+                </div>
+                <div v-else class="biao-body">
                   <div class="biao-row">
                     <div class="biao-symptoms">
                       <SymptomChips
@@ -169,8 +209,8 @@
                       <el-input
                         v-model="form.notes[block.label]"
                         type="textarea"
-                        :rows="2"
-                        class="consult-textarea"
+                        :rows="4"
+                        class="consult-textarea biao-note-textarea"
                         placeholder="记录本例所见、程度、时间、诱因"
                       />
                     </div>
@@ -186,6 +226,13 @@
                     </div>
                   </div>
                 </div>
+                <button
+                  type="button"
+                  class="biao-block-chevron"
+                  :class="{ 'is-collapsed': isBlockCollapsed(block.label) }"
+                  :aria-label="isBlockCollapsed(block.label) ? '展开' : '折叠'"
+                  @click.stop="toggleBlock(block.label)"
+                />
               </div>
             </div>
           </div>
@@ -194,39 +241,33 @@
         <!-- 舌脉腹诊 -->
         <section
           v-show="isSectionVisible('tongue')"
-          class="form-section"
+          class="form-section collect-section"
           :class="{ 'is-collapsed': collapsed.tongue }"
         >
           <div class="section-head" role="button" tabindex="0" @click="toggleSection('tongue')" @keydown.enter="toggleSection('tongue')">
             <div class="section-head-main">
-              <div class="section-name"><span class="num">9</span>舌诊、脉诊、腹诊</div>
+              <div class="section-name">
+                <span class="num">9</span>
+                <span class="section-title-text">舌诊、脉诊、腹诊</span>
+              </div>
             </div>
             <div class="section-head-meta">
-              <el-tag type="success" effect="light">证据补强</el-tag>
               <span class="section-chevron" aria-hidden="true" />
             </div>
           </div>
           <div v-show="!collapsed.tongue" class="section-content">
-            <div class="base-grid">
+            <div class="base-grid tongue-three-grid">
               <div class="field">
-                <label>舌质</label>
-                <el-input v-model="form.tongue_body" placeholder="如淡、红、暗、胖大齿痕" />
+                <label>舌像</label>
+                <el-input v-model="form.tongue_image" placeholder="如淡红有齿痕，苔薄黄" />
               </div>
               <div class="field">
-                <label>舌苔</label>
-                <el-input v-model="form.tongue_coat" placeholder="如薄白、黄腻、少苔" />
-              </div>
-              <div class="field">
-                <label>脉象</label>
-                <el-input v-model="form.pulse" placeholder="如浮、沉、弦、滑、数、微细" />
+                <label>脉像</label>
+                <el-input v-model="form.pulse" placeholder="如略弦，脉律不齐，约120次/分" />
               </div>
               <div class="field">
                 <label>腹诊</label>
                 <el-input v-model="form.abdominal" placeholder="心下、胸胁、少腹、拒按/喜按" />
-              </div>
-              <div class="field wide">
-                <label>备注</label>
-                <el-input v-model="form.diagnosis_note" type="textarea" :rows="2" placeholder="舌照说明、腹诊补充、望闻切其他信息" />
               </div>
             </div>
           </div>
@@ -235,15 +276,32 @@
         <!-- 处方 -->
         <section
           v-show="isSectionVisible('prescription')"
-          class="form-section prescription-section"
+          class="form-section collect-section prescription-section"
           :class="{ 'is-collapsed': collapsed.prescription }"
         >
           <div class="section-head" role="button" tabindex="0" @click="toggleSection('prescription')" @keydown.enter="toggleSection('prescription')">
             <div class="section-head-main">
-              <div class="section-name"><span class="num">10</span>处方</div>
+              <div class="section-name">
+                <span class="num">10</span>
+                <span class="section-title-text">处方</span>
+                <InquiryHints
+                  module-key="prescription"
+                  :hints="prescriptionHints"
+                  @updated="(list) => (prescriptionHints = list)"
+                />
+              </div>
             </div>
             <div class="section-head-meta">
-              <el-tag type="success" effect="light">开方</el-tag>
+              <div v-if="prescriptionSectionTags.length" class="section-score-summary">
+                <el-tag
+                  v-for="name in prescriptionSectionTags"
+                  :key="name"
+                  type="success"
+                  effect="light"
+                >
+                  {{ name }}
+                </el-tag>
+              </div>
               <span class="section-chevron" aria-hidden="true" />
             </div>
           </div>
@@ -259,7 +317,15 @@
 
       <div class="actions">
         <span class="text-muted">{{ draftHint }}</span>
-        <div>
+        <div class="action-buttons">
+          <el-button :disabled="!hasCaseContent" @click="copyCaseText">
+            <el-icon><DocumentCopy /></el-icon>
+            复制医案
+          </el-button>
+          <el-button :disabled="!hasCaseContent" @click="exportCaseText">
+            <el-icon><Download /></el-icon>
+            导出医案
+          </el-button>
           <el-button @click="resetForm">清空</el-button>
           <el-button type="primary" :loading="saving" @click="saveIntake">保存问诊</el-button>
         </div>
@@ -267,76 +333,56 @@
     </section>
 
     <aside class="analysis panel">
-      <div class="analysis-head">
-        <h3>AI 分析</h3>
-      </div>
-
       <div class="analysis-body">
-        <div class="status-card">
+        <div class="status-card summary-card">
           <div class="status-title">
-            <span>问诊摘要</span>
-            <el-tag type="info" effect="light">本地汇总</el-tag>
+            <span>病例摘要</span>
+            <el-button size="small" text :disabled="!hasConsultSummary" @click="copyCaseSummary">
+              <el-icon><DocumentCopy /></el-icon>
+              复制
+            </el-button>
           </div>
           <ul class="summary-list">
-            <li v-for="line in summaryLines" :key="line">{{ line }}</li>
+            <li v-if="!hasConsultSummary" class="is-empty">左侧录入后，这里会生成病例摘要。</li>
+            <template v-else>
+              <li
+                v-for="item in consultSummaryLines"
+                :key="`${item.label}-${item.kind}`"
+                :title="formatConsultSummaryLine(item)"
+              >
+                <span
+                  class="summary-pathology-label"
+                  :class="item.kind === 'pathology' ? pathologyToneClass(item.label) : 'summary-label-meta'"
+                >{{ item.label }}<template v-if="item.score != null"><span class="summary-pathology-score">{{ item.score }}</span></template>：</span>
+                <span class="summary-line-text">{{ item.text }}</span>
+              </li>
+            </template>
           </ul>
         </div>
 
-        <div class="status-card">
-          <div class="status-title">
-            <span>十二字病理记录</span>
-            <el-tag type="warning" effect="light">手动分数</el-tag>
-          </div>
-          <div class="pathology-grid">
-            <div
-              v-for="item in pathologyScores"
-              :key="item.label"
-              class="pathology"
-              :class="pathologyToneClass(item.label)"
-            >
-              <PathologyTag :label="item.label" />
-              <span class="pathology-score">{{ item.score }}</span>
-            </div>
-            <div v-if="!pathologyScores.length" class="empty-hint pathology-empty">填写病理打分后会在这里汇总。</div>
-          </div>
-        </div>
-
-        <div class="status-card">
-          <div class="status-title">
-            <span>关键追问</span>
-            <el-tag effect="light">待接 AI</el-tag>
-          </div>
-          <div v-for="q in followUpQuestions" :key="q.text" class="question">
-            {{ q.text }}
-            <small v-if="q.hint">{{ q.hint }}</small>
-          </div>
-        </div>
-
-        <div class="status-card">
-          <div class="status-title">
-            <span>方证候选</span>
-            <el-tag type="primary" effect="light">学习参考</el-tag>
-          </div>
-          <div v-for="item in formulaCandidates" :key="item.name" class="formula-row">
-            <div>
-              <div class="formula-head">
-                <strong>{{ item.name }}</strong>
-                <span class="formula-pathology">
-                  <PathologyTag v-for="tag in item.pathology" :key="tag" :label="tag" />
-                </span>
-              </div>
-              <div class="muted">{{ item.note }}</div>
-            </div>
-            <el-tag :type="item.tagType" effect="light">{{ item.level }}</el-tag>
-          </div>
-          <div v-if="!formulaCandidates.length" class="empty-hint">录入处方或保存后，可结合 AI 生成方证候选。</div>
-        </div>
-
-        <div class="notice">
-          出现持续高热、剧烈腹痛、胸痛、呕血便血、呼吸困难等情况，应及时线下就医；本页内容用于学习和辅助整理，不替代医生诊疗。
-        </div>
+        <ConsultAiChat
+          :session-id="sessionId"
+          :case-context="caseSummaryText"
+          @session-created="onAiSessionCreated"
+        />
       </div>
     </aside>
+
+    <el-dialog v-model="fillDialogVisible" title="粘贴医案自动填充" width="640px" :close-on-click-modal="false">
+      <p class="autofill-tip">
+        粘贴医案或病历文字，AI 会识别姓名、性别、年龄、主诉、病程、舌脉腹诊、现代诊断，并从预设症状中勾选命中项。复诊内容不参与解析。
+      </p>
+      <el-input
+        v-model="fillText"
+        type="textarea"
+        :rows="12"
+        placeholder="在此粘贴医案原文"
+      />
+      <template #footer>
+        <el-button :disabled="autoFilling" @click="fillDialogVisible = false">取消</el-button>
+        <el-button type="primary" :loading="autoFilling" @click="applyAutoFill">AI 解析并填充</el-button>
+      </template>
+    </el-dialog>
   </div>
 </template>
 
@@ -344,13 +390,22 @@
 import { computed, onMounted, reactive, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
+import { DocumentCopy, Download } from '@element-plus/icons-vue'
 import { consultApi, formulasApi } from '../api'
 import SymptomChips from '../components/consult/SymptomChips.vue'
 import PrescriptionBlock from '../components/consult/PrescriptionBlock.vue'
+import ConsultAiChat from '../components/consult/ConsultAiChat.vue'
 import PathologyTag from '../components/consult/PathologyTag.vue'
 import InquiryHints from '../components/consult/InquiryHints.vue'
-import { buildFormulaPowderIndex, lookupFormulaPowder } from '../utils/formulaPowder'
+import { buildFormulaPowderIndex, lookupFormulaPowder, runDoseCalc } from '../utils/formulaPowder'
 import { getPathologyToneClass } from '../utils/pathologyTone'
+import { parseCaseText, FIELD_LABELS } from '../utils/caseTextParser'
+import {
+  buildConsultSummaryLines,
+  formatConsultSummaryLine,
+  formatConsultSummaryText,
+  formatVisitDate
+} from '../utils/consultSymptoms'
 
 const pathologyToneClass = getPathologyToneClass
 
@@ -363,18 +418,25 @@ const draftSavedAt = ref('')
 const formScrollRef = ref(null)
 const formulaIndex = ref(new Map())
 const formulaNames = ref([])
-
+const fillDialogVisible = ref(false)
+const fillText = ref('')
+const autoFilling = ref(false)
 const collapsed = reactive({
   base: false,
   tongue: false,
   prescription: false
 })
+const blockCollapsed = reactive({})
+const blockCollapseManual = reactive({})
+const sectionCollapseManual = reactive({})
+const prescriptionHints = ref(['合方录入', '目标用量', '份数换算'])
 
 const fallbackSections = [
   {
     key: 'surface',
     order: 2,
-    title: '表证采集',
+    title: '表证',
+    inquiry_hints: ['寒热', '汗出', '恶风', '头痛头晕', '皮肤', '身痒', '肢凉怕冷', '疼痛', '鼻塞流涕', '咽痒咳嗽', '项背不舒', '无汗恶寒'],
     tag: '表/半表',
     tone: 'tone-blue',
     blocks: [
@@ -385,7 +447,8 @@ const fallbackSections = [
   {
     key: 'interior',
     order: 3,
-    title: '里证采集',
+    title: '里证',
+    inquiry_hints: ['食欲、食冷、反酸烧心，呕吐、大便、肠鸣等'],
     tag: '里热/里寒/里虚',
     tone: 'tone-amber',
     blocks: [
@@ -398,7 +461,7 @@ const fallbackSections = [
   {
     key: 'half',
     order: 4,
-    title: '半证采集',
+    title: '半证',
     tag: '半表/半热/半虚',
     tone: 'tone-blue',
     blocks: [
@@ -410,7 +473,7 @@ const fallbackSections = [
   {
     key: 'water',
     order: 5,
-    title: '水证采集',
+    title: '水证',
     tag: '水实/水虚',
     tone: 'tone-green',
     blocks: [
@@ -421,7 +484,7 @@ const fallbackSections = [
   {
     key: 'qi',
     order: 6,
-    title: '气证采集',
+    title: '气证',
     tag: '气实/气虚',
     tone: 'tone-green',
     blocks: [
@@ -432,7 +495,7 @@ const fallbackSections = [
   {
     key: 'blood',
     order: 7,
-    title: '血证采集',
+    title: '血证',
     tag: '血实/血虚',
     tone: 'tone-red',
     blocks: [
@@ -443,7 +506,7 @@ const fallbackSections = [
   {
     key: 'yin',
     order: 8,
-    title: '阴性采集',
+    title: '阴性',
     tag: '阴性证据',
     tone: 'tone-amber',
     blocks: [{ label: '阴性', symptoms: ['精神疲惫', '嗜睡', '畏寒蜷卧', '手足厥冷', '脉微细'] }]
@@ -466,14 +529,14 @@ const emptyForm = () => ({
   address: '',
   age: '',
   gender: '',
+  visit_time: '',
+  doctor: '',
   modern_diagnosis: '',
   chief_complaint: '',
   history: '',
-  tongue_body: '',
-  tongue_coat: '',
+  tongue_image: '',
   pulse: '',
   abdominal: '',
-  diagnosis_note: '',
   selected: {},
   notes: {},
   scores: {},
@@ -490,7 +553,7 @@ sections.value.forEach((s) => {
 const moduleNav = computed(() => [
   { key: 'all', label: '全部' },
   { key: 'base', label: '基础信息' },
-  ...sections.value.map((s) => ({ key: s.key, label: s.title.replace('采集', '') })),
+  ...sections.value.map((s) => ({ key: s.key, label: sectionDisplayTitle(s.title) })),
   { key: 'tongue', label: '舌脉腹诊' },
   { key: 'prescription', label: '处方' }
 ])
@@ -513,21 +576,6 @@ const allVisibleCollapsed = computed(() => {
 
 const selectedSymptoms = computed(() => Object.keys(form.selected).filter((k) => form.selected[k]))
 
-const patientLine = computed(() => {
-  const parts = [form.patient_name, form.gender, form.age ? `${form.age}岁` : '', form.phone].filter(Boolean)
-  return parts.length ? parts.join('，') : '未填写'
-})
-
-const diagnosisLine = computed(() => {
-  const parts = [
-    form.tongue_body && `舌质${form.tongue_body}`,
-    form.tongue_coat && `舌苔${form.tongue_coat}`,
-    form.pulse && `脉${form.pulse}`,
-    form.abdominal && `腹诊${form.abdominal}`
-  ].filter(Boolean)
-  return parts.length ? parts.join('，') : '未填写'
-})
-
 const pathologyScores = computed(() => {
   const items = Object.entries(form.scores)
     .map(([label, score]) => ({ label, score: Number(score || 0) }))
@@ -537,58 +585,54 @@ const pathologyScores = computed(() => {
   return items
 })
 
-const summaryLines = computed(() => {
-  const lines = []
-  if (form.chief_complaint) lines.push(`主诉：${form.chief_complaint}`)
-  const top = pathologyScores.value.slice(0, 4)
-  if (top.length) lines.push(`病理：${top.map((i) => `${i.label}${i.score}分`).join('、')}`)
-  if (selectedSymptoms.value.length) {
-    lines.push(`现症：${selectedSymptoms.value.slice(0, 12).join('、')}${selectedSymptoms.value.length > 12 ? '…' : ''}`)
-  }
-  if (diagnosisLine.value !== '未填写') lines.push(`舌脉腹：${diagnosisLine.value}`)
-  if (!lines.length) lines.push('左侧录入后，这里会生成本地摘要。')
-  return lines
+const consultSummaryLines = computed(() => buildConsultSummaryLines(form, sections.value))
+
+const hasConsultSummary = computed(() => consultSummaryLines.value.some((item) => item.text))
+
+const prescriptionSectionTags = computed(() =>
+  (form.prescription?.rows || [])
+    .map((row) => String(row?.name || '').trim())
+    .filter(Boolean)
+)
+
+const caseSummaryText = computed(() => formatConsultSummaryText(consultSummaryLines.value))
+
+const hasCaseContent = computed(() => {
+  return Boolean(
+    form.patient_name ||
+      form.chief_complaint ||
+      form.history ||
+      form.modern_diagnosis ||
+      selectedSymptoms.value.length ||
+      pathologyScores.value.length ||
+      form.tongue_image ||
+      form.pulse ||
+      form.abdominal ||
+      (form.prescription?.rows || []).some((row) => row.name)
+  )
 })
 
-const followUpQuestions = computed(() => {
-  const qs = []
-  if (!form.selected['往来寒热'] && !form.notes['半表']?.includes('寒热')) {
-    qs.push({ text: '是否有往来寒热、胸胁苦满或口苦？', hint: '用于确认半证方向。' })
-  }
-  if (!form.abdominal) {
-    qs.push({ text: '心下、胸胁、少腹按压情况如何？', hint: '用于区分里实、半证与气实。' })
-  }
-  if (!form.pulse) {
-    qs.push({ text: '脉象是否已记录（浮沉迟数、弦滑细等）？', hint: '舌脉腹为重要证据。' })
-  }
-  if (!qs.length) {
-    qs.push({ text: '保存后可由 AI 根据缺失信息生成 3-5 个追问。', hint: '' })
-  }
-  return qs.slice(0, 3)
-})
-
-const formulaCandidates = computed(() => {
-  const rows = form.prescription?.rows || []
-  return rows
-    .filter((r) => r.name?.trim())
-    .slice(0, 4)
-    .map((r) => {
-      const hit = lookupFormulaPowder(formulaIndex.value, r.name)
-      return {
-        name: `${r.name}方向`,
-        pathology: hit?.pathology || [],
-        note: hit ? `已录入处方，份数 ${r.portions}；待 AI 结合问诊进一步确认。` : '方名未在数据库命中，请核对。',
-        level: hit ? '已录入' : '待核对',
-        tagType: hit ? 'success' : 'warning'
-      }
-    })
-})
+function onAiSessionCreated(id) {
+  sessionId.value = id
+}
 
 const draftHint = computed(() => {
   if (sessionId.value) return `已关联问诊 #${sessionId.value}`
   if (draftSavedAt.value) return `本地草稿：${draftSavedAt.value}`
   return '填写内容会自动保存到本地草稿'
 })
+
+function sectionDisplayTitle(title) {
+  return String(title || '').replace(/采集$/, '')
+}
+
+function normalizeIntakeTongue(data) {
+  if (!data) return
+  if (!data.tongue_image && (data.tongue_body || data.tongue_coat)) {
+    const parts = [data.tongue_body, data.tongue_coat].map((s) => String(s || '').trim()).filter(Boolean)
+    data.tongue_image = parts.join('，')
+  }
+}
 
 function chipsForBlock(block) {
   return form.chipLists[block.label]?.length ? form.chipLists[block.label] : [...(block.symptoms || [])]
@@ -601,6 +645,7 @@ function setChipList(label, list) {
 function onToggleSelected({ symptom, active }) {
   form.selected[symptom] = active
   if (!active) delete form.selected[symptom]
+  syncCollapseState()
 }
 
 function hasPathologyScore(label) {
@@ -614,6 +659,73 @@ function scoredBlocks(section) {
   return (section.blocks || []).filter((block) => hasPathologyScore(block.label))
 }
 
+function blockHasContent(block) {
+  const note = String(form.notes[block.label] || '').trim()
+  if (note) return true
+  if (hasPathologyScore(block.label)) return true
+  return (block.symptoms || []).some((symptom) => form.selected[symptom])
+}
+
+function isBlockCollapsed(label) {
+  return Boolean(blockCollapsed[label])
+}
+
+function blockPreview(block) {
+  const note = String(form.notes[block.label] || '').trim()
+  if (note) return note.length > 48 ? `${note.slice(0, 48)}…` : note
+  const selected = (block.symptoms || []).filter((symptom) => form.selected[symptom])
+  if (selected.length) return selected.join('、')
+  if (hasPathologyScore(block.label)) return `病理打分 ${form.scores[block.label]}`
+  return ''
+}
+
+function sectionHasContent(section) {
+  return (section.blocks || []).some((block) => blockHasContent(block))
+}
+
+function shouldAutoCollapseEmptyBlocks() {
+  return route.query.from === 'records'
+}
+
+function syncBlockCollapseState() {
+  sections.value.forEach((section) => {
+    ;(section.blocks || []).forEach((block) => {
+      const label = block.label
+      if (blockCollapseManual[label]) return
+      blockCollapsed[label] = shouldAutoCollapseEmptyBlocks() ? !blockHasContent(block) : false
+    })
+  })
+}
+
+function syncSectionCollapseState() {
+  sections.value.forEach((section) => {
+    const key = section.key
+    if (sectionCollapseManual[key]) return
+    collapsed[key] = shouldAutoCollapseEmptyBlocks() ? !sectionHasContent(section) : false
+  })
+}
+
+function syncCollapseState() {
+  syncBlockCollapseState()
+  syncSectionCollapseState()
+}
+
+function initBlockCollapseState() {
+  sections.value.forEach((section) => {
+    ;(section.blocks || []).forEach((block) => {
+      const label = block.label
+      if (blockCollapsed[label] === undefined) {
+        blockCollapsed[label] = shouldAutoCollapseEmptyBlocks() ? !blockHasContent(block) : false
+      }
+    })
+  })
+}
+
+function toggleBlock(label) {
+  blockCollapseManual[label] = true
+  blockCollapsed[label] = !blockCollapsed[label]
+}
+
 function updateSectionHints(key, hints) {
   const section = sections.value.find((item) => item.key === key)
   if (section) section.inquiry_hints = [...hints]
@@ -623,11 +735,13 @@ function showModule(key) {
   activeModule.value = key
   visibleSectionKeys.value.forEach((k) => {
     collapsed[k] = false
+    sectionCollapseManual[k] = true
   })
   formScrollRef.value?.scrollTo({ top: 0, behavior: 'smooth' })
 }
 
 function toggleSection(key) {
+  sectionCollapseManual[key] = true
   collapsed[key] = !collapsed[key]
 }
 
@@ -635,6 +749,7 @@ function toggleAllSections() {
   const next = !allVisibleCollapsed.value
   visibleSectionKeys.value.forEach((k) => {
     collapsed[k] = next
+    sectionCollapseManual[k] = true
   })
 }
 
@@ -663,34 +778,237 @@ let draftTimer = null
 watch(
   form,
   () => {
+    syncCollapseState()
     clearTimeout(draftTimer)
     draftTimer = setTimeout(saveDraft, 800)
   },
   { deep: true }
 )
 
-function buildCaseText() {
-  const scoreLine = pathologyScores.value.length
-    ? pathologyScores.value.map((i) => `${i.label}${i.score}分`).join('；')
-    : '未记录'
-  const rx = (form.prescription?.rows || [])
-    .filter((r) => r.name)
-    .map((r) => `${r.name}×${r.portions}份`)
-    .join('、')
+function valueOrEmpty(value) {
+  const text = String(value ?? '').trim()
+  return text || '未填写'
+}
+
+function sanitizeFilePart(value) {
+  return String(value || '')
+    .trim()
+    .replace(/[\\/:*?"<>|]/g, '')
+    .replace(/\s+/g, '')
+}
+
+function buildFormulaExportRows() {
+  const rows = (form.prescription?.rows || []).filter((row) => row.name?.trim())
+  if (!rows.length) return ['- 未录入']
+
+  const calc = runDoseCalc(
+    rows.map((row) => {
+      const hit = lookupFormulaPowder(formulaIndex.value, row.name)
+      return {
+        id: row.id,
+        name: row.name,
+        unitTotal: hit?.total || 0,
+        portions: Number(row.portions) || 0
+      }
+    }),
+    form.prescription?.targetDose || 200
+  )
+  const finalMap = new Map(calc.rows.map((row) => [row.id, row]))
+
+  return rows.map((row) => {
+    const finalDose = finalMap.get(row.id)?.finalDose ?? '—'
+    const chunks = [`${row.name} × ${Number(row.portions) || 1}份`]
+    if (finalDose !== '—') chunks.push(`最终用量 ${finalDose}g`)
+    return `- ${chunks.join('；')}；`
+  })
+}
+
+function buildPathologyExportLines() {
+  const lines = []
+  for (const section of sections.value || []) {
+    for (const block of section.blocks || []) {
+      const label = block.label
+      const note = String(form.notes?.[label] || '').trim()
+      const symptoms = chipsForBlock(block).filter((s) => form.selected?.[s] && !note.includes(s))
+      const parts = []
+      if (note) parts.push(note)
+      if (symptoms.length) parts.push(`症状：${symptoms.join('、')}`)
+      if (hasPathologyScore(label)) parts.push(`打分：${Number(form.scores[label])}`)
+      if (parts.length) lines.push(`- ${label}：${parts.join('；')}`)
+    }
+  }
+  return lines.length ? lines : ['- 未记录']
+}
+
+function buildCaseMarkdown() {
+  const visitDate = formatVisitDate(form.visit_time) || valueOrEmpty(form.visit_time)
+  const selectedLine = selectedSymptoms.value.length ? selectedSymptoms.value.join('、') : '未选择'
+  const patientParts = [
+    form.patient_name,
+    form.gender,
+    form.age ? `${form.age}岁` : '',
+    form.phone ? `电话：${form.phone}` : '',
+    form.address ? `住址：${form.address}` : ''
+  ].filter(Boolean)
+  const tonguePulseParts = [
+    form.tongue_image ? `舌像：${form.tongue_image}` : '',
+    form.pulse ? `脉像：${form.pulse}` : '',
+    form.abdominal ? `腹诊：${form.abdominal}` : ''
+  ].filter(Boolean)
+
   return [
-    '医案整理',
+    `患者：${patientParts.join('，') || '未填写'}`,
+    `就诊：${visitDate}；主诊医生：${valueOrEmpty(form.doctor)}`,
+    `现代诊断/检查：${valueOrEmpty(form.modern_diagnosis)}`,
     '',
-    `患者：${patientLine.value}`,
-    `现代诊断：${form.modern_diagnosis || '未填写'}`,
-    `主诉：${form.chief_complaint || '未填写'}`,
-    `病程/诱因/既往史/用药史：${form.history || '未填写'}`,
-    `现症：${selectedSymptoms.value.join('、') || '未选择'}`,
-    `舌脉腹诊：${diagnosisLine.value}`,
-    `十二字病理记录：${scoreLine}`,
-    `处方：${rx || '未录入'}`,
-    `处方备注：${form.prescription?.note || '未填写'}`,
-    '风险提示：出现持续高热、剧烈腹痛、胸痛、呕血便血、呼吸困难等情况，应及时线下就医。'
-  ].join('\n')
+    `主诉：${valueOrEmpty(form.chief_complaint)}`,
+    `病程：${valueOrEmpty(form.history)}`,
+    '',
+    ...buildPathologyExportLines(),
+    '',
+    `舌脉腹诊：${tonguePulseParts.join('；') || '未填写'}`,
+    '',
+    `处方：目标用量 ${form.prescription?.targetDose || 200}g`,
+    ...buildFormulaExportRows(),
+    form.prescription?.note ? `处方备注：${form.prescription.note}` : ''
+  ]
+    .filter((line, index, arr) => {
+      if (line !== '') return true
+      return arr[index - 1] !== ''
+    })
+    .join('\n')
+}
+
+function buildCaseText() {
+  return buildCaseMarkdown()
+}
+
+async function copyTextToClipboard(text) {
+  if (navigator.clipboard?.writeText) {
+    await navigator.clipboard.writeText(text)
+    return
+  }
+  const textarea = document.createElement('textarea')
+  textarea.value = text
+  textarea.setAttribute('readonly', '')
+  textarea.style.position = 'fixed'
+  textarea.style.left = '-9999px'
+  document.body.appendChild(textarea)
+  textarea.select()
+  document.execCommand('copy')
+  document.body.removeChild(textarea)
+}
+
+async function copyCaseSummary() {
+  if (!hasConsultSummary.value) {
+    ElMessage.warning('暂无可复制的病例摘要')
+    return
+  }
+  await copyTextToClipboard(formatConsultSummaryText(consultSummaryLines.value))
+  ElMessage.success('病例摘要已复制')
+}
+
+async function copyCaseText() {
+  if (!hasCaseContent.value) {
+    ElMessage.warning('请先填写医案内容')
+    return
+  }
+  await copyTextToClipboard(buildCaseText())
+  ElMessage.success('医案已复制')
+}
+
+function exportCaseText() {
+  if (!hasCaseContent.value) {
+    ElMessage.warning('请先填写医案内容')
+    return
+  }
+  const text = buildCaseText()
+  const name = sanitizeFilePart(form.patient_name) || '未命名'
+  const date = sanitizeFilePart(form.visit_time) || new Date().toISOString().slice(0, 10)
+  const filename = `经方问诊医案_${name}_${date}.md`
+  const blob = new Blob([text], { type: 'text/markdown;charset=utf-8' })
+  const url = URL.createObjectURL(blob)
+  const link = document.createElement('a')
+  link.href = url
+  link.download = filename
+  document.body.appendChild(link)
+  link.click()
+  document.body.removeChild(link)
+  URL.revokeObjectURL(url)
+  ElMessage.success('医案已导出')
+}
+
+function applyFillResult(result, source = 'local') {
+  const fields = result?.fields || {}
+  const symptoms = Array.isArray(result?.symptoms) ? result.symptoms : []
+  const pathologyNotes = result?.pathology_notes || {}
+  const filled = []
+  Object.entries(fields).forEach(([key, val]) => {
+    if (val) {
+      form[key] = val
+      filled.push(FIELD_LABELS[key] || key)
+    }
+  })
+  normalizeIntakeTongue(form)
+  symptoms.forEach((s) => {
+    form.selected[s] = true
+  })
+  const noteLabels = []
+  Object.entries(pathologyNotes).forEach(([label, val]) => {
+    if (val) {
+      form.notes[label] = val
+      noteLabels.push(label)
+    }
+  })
+  if (!filled.length && !symptoms.length && !noteLabels.length) {
+    return false
+  }
+  fillDialogVisible.value = false
+  fillText.value = ''
+  const parts = []
+  if (filled.length) parts.push(`已填充：${filled.join('、')}`)
+  if (symptoms.length) parts.push(`自动勾选 ${symptoms.length} 个症状`)
+  if (noteLabels.length) parts.push(`整理 ${noteLabels.length} 个病理项`)
+  const prefix = source === 'ai' ? 'AI 解析完成' : '已使用本地规则解析'
+  ElMessage.success(`${prefix}：${parts.join('；')}`)
+  return true
+}
+
+async function parseWithAiOrLocal(text) {
+  try {
+    const result = await consultApi.autoFill({ raw_text: text })
+    if (result?.source === 'ai') return result
+  } catch (err) {
+    console.warn('AI auto fill failed, fallback to local parser:', err)
+  }
+  return { ...parseCaseText(text, sections.value), source: 'local' }
+}
+
+async function applyAutoFill() {
+  const text = fillText.value.trim()
+  if (!text) {
+    ElMessage.warning('请先粘贴医案文本')
+    return
+  }
+  autoFilling.value = true
+  try {
+    const result = await parseWithAiOrLocal(text)
+    if (!applyFillResult(result, result.source)) {
+      ElMessage.warning('未能从文本中识别出可填充的信息，请检查格式')
+    }
+  } finally {
+    autoFilling.value = false
+  }
+}
+
+function resetBlockCollapseState() {
+  Object.keys(blockCollapsed).forEach((key) => delete blockCollapsed[key])
+  Object.keys(blockCollapseManual).forEach((key) => delete blockCollapseManual[key])
+  Object.keys(sectionCollapseManual).forEach((key) => delete sectionCollapseManual[key])
+  initBlockCollapseState()
+  sections.value.forEach((section) => {
+    collapsed[section.key] = shouldAutoCollapseEmptyBlocks() ? !sectionHasContent(section) : false
+  })
 }
 
 function resetForm() {
@@ -698,6 +1016,7 @@ function resetForm() {
   sessionId.value = null
   localStorage.removeItem('consult-draft-new')
   draftSavedAt.value = ''
+  resetBlockCollapseState()
   router.replace('/consult')
 }
 
@@ -748,6 +1067,7 @@ async function loadSession(id) {
   form.gender = detail.gender || form.gender
   form.age = detail.age || form.age
   form.modern_diagnosis = detail.modern_diagnosis || form.modern_diagnosis
+  resetBlockCollapseState()
 }
 
 async function loadSymptomPresets() {
@@ -763,12 +1083,16 @@ async function loadSymptomPresets() {
         }))
       }))
       sections.value.forEach((s) => {
-        if (collapsed[s.key] === undefined) collapsed[s.key] = false
+        if (collapsed[s.key] === undefined) {
+          collapsed[s.key] = shouldAutoCollapseEmptyBlocks() ? !sectionHasContent(s) : false
+        }
       })
     }
   } catch {
     sections.value = fallbackSections
   }
+  initBlockCollapseState()
+  syncCollapseState()
 }
 
 async function loadFormulas() {
@@ -784,13 +1108,17 @@ async function loadFormulas() {
 }
 
 watch(
-  () => route.params.id,
+  () => [route.params.id, route.query.from],
   async (id) => {
-    sessionId.value = id ? Number(id) : null
+    const routeId = Array.isArray(id) ? id[0] : id
+    sessionId.value = routeId ? Number(routeId) : null
     if (sessionId.value) {
       await loadSession(sessionId.value)
     } else if (!loadDraft()) {
       Object.assign(form, emptyForm())
+      resetBlockCollapseState()
+    } else {
+      resetBlockCollapseState()
     }
   }
 )
@@ -798,7 +1126,8 @@ watch(
 onMounted(async () => {
   await Promise.all([loadSymptomPresets(), loadFormulas()])
   if (sessionId.value) await loadSession(sessionId.value)
-  else loadDraft()
+  else if (loadDraft()) resetBlockCollapseState()
+  else initBlockCollapseState()
 })
 </script>
 

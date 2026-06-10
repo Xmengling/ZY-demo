@@ -1,25 +1,28 @@
 <template>
   <div class="inquiry-hints-text-wrap" @click.stop>
-    <span v-if="!editing" class="inquiry-hints-text">{{ displayText }}</span>
+    <template v-if="!editing">
+      <span class="inquiry-hints-text">{{ displayText }}</span>
+      <button type="button" class="inquiry-hints-link" @click="toggleEdit">编辑</button>
+    </template>
     <template v-else>
-      <span
-        v-for="(hint, index) in localHints"
-        :key="`${hint}-${index}`"
-        class="inquiry-hints-text inquiry-hints-text--edit"
-      >
-        {{ hint }}
-        <button type="button" class="inquiry-hints-link" @click="removeHint(index)">删</button>
-      </span>
-      <button type="button" class="inquiry-hints-link" @click="addHint">添加</button>
+      <span class="inquiry-hints-colon">：</span>
+      <input
+        ref="inputRef"
+        v-model="editText"
+        class="inquiry-hints-input"
+        type="text"
+        placeholder="输入问诊提示"
+        @keydown.enter.prevent="save"
+        @keydown.esc.prevent="toggleEdit"
+      />
       <button type="button" class="inquiry-hints-link" :disabled="saving" @click="save">保存</button>
       <button type="button" class="inquiry-hints-link" @click="toggleEdit">取消</button>
     </template>
-    <button v-if="!editing" type="button" class="inquiry-hints-link" @click="toggleEdit">编辑</button>
   </div>
 </template>
 
 <script setup>
-import { computed, ref, watch } from 'vue'
+import { computed, nextTick, ref } from 'vue'
 import { ElMessage } from 'element-plus'
 import { consultApi } from '../../api'
 
@@ -32,50 +35,45 @@ const emit = defineEmits(['updated'])
 
 const editing = ref(false)
 const saving = ref(false)
-const localHints = ref([])
+const editText = ref('')
+const inputRef = ref(null)
 
 const displayText = computed(() => {
   const list = (props.hints || []).filter(Boolean)
   return list.length ? list.join(' · ') : ''
 })
 
-watch(
-  () => props.hints,
-  (list) => {
-    if (!editing.value) localHints.value = [...(list || [])]
-  },
-  { immediate: true, deep: true }
-)
+function hintsToEditText(hints) {
+  return (hints || []).filter(Boolean).join(' · ')
+}
 
-function toggleEdit() {
+function editTextToHints(text) {
+  const raw = String(text || '').trim()
+  if (!raw) return []
+  if (raw.includes(' · ')) {
+    return raw.split(' · ').map((s) => s.trim()).filter(Boolean)
+  }
+  return [raw]
+}
+
+async function toggleEdit() {
   if (editing.value) {
     editing.value = false
-    localHints.value = [...(props.hints || [])]
     return
   }
-  localHints.value = [...(props.hints || [])]
+  editText.value = hintsToEditText(props.hints)
   editing.value = true
-}
-
-function addHint() {
-  const text = window.prompt('输入问诊提示')
-  const value = (text || '').trim()
-  if (!value || localHints.value.includes(value)) return
-  localHints.value.push(value)
-}
-
-function removeHint(index) {
-  localHints.value.splice(index, 1)
+  await nextTick()
+  inputRef.value?.focus()
+  inputRef.value?.select()
 }
 
 async function save() {
+  const hints = editTextToHints(editText.value)
   saving.value = true
   try {
-    const data = await consultApi.updateModuleHints(props.moduleKey, {
-      hints: localHints.value.filter(Boolean)
-    })
+    const data = await consultApi.updateModuleHints(props.moduleKey, { hints })
     const next = data?.hints || []
-    localHints.value = [...next]
     editing.value = false
     emit('updated', next)
     ElMessage.success('已保存')
@@ -89,36 +87,54 @@ async function save() {
 
 <style scoped>
 .inquiry-hints-text-wrap {
-  display: inline;
+  display: inline-flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 4px;
   text-align: left;
   line-height: 1.5;
   font-size: 12px;
   font-weight: 400;
   color: #8a94a6;
+  min-width: 0;
 }
 .inquiry-hints-text {
   color: #8a94a6;
 }
-.inquiry-hints-text--edit {
-  margin-right: 6px;
-}
-.inquiry-hints-text--edit::after {
-  content: ' · ';
-  color: #c5cdd8;
-}
-.inquiry-hints-text-wrap > .inquiry-hints-text:first-child::before {
+.inquiry-hints-text::before {
   content: '：';
   color: #c5cdd8;
   margin-right: 2px;
 }
+.inquiry-hints-colon {
+  color: #c5cdd8;
+  flex-shrink: 0;
+}
+.inquiry-hints-input {
+  flex: 1;
+  min-width: 160px;
+  max-width: 100%;
+  height: 26px;
+  padding: 0 8px;
+  border: 1px solid #dce3ec;
+  border-radius: 6px;
+  background: #fff;
+  color: #4b5563;
+  font-size: 12px;
+  outline: none;
+}
+.inquiry-hints-input:focus {
+  border-color: #9fd4b6;
+  box-shadow: 0 0 0 2px rgba(24, 160, 88, 0.1);
+}
 .inquiry-hints-link {
-  margin-left: 8px;
   padding: 0;
   border: none;
   background: none;
   color: #98a2b3;
   font-size: 12px;
   cursor: pointer;
+  flex-shrink: 0;
 }
 .inquiry-hints-link:hover {
   color: #667085;
