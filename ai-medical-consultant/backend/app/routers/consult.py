@@ -24,7 +24,14 @@ from ..schemas import (
     ConsultAutoFillExampleOut,
     MessageOut,
     ModuleHintOut,
+    BulkDeleteSessionsRequest,
+    BulkDeleteSessionsResponse,
+    MergeSessionsRequest,
+    MergeSessionsResponse,
     ModuleHintUpdate,
+    RuleSuggestionOut,
+    SaveUserRuleRequest,
+    SaveUserRuleResponse,
     SessionCreate,
     SessionDetail,
     SessionIntakeUpdate,
@@ -34,7 +41,10 @@ from ..schemas import (
 )
 from ..services.agent import medical_agent
 from ..services.consult_autofill import build_autofill_examples_prompt, load_autofill_examples
-from ..services.ai_reply_format import format_ai_reply
+from ..services.ai_reply_format import extract_followup_questions, format_ai_reply
+from ..services.consult_chat_prompt import build_assistant_system_prompt, classify_assistant_question
+from ..services.session_merge import merge_case_text, merge_intake_data
+from ..services.user_rules import append_user_rule, build_rule_suggestion
 from ..services.consult_knowledge import (
     build_prescription_authority_block,
     build_prescription_notice,
@@ -332,6 +342,7 @@ def list_sessions(
     patient_name: str | None = None,
     doctor: str | None = None,
     ai_chat: bool = Query(False, description="仅返回含 AI 问答记录的会话"),
+    case_only: bool = Query(False, description="仅返回已关联医案内容的会话"),
     db: Session = Depends(get_db),
     user: User = Depends(get_current_user),
 ):
@@ -344,6 +355,8 @@ def list_sessions(
         query = query.filter(assistant_exists)
     rows = query.order_by(ConsultSession.created_at.desc()).all()
     result = [_session_out(s) for s in rows]
+    if case_only:
+        result = [s for s in result if s.linked_case]
     chief_q = (chief_complaint or "").strip()
     patient_q = (patient_name or "").strip()
     doctor_q = (doctor or "").strip()
@@ -555,20 +568,69 @@ def delete_session(
     return {"ok": True}
 
 
-ASSISTANT_SYSTEM_PROMPT = """你是中医经方学习与问诊助手，帮助医生整理思路、补充问诊与方证参考。
+@router.post("/sessions/bulk-delete", response_model=BulkDeleteSessionsResponse)
+def bulk_delete_sessions(
+    payload: BulkDeleteSessionsRequest,
+    db: Session = Depends(get_db),
+    user: User = Depends(get_current_user),
+):
+    ids = sorted({int(item) for item in payload.session_ids})
+    deleted = 0
+    for session_id in ids:
+        s = _get_owned_session(db, session_id, user)
+        db.delete(s)
+        deleted += 1
+    db.commit()
+    return BulkDeleteSessionsResponse(deleted_count=deleted)
 
-请严格遵守：
-1. 仅可依据【本地知识库】中的内容作答，来源限于：用户上传资料、方剂梳理、伤寒论条文解读。
-2. 不得引用互联网、通用教材或知识库中未出现的方剂、条文、药味、剂量与病机说法。
-3. 结合【当前病例摘要】与对话历史作答；可提示还需追问的舌脉腹、寒热汗出、二便等信息。
-4. 若知识库未检索到相关内容，应明确说明「当前知识库中未检索到相关内容」，不要编造。
-5. 用户询问「有哪些文件/资料/方剂/条文」时，只依据【知识库完整目录】作答，不要把【检索摘录】当成全部文件。
-6. 用简洁中文，条理清楚；方证建议标注为「学习参考」，不下确定性诊断，不开具具体处方剂量。
-7. 出现危急症状时，优先建议及时就医。
-8. 若用户上传舌象、检查单等图片，可结合图片可见信息分析，但方证判断仍须以【本地知识库】为准，不得脱离知识库臆测。
-9. 输出格式：纯中文纯文本，禁止使用 Markdown；不要用 #、*、-、> 等符号；分点用「1. 2.」或「一是…二是…」；需要小标题时直接写「标题：」即可，不要加粗、不要项目符号堆砌。
-10. 若【当前病例用方】或病例摘要「方剂」行列出多个用方，必须全部纳入分析，不得只回答其中一两个。
-11. 涉及「当前用方」「处方是否合理」时，必须以【本次问诊用方】与病例摘要「方剂」行为准；历史对话中的旧用方无效；不得把检索摘录里的相似方名（如大柴胡汤与小柴胡汤）当成当前用方。"""
+
+@router.post("/sessions/merge", response_model=MergeSessionsResponse)
+def merge_sessions(
+    payload: MergeSessionsRequest,
+    db: Session = Depends(get_db),
+    user: User = Depends(get_current_user),
+):
+    ids = sorted({int(item) for item in payload.session_ids})
+    target_id = int(payload.target_id)
+    if target_id not in ids:
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, "合并目标必须在所选医案内")
+    if len(ids) < 2:
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, "请至少选择 2 条医案再合并")
+
+    sessions = [_get_owned_session(db, session_id, user) for session_id in ids]
+    target = next(item for item in sessions if item.id == target_id)
+    others = [item for item in sessions if item.id != target_id]
+
+    merged_intake = _loads(target.intake_data)
+    merged_case_text = target.case_text or ""
+    for item in others:
+        merged_intake = merge_intake_data(merged_intake, _loads(item.intake_data))
+        merged_case_text = merge_case_text(merged_case_text, item.case_text or "")
+
+    target.intake_data = json.dumps(merged_intake, ensure_ascii=False)
+    target.case_text = merged_case_text.strip()
+    target.title = _title_from_intake(
+        SessionIntakeUpdate(
+            title=target.title,
+            patient_name=merged_intake.get("patient_name") or target.patient_name,
+            modern_diagnosis=merged_intake.get("modern_diagnosis") or target.modern_diagnosis,
+            intake_data=merged_intake,
+        )
+    )
+    target.patient_name = str(merged_intake.get("patient_name") or target.patient_name or "").strip()
+    target.phone = str(merged_intake.get("phone") or target.phone or "").strip()
+    target.address = str(merged_intake.get("address") or target.address or "").strip()
+    target.gender = str(merged_intake.get("gender") or target.gender or "").strip()
+    target.age = str(merged_intake.get("age") or target.age or "").strip()
+    target.modern_diagnosis = str(
+        merged_intake.get("modern_diagnosis") or target.modern_diagnosis or ""
+    ).strip()
+
+    for item in others:
+        db.delete(item)
+    db.commit()
+    db.refresh(target)
+    return MergeSessionsResponse(session_id=target.id, merged_count=len(ids))
 
 
 def _prepare_assistant_chat(
@@ -612,19 +674,22 @@ def _prepare_assistant_chat(
         part for part in (text, prescription_query, case_context[:1200]) if part
     ) or "舌象 脉象 症状"
     inventory = consult_knowledge.build_inventory(db)
-    docs = consult_knowledge.search_with_prescriptions(
-        db, retrieve_query, prescription_names, k=6
-    )
+    docs = consult_knowledge.search_enhanced(db, retrieve_query, prescription_names, k=6)
     kb_context = consult_knowledge.build_context(docs)
     references = consult_knowledge.build_references(docs)
 
-    system_content = ASSISTANT_SYSTEM_PROMPT
     prescription_notice = build_prescription_notice(prescription_items)
     prescription_authority = build_prescription_authority_block(case_context, prescription_items)
-    if prescription_notice:
-        system_content += f"\n\n{prescription_notice}"
-    if case_context:
-        system_content += f"\n\n【当前病例摘要】\n{case_context}"
+    question_type = classify_assistant_question(
+        text,
+        has_case=bool(case_context),
+        prescription_names=prescription_names,
+    )
+    system_content = build_assistant_system_prompt(
+        question_type,
+        case_context=case_context,
+        prescription_notice=prescription_notice,
+    )
 
     llm_messages: list[dict[str, Any]] = [{"role": "system", "content": system_content}]
     for message in session.messages[-12:]:
@@ -643,6 +708,8 @@ def _prepare_assistant_chat(
     user_block = "\n\n".join(user_parts)
     llm_messages.append({"role": "user", "content": build_user_content(user_block, images)})
 
+    rule_suggestion = build_rule_suggestion(text)
+
     return {
         "session": session,
         "messages": llm_messages,
@@ -650,6 +717,7 @@ def _prepare_assistant_chat(
         "user_display": user_display,
         "user_meta": user_meta,
         "text": text,
+        "rule_suggestion": rule_suggestion,
     }
 
 
@@ -668,12 +736,16 @@ def _save_assistant_exchange(db: Session, ctx: dict[str, Any], reply: str) -> Co
             meta=json.dumps(user_meta, ensure_ascii=False) if user_meta else "",
         )
     )
+    followups = extract_followup_questions(reply)
+    assistant_meta: dict[str, Any] = {"references": references}
+    if followups:
+        assistant_meta["followups"] = followups
     db.add(
         Message(
             session_id=session.id,
             role="assistant",
             content=reply,
-            meta=json.dumps({"references": references}, ensure_ascii=False),
+            meta=json.dumps(assistant_meta, ensure_ascii=False),
         )
     )
     if session.title in ("新的问诊", "") or len(session.title or "") < 3:
@@ -692,13 +764,22 @@ def assistant_chat(
 ):
     ctx = _prepare_assistant_chat(db, user, payload)
     try:
-        reply = format_ai_reply(llm_service.chat(ctx["messages"], temperature=0.3))
+        raw_reply = llm_service.chat(ctx["messages"], temperature=0.3)
+        followups = extract_followup_questions(raw_reply)
+        reply = format_ai_reply(raw_reply)
     except Exception as exc:
         db.rollback()
         raise HTTPException(status.HTTP_502_BAD_GATEWAY, "AI 回复失败，请稍后重试") from exc
 
     session = _save_assistant_exchange(db, ctx, reply)
-    return ChatResponse(session_id=session.id, reply=reply, references=ctx["references"])
+    rule_suggestion = ctx.get("rule_suggestion")
+    return ChatResponse(
+        session_id=session.id,
+        reply=reply,
+        references=ctx["references"],
+        followups=followups,
+        rule_suggestion=RuleSuggestionOut(**rule_suggestion) if rule_suggestion else None,
+    )
 
 
 @router.post("/assistant/stream")
@@ -710,6 +791,7 @@ def assistant_chat_stream(
     ctx = _prepare_assistant_chat(db, user, payload)
     session_id = ctx["session"].id
     references = ctx["references"]
+    rule_suggestion = ctx.get("rule_suggestion")
 
     def event_stream():
         parts: list[str] = []
@@ -718,7 +800,9 @@ def assistant_chat_stream(
             for token in llm_service.stream(ctx["messages"], temperature=0.3):
                 parts.append(token)
                 yield f"data: {json.dumps({'type': 'token', 'content': token}, ensure_ascii=False)}\n\n"
-            reply = format_ai_reply("".join(parts))
+            raw_reply = "".join(parts)
+            followups = extract_followup_questions(raw_reply)
+            reply = format_ai_reply(raw_reply)
             _save_assistant_exchange(db, ctx, reply)
             yield (
                 "data: "
@@ -728,6 +812,8 @@ def assistant_chat_stream(
                         "session_id": session_id,
                         "reply": reply,
                         "references": references,
+                        "followups": followups,
+                        "rule_suggestion": rule_suggestion,
                     },
                     ensure_ascii=False,
                 )
@@ -746,6 +832,18 @@ def assistant_chat_stream(
             "X-Accel-Buffering": "no",
         },
     )
+
+
+@router.post("/assistant/rules", response_model=SaveUserRuleResponse)
+def save_assistant_user_rule(
+    payload: SaveUserRuleRequest,
+    user: User = Depends(get_current_user),
+):
+    del user
+    ok, message = append_user_rule(payload.rule_text, source_message=payload.source_message)
+    if not ok:
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, message)
+    return SaveUserRuleResponse(ok=True, message=message)
 
 
 @router.post("/chat", response_model=ChatResponse)

@@ -243,10 +243,7 @@ async function renameFile(row) {
 }
 
 async function removeFile(row) {
-  const ok = await confirmDeleteTwice(
-    `将删除文件「${row.filename}」。`,
-    `再次确认：删除后无法恢复，确定删除「${row.filename}」吗？`
-  )
+  const ok = await confirmDeleteTwice(`将删除文件「${row.filename}」，删除后无法恢复。`)
   if (!ok) return
   const res = await knowledgeApi.deleteFile(row.id)
   ElMessage.success(res.message || '已删除')

@@ -399,6 +399,9 @@
           <ConsultAiChat
             :session-id="sessionId"
             :case-context="caseSummaryText"
+            :formula-names="prescriptionSectionTags"
+            :pathology-scores="pathologyScores"
+            :has-chief-complaint="hasChiefComplaint"
             @session-created="onAiSessionCreated"
           />
         </div>
@@ -628,6 +631,8 @@ const consultSummaryLines = computed(() => buildConsultSummaryLines(form, sectio
 
 const hasConsultSummary = computed(() => consultSummaryLines.value.some((item) => item.text))
 
+const hasChiefComplaint = computed(() => Boolean(String(form.chief_complaint || '').trim()))
+
 const prescriptionSectionTags = computed(() =>
   (form.prescription?.rows || [])
     .map((row) => String(row?.name || '').trim())
@@ -680,7 +685,7 @@ const adjacentCaseHint = computed(() => {
 
 async function loadSessionNavList() {
   try {
-    sessionNavList.value = await consultApi.listSessions()
+    sessionNavList.value = await consultApi.listSessions({ case_only: true })
   } catch {
     sessionNavList.value = []
   }

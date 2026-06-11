@@ -520,26 +520,43 @@ function resizeAutoTextareas() {
   $$(".textarea-auto").forEach(autoResizeTextarea);
 }
 
-function getArticlePreviewMaxWidth(collapsed) {
-  const actions = document.querySelector(".preview-card-area .card-side-actions");
-  const actionsWidth = (actions?.offsetWidth || 52) + 8;
+function getArticlePreviewMaxWidth() {
+  const area = document.querySelector(".preview-card-area");
+  const actions = area?.querySelector(".card-side-actions");
+  const gap = 8;
+  const actionsWidth = actions?.offsetWidth || 40;
+  if (area?.clientWidth) {
+    return Math.max(240, area.clientWidth - actionsWidth - gap);
+  }
+  const previewEl = document.querySelector(".preview-panel");
+  if (previewEl?.clientWidth) {
+    return Math.max(240, previewEl.clientWidth - actionsWidth - gap - 8);
+  }
   const workspace = document.querySelector(".main-workspace");
+  const listEl = document.querySelector(".list-panel");
+  const editorEl = document.querySelector(".editor-panel");
+  const collapsed = workspace?.classList.contains("list-collapsed");
   const workspacePadding = workspace
     ? parseFloat(getComputedStyle(workspace).paddingLeft) + parseFloat(getComputedStyle(workspace).paddingRight)
     : 24;
-  const listWidth = collapsed ? 0 : 300;
-  const editorWidth = 460;
-  const gap = collapsed ? 12 : 24;
-  const shellPadding = 12;
+  const listWidth = collapsed ? 0 : (listEl?.offsetWidth || 300);
+  const editorWidth = editorEl?.offsetWidth || 460;
+  const gridGap = 12;
   return Math.max(
     240,
-    window.innerWidth - listWidth - editorWidth - gap - workspacePadding - actionsWidth - shellPadding,
+    window.innerWidth - listWidth - editorWidth - gridGap - workspacePadding - actionsWidth - gap,
   );
 }
 
 function setListPanelCollapsed(collapsed) {
-  state.listCollapsed = collapsed;
-  $(".main-workspace").classList.toggle("list-collapsed", collapsed);
+  const workspace = document.querySelector(".main-workspace");
+  const toggleBtn = $("#toggle-list-panel");
+  if (!workspace || !toggleBtn) return;
+  state.listCollapsed = Boolean(collapsed);
+  workspace.classList.toggle("list-collapsed", state.listCollapsed);
+  const actionText = state.listCollapsed ? "展开左侧栏" : "收起左侧栏";
+  toggleBtn.setAttribute("aria-label", actionText);
+  toggleBtn.setAttribute("title", actionText);
   requestAnimationFrame(fitArticleCardPreview);
 }
 
@@ -547,23 +564,17 @@ function fitArticleCardPreview() {
   const viewport = $(".article-card-viewport");
   const card = $("#article-card");
   if (!viewport || !card) return;
-  const workspace = document.querySelector(".main-workspace");
-  const collapsed = workspace?.classList.contains("list-collapsed");
 
   card.style.transform = "none";
   viewport.style.height = "auto";
   viewport.style.width = "auto";
   const naturalHeight = Math.max(card.offsetHeight, card.scrollHeight, CARD_EXPORT_HEIGHT);
   const naturalWidth = CARD_EXPORT_WIDTH;
-  const maxWidth = getArticlePreviewMaxWidth(collapsed);
-  const scaleByWidth = maxWidth / naturalWidth;
-  const scaleByHeight = (window.innerHeight - 112) / naturalHeight;
-  const scale = collapsed
-    ? scaleByWidth
-    : Math.min(scaleByWidth, scaleByHeight, 1);
+  const maxWidth = getArticlePreviewMaxWidth();
+  const scale = maxWidth / naturalWidth;
   card.style.transform = `scale(${scale})`;
+  viewport.style.width = `${maxWidth}px`;
   viewport.style.height = `${naturalHeight * scale}px`;
-  viewport.style.width = `${naturalWidth * scale}px`;
 }
 
 function segmentFont(segment, baseFont) {
@@ -1000,6 +1011,10 @@ window.addEventListener("resize", () => {
     fitArticleCardPreview();
   });
 });
+const previewCardArea = document.querySelector(".preview-card-area");
+if (previewCardArea && typeof ResizeObserver !== "undefined") {
+  new ResizeObserver(() => requestAnimationFrame(fitArticleCardPreview)).observe(previewCardArea);
+}
 
 loadData().catch((error) => {
   console.error(error);

@@ -60,30 +60,41 @@ p {
 
 .app-shell-embedded {
   min-height: 100%;
+  height: 100vh;
   padding: 0;
   gap: 0;
+  align-items: stretch;
+  overflow: hidden;
 }
 
 .main-workspace {
+  --ws-pad: 12px;
+  --list-col: 300px;
+  --ws-gap: 12px;
+  --toggle-w: 24px;
+  --toggle-h: 48px;
   position: relative;
   display: grid;
-  grid-template-columns: 300px 460px auto;
-  align-items: flex-start;
-  gap: 12px;
-  width: max-content;
+  grid-template-columns: var(--list-col) 460px minmax(0, 1fr);
+  grid-template-rows: minmax(0, 1fr);
+  align-items: stretch;
+  gap: var(--ws-gap);
+  width: 100%;
   max-width: 100%;
-  margin: 0 auto;
+  margin: 0;
   min-height: 0;
-  padding: 12px;
+  padding: var(--ws-pad);
+  box-sizing: border-box;
 }
 
 .workspace-toggle {
   position: absolute;
-  left: 8px;
-  top: 18px;
-  z-index: 10;
-  width: 26px;
-  height: 52px;
+  left: calc(var(--ws-pad) + var(--list-col) + var(--ws-gap) / 2 - var(--toggle-w) / 2);
+  top: 50%;
+  transform: translateY(-50%);
+  z-index: 20;
+  width: var(--toggle-w);
+  height: var(--toggle-h);
   border: 1px solid #bad0ff;
   border-radius: 999px;
   background: #fff;
@@ -91,17 +102,27 @@ p {
   display: grid;
   place-items: center;
   padding: 0;
+  box-shadow: 0 4px 14px rgba(34, 70, 130, 0.12);
+  transition: left 0.18s ease, box-shadow 0.18s ease;
 }
 
 .workspace-toggle span::before {
   content: "◀";
   font-size: 14px;
+  line-height: 1;
+}
+
+.workspace-toggle:hover {
+  background: #f6f9ff;
+  box-shadow: 0 6px 18px rgba(34, 70, 130, 0.16);
 }
 
 .main-workspace.list-collapsed {
   grid-template-columns: 460px minmax(0, 1fr);
-  width: 100%;
-  max-width: 100%;
+}
+
+.main-workspace.list-collapsed .workspace-toggle {
+  left: calc(var(--ws-pad) - 2px);
 }
 
 .main-workspace.list-collapsed .workspace-toggle span::before {
@@ -125,8 +146,9 @@ p {
 }
 
 .preview-panel {
-  width: max-content;
+  width: auto;
   min-width: 0;
+  max-width: 100%;
   max-height: calc(100vh - 24px);
 }
 
@@ -477,7 +499,7 @@ p {
 .term-entry {
   position: relative;
   display: grid;
-  grid-template-columns: 1fr 26px;
+  grid-template-columns: auto 26px;
   grid-template-areas:
     "label delete"
     "text text";
@@ -510,18 +532,19 @@ p {
 .term-label-input {
   grid-area: label;
   justify-self: start;
-  width: 68px;
-  max-width: 68px;
-  height: 14px;
-  padding: 0 4px;
+  width: 3em;
+  min-width: 32px;
+  max-width: 48px;
+  height: 20px;
+  padding: 0 2px;
   border: 1px dotted #9eb8ff;
   border-radius: 4px;
   background: #fff;
   color: var(--blue-dark);
   font-size: 11px;
-  line-height: 12px;
+  line-height: 18px;
   font-weight: 900;
-  text-align: left;
+  text-align: center;
   outline: none;
   transition: border-color .15s ease, background .15s ease;
 }
@@ -777,12 +800,15 @@ p {
   align-items: flex-start;
   justify-content: flex-start;
   gap: 8px;
-  width: max-content;
+  width: 100%;
+  max-width: 100%;
   min-height: 0;
+  flex: 1 0 auto;
 }
 
 .article-card-viewport {
-  flex: 0 0 auto;
+  flex: 1 1 auto;
+  min-width: 0;
   min-height: 0;
   max-width: 100%;
   overflow: hidden;
@@ -790,11 +816,10 @@ p {
 }
 
 .card-side-actions {
-  flex: 0 0 auto;
   flex-shrink: 0;
   display: flex;
   flex-direction: column;
-  gap: 14px;
+  gap: 8px;
   padding-top: 8px;
   position: sticky;
   top: 8px;
@@ -803,16 +828,23 @@ p {
 }
 
 .side-action-btn {
-  width: 48px;
-  min-height: 96px;
-  border: 0;
-  border-radius: 999px;
-  background: linear-gradient(180deg, #477cff, #245ed6);
+  min-width: 34px;
+  min-height: 72px;
+  border: 1px solid var(--blue);
+  border-radius: 6px;
+  padding: 6px 4px;
+  background: var(--blue);
   color: #fff;
-  font-weight: 900;
+  font-size: 12px;
+  font-weight: 800;
   writing-mode: vertical-rl;
-  letter-spacing: 2px;
-  box-shadow: 0 12px 26px rgba(71, 124, 255, .28);
+  text-orientation: mixed;
+  letter-spacing: 0.5px;
+  box-shadow: none;
+}
+
+.side-action-btn:hover {
+  background: var(--blue-dark);
 }
 
 .article-card {
@@ -1106,8 +1138,25 @@ p {
 }
 
 .app-shell-embedded .main-workspace {
-  width: max-content;
+  width: 100%;
   max-width: 100%;
+  flex: 1;
+  min-height: 0;
+  height: 100%;
+  max-height: 100vh;
+  overflow: hidden;
+}
+
+.app-shell-embedded .list-panel,
+.app-shell-embedded .editor-panel,
+.app-shell-embedded .preview-panel {
+  min-height: 0;
+  max-height: 100%;
+}
+
+.app-shell-embedded .preview-panel {
+  overflow-x: hidden;
+  overflow-y: auto;
 }
 
 .main-workspace.list-collapsed .editor-panel {
@@ -1116,7 +1165,7 @@ p {
 }
 
 .main-workspace.list-collapsed .preview-panel {
-  width: 100%;
+  width: auto;
   min-width: 0;
   max-width: 100%;
   overflow-x: hidden;
@@ -1126,11 +1175,6 @@ p {
 .main-workspace.list-collapsed .preview-card-area {
   width: 100%;
   max-width: 100%;
-  justify-content: center;
+  justify-content: flex-start;
   overflow: visible;
-}
-
-.app-shell-embedded .main-workspace.list-collapsed {
-  width: 100%;
-  max-width: 100%;
 }

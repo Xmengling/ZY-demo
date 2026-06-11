@@ -43,11 +43,14 @@ export const consultApi = {
   createSession: (data) => api.post('/v1/consult/sessions', data),
   saveIntake: (id, data) => api.patch(`/v1/consult/sessions/${id}/intake`, data),
   deleteSession: (id) => api.delete(`/v1/consult/sessions/${id}`),
+  bulkDeleteSessions: (data) => api.post('/v1/consult/sessions/bulk-delete', data),
+  mergeSessions: (data) => api.post('/v1/consult/sessions/merge', data),
   autoFill: (data) => api.post('/v1/consult/auto-fill', data, { silent: true, timeout: 90000 }),
   chat: (data) => api.post('/v1/consult/chat', data),
   assistantChat: (data) => api.post('/v1/consult/assistant', data, { timeout: 180000 }),
   assistantChatStream: (data, handlers, signal) =>
-    import('../utils/assistantChatStream').then((m) => m.assistantChatStream(data, handlers, signal))
+    import('../utils/assistantChatStream').then((m) => m.assistantChatStream(data, handlers, signal)),
+  saveAssistantRule: (data) => api.post('/v1/consult/assistant/rules', data, { silent: true })
 }
 
 export const knowledgeApi = {

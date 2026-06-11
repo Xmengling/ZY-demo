@@ -35,6 +35,7 @@
             :key="item"
             type="button"
             class="ai-chat-suggestion"
+            :disabled="sending"
             @click="applySuggestion(item)"
           >
             {{ item }}
@@ -72,8 +73,18 @@
             <span class="ai-chat-refs-label">参考来源</span>
             <div class="ai-chat-refs-list">
               <template v-for="(ref, refIndex) in msg.references" :key="`${index}-ref-${refIndex}`">
+                <button
+                  v-if="isUploadReference(ref)"
+                  type="button"
+                  class="ai-chat-ref-chip is-upload"
+                  :title="uploadRefHint(ref)"
+                  @click="openUploadSnippet(ref)"
+                >
+                  <span class="ai-chat-ref-cat">{{ referenceCategoryLabel(ref) }}</span>
+                  <span class="ai-chat-ref-title">{{ referenceDisplayTitle(ref) }}</span>
+                </button>
                 <router-link
-                  v-if="referenceRoute(ref)"
+                  v-else-if="referenceRoute(ref)"
                   :to="referenceRoute(ref)"
                   class="ai-chat-ref-chip"
                   :title="refHint(ref)"
@@ -104,6 +115,26 @@
           <span class="typing-dot" />
           <span class="typing-dot" />
         </div>
+      </div>
+    </div>
+
+    <div v-if="ruleSuggestion" class="ai-rule-confirm">
+      <div class="ai-rule-confirm-main">
+        <div class="ai-rule-confirm-title">检测到纠正意见，是否记入永久规则？</div>
+        <div class="ai-rule-confirm-text">{{ ruleSuggestion.rule_text }}</div>
+      </div>
+      <div class="ai-rule-confirm-actions">
+        <button
+          type="button"
+          class="ai-rule-btn is-primary"
+          :disabled="savingRule"
+          @click="confirmSaveRule"
+        >
+          {{ savingRule ? '保存中…' : '记入永久规则' }}
+        </button>
+        <button type="button" class="ai-rule-btn" :disabled="savingRule" @click="dismissRuleSuggestion">
+          暂不
+        </button>
       </div>
     </div>
 
@@ -156,6 +187,24 @@
         </button>
       </div>
     </footer>
+
+    <el-dialog
+      v-model="snippetDialogVisible"
+      :title="snippetDialogTitle"
+      width="min(720px, 92vw)"
+      class="ai-chat-snippet-dialog"
+      destroy-on-close
+      append-to-body
+    >
+      <div v-loading="snippetDialogLoading" class="ai-chat-snippet-body">
+        <p class="ai-chat-snippet-tip">以下为本次问答检索到的关联片段</p>
+        <pre class="ai-chat-snippet-content">{{ snippetDialogContent }}</pre>
+      </div>
+      <template #footer>
+        <el-button @click="snippetDialogVisible = false">关闭</el-button>
+        <el-button type="primary" plain @click="goKnowledgePage">在知识库查看全文</el-button>
+      </template>
+    </el-dialog>
   </div>
 </template>
 
@@ -164,8 +213,9 @@ import { computed, nextTick, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import { ChatDotRound, Picture, Promotion, User } from '@element-plus/icons-vue'
-import { consultApi } from '../../api'
+import { consultApi, knowledgeApi } from '../../api'
 import {
+  isUploadReference,
   normalizeReferences,
   referenceCategoryLabel,
   referenceDisplayTitle,
@@ -173,39 +223,100 @@ import {
 } from '../../utils/aiReferences'
 import { formatAiReply } from '../../utils/aiReplyFormat'
 import { MAX_IMAGES, readImageAsDataUrl, validateImageFile } from '../../utils/imageUpload'
+import { buildHomeSuggestions } from '../../utils/homeSuggestions'
 import { isLinkedCaseSession } from '../../utils/sessionCase'
 
 const props = defineProps({
   sessionId: { type: Number, default: null },
   caseContext: { type: String, default: '' },
   welcomeMode: { type: String, default: 'consult' },
+  askedQuestions: { type: Array, default: () => [] },
+  formulaNames: { type: Array, default: () => [] },
+  pathologyScores: { type: Array, default: () => [] },
+  hasChiefComplaint: { type: Boolean, default: false },
   redirectToConsult: { type: Boolean, default: true },
   embedded: { type: Boolean, default: true }
 })
 
 const emit = defineEmits(['session-created', 'message-sent'])
 
-const consultSuggestions = ['这个案子主方倾向什么？', '还需追问哪些信息？', '与相近方证如何鉴别？']
-const homeSuggestions = ['大青龙汤方证要点是什么？', '太阳病提纲有哪些？', '帮我鉴别相近方剂']
-
-const suggestions = computed(() => (props.welcomeMode === 'home' ? homeSuggestions : consultSuggestions))
-
-const welcomeText = computed(() =>
-  props.welcomeMode === 'home'
-    ? '仅依据知识库上传资料、方剂梳理、伤寒论条文解读作答。'
-    : '仅依据知识库上传资料、方剂梳理、伤寒论条文解读作答；发送时会附带当前病例摘要。'
-)
-
 const router = useRouter()
 const messages = ref([])
 const draft = ref('')
 const pendingImages = ref([])
 const sending = ref(false)
+const savingRule = ref(false)
+const ruleSuggestion = ref(null)
 const messageBoxRef = ref(null)
 const fileInputRef = ref(null)
 const aiReady = ref(true)
 const linkedCase = ref(false)
 const maxImages = MAX_IMAGES
+const snippetDialogVisible = ref(false)
+const snippetDialogLoading = ref(false)
+const snippetDialogTitle = ref('')
+const snippetDialogContent = ref('')
+
+const consultBaseSuggestions = ['分析一下本例医案？', '还需追问哪些信息？', '使用方剂参考？']
+
+const homeSuggestions = computed(() => {
+  const history = [...(props.askedQuestions || [])]
+  for (const msg of messages.value) {
+    if (msg.role === 'user' && msg.content && msg.content !== '（已发送图片）') {
+      history.push(msg.content)
+    }
+  }
+  return buildHomeSuggestions(history)
+})
+
+const suggestions = computed(() => (
+  props.welcomeMode === 'home'
+    ? homeSuggestions.value
+    : uniqueSuggestions([...consultBaseSuggestions, ...dynamicConsultSuggestions.value])
+))
+
+const welcomeText = computed(() =>
+  props.welcomeMode === 'home'
+    ? '试试下方问题，回答会紧扣问题组织，便于复习'
+    : '试试下方问题，将结合本例摘要灵活作答'
+)
+
+const normalizedFormulaNames = computed(() =>
+  uniqueSuggestions(
+    (props.formulaNames || [])
+      .map((name) => String(name || '').trim())
+      .filter(Boolean)
+  )
+)
+
+const pathologyScoreLabels = computed(() =>
+  (props.pathologyScores || [])
+    .map((item) => String(item?.label || item || '').trim())
+    .filter(Boolean)
+    .slice(0, 2)
+)
+
+const dynamicConsultSuggestions = computed(() => {
+  const items = []
+  const formulaQuestion = buildFormulaQuestion(normalizedFormulaNames.value)
+  if (formulaQuestion) items.push(formulaQuestion)
+  if (props.hasChiefComplaint) items.push('这类症状更偏向哪类方证？')
+  if (pathologyScoreLabels.value.length) {
+    items.push(`${pathologyScoreLabels.value.join('、')}在本例中证据是否充分？`)
+  }
+  return items
+})
+
+function uniqueSuggestions(items) {
+  return [...new Set((items || []).filter(Boolean))]
+}
+
+function buildFormulaQuestion(names) {
+  if (!names.length) return ''
+  if (names.includes('五苓散') || names.includes('猪苓汤')) return '五苓散与猪苓汤如何鉴别？'
+  if (names.length >= 2) return `${names[0]}与${names[1]}如何鉴别？`
+  return `${names[0]}与相近方证如何鉴别？`
+}
 
 const canSend = computed(() => Boolean(draft.value.trim() || pendingImages.value.length))
 const showCaseLink = computed(
@@ -224,8 +335,9 @@ function scrollToBottom() {
   })
 }
 
-function applySuggestion(text) {
-  draft.value = text
+async function applySuggestion(text) {
+  if (!text || sending.value) return
+  await send(text)
 }
 
 function displayContent(msg) {
@@ -244,6 +356,57 @@ function refHint(ref) {
   const parts = [referenceCategoryLabel(ref), referenceDisplayTitle(ref)]
   if (ref?.score > 0) parts.push(`相关度 ${ref.score}`)
   return parts.filter(Boolean).join(' · ')
+}
+
+function uploadRefHint(ref) {
+  return `${refHint(ref)} · 点击查看关联片段`
+}
+
+function goKnowledgePage() {
+  snippetDialogVisible.value = false
+  router.push({ name: 'knowledge' })
+}
+
+async function resolveUploadFileId(ref) {
+  if (ref?.fileId) return ref.fileId
+  const name = referenceDisplayTitle(ref)
+  if (!name) return null
+  try {
+    const files = await knowledgeApi.listFiles()
+    const row = (files || []).find((item) => item.filename === name)
+    return row?.id || null
+  } catch {
+    return null
+  }
+}
+
+async function openUploadSnippet(ref) {
+  snippetDialogTitle.value = referenceDisplayTitle(ref) || '上传资料'
+  snippetDialogContent.value = ''
+  snippetDialogVisible.value = true
+
+  if (ref?.snippet) {
+    snippetDialogContent.value = ref.snippet
+    return
+  }
+
+  snippetDialogLoading.value = true
+  try {
+    const fileId = await resolveUploadFileId(ref)
+    if (!fileId) {
+      snippetDialogContent.value = '未找到该文件或暂无检索片段。'
+      return
+    }
+    const res = await knowledgeApi.previewFile(fileId)
+    const content = String(res?.content || '').trim()
+    snippetDialogContent.value = content
+      ? content.slice(0, 4000) + (content.length > 4000 ? '\n…' : '')
+      : '（文件为空）'
+  } catch {
+    snippetDialogContent.value = '加载片段失败，请稍后在知识库页查看。'
+  } finally {
+    snippetDialogLoading.value = false
+  }
 }
 
 async function loadMessages(id) {
@@ -311,13 +474,15 @@ function removePendingImage(index) {
   pendingImages.value.splice(index, 1)
 }
 
-async function send() {
-  const text = draft.value.trim()
+async function send(messageText) {
+  const text = (typeof messageText === 'string' ? messageText : draft.value).trim()
   const images = pendingImages.value.map((item) => item.url)
   if ((!text && !images.length) || sending.value) return
 
   sending.value = true
-  draft.value = ''
+  if (typeof messageText !== 'string') {
+    draft.value = ''
+  }
   pendingImages.value = []
   messages.value.push({
     role: 'user',
@@ -371,6 +536,9 @@ async function send() {
           msg.streaming = false
           sid = payload.session_id || sid
           aiReady.value = true
+          if (payload?.rule_suggestion?.rule_text) {
+            ruleSuggestion.value = payload.rule_suggestion
+          }
           emit('message-sent', sid)
           scrollToBottom()
         }
@@ -392,9 +560,34 @@ async function send() {
   }
 }
 
+function dismissRuleSuggestion() {
+  ruleSuggestion.value = null
+}
+
+async function confirmSaveRule() {
+  const suggestion = ruleSuggestion.value
+  if (!suggestion?.rule_text || savingRule.value) return
+  savingRule.value = true
+  try {
+    const res = await consultApi.saveAssistantRule({
+      rule_text: suggestion.rule_text,
+      source_message: suggestion.source_message || ''
+    })
+    ElMessage.success(res?.message || '已记入永久规则')
+    ruleSuggestion.value = null
+  } catch (err) {
+    const detail = err?.response?.data?.detail
+    ElMessage.warning(typeof detail === 'string' ? detail : '保存失败')
+  } finally {
+    savingRule.value = false
+  }
+}
+
 watch(
   () => props.sessionId,
   (id) => {
+    if (sending.value || isStreamingReply.value) return
+    ruleSuggestion.value = null
     loadMessages(id)
   },
   { immediate: true }
@@ -542,15 +735,32 @@ watch(
 
 .ai-chat-welcome {
   margin: auto 0;
-  padding: 8px 4px 12px;
-  text-align: center;
+  width: 100%;
+  max-width: 360px;
+  align-self: center;
+  padding: 4px 8px 8px;
 }
 
 .ai-chat-welcome-text {
-  margin: 0 0 12px;
-  font-size: 12px;
-  line-height: 1.6;
+  margin: 0 0 8px;
+  font-size: 11px;
+  line-height: 1.5;
   color: #667085;
+  text-align: center;
+}
+
+.ai-chat-welcome .ai-chat-suggestions {
+  gap: 6px;
+}
+
+.ai-chat-welcome .ai-chat-suggestion {
+  width: 100%;
+  font-size: 11px;
+  font-weight: 600;
+  padding: 5px 10px;
+  border-radius: 8px;
+  text-align: left;
+  line-height: 1.45;
 }
 
 .ai-chat-suggestions {
@@ -571,9 +781,14 @@ watch(
   transition: background 0.15s ease, border-color 0.15s ease, transform 0.15s ease;
 }
 
-.ai-chat-suggestion:hover {
+.ai-chat-suggestion:hover:not(:disabled) {
   background: #f0f5ff;
   border-color: #9ebfff;
+}
+
+.ai-chat-suggestion:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
 }
 
 .ai-chat-row {
@@ -744,7 +959,7 @@ watch(
 .ai-chat-text {
   white-space: pre-wrap;
   word-break: break-word;
-  line-height: 1.75;
+  line-height: 1.8;
   letter-spacing: 0.01em;
 }
 
@@ -782,7 +997,12 @@ watch(
   font-size: 10px;
   line-height: 1.35;
   text-decoration: none;
+  font-family: inherit;
   transition: background 0.15s ease, border-color 0.15s ease, color 0.15s ease;
+}
+
+.ai-chat-ref-chip.is-upload {
+  cursor: pointer;
 }
 
 .ai-chat-ref-chip:hover {
@@ -810,6 +1030,94 @@ watch(
   text-overflow: ellipsis;
   white-space: nowrap;
   font-weight: 600;
+}
+
+.ai-chat-snippet-body {
+  min-height: 120px;
+}
+
+.ai-chat-snippet-tip {
+  margin: 0 0 8px;
+  font-size: 12px;
+  color: #667085;
+}
+
+.ai-chat-snippet-content {
+  margin: 0;
+  max-height: 52vh;
+  overflow: auto;
+  padding: 12px;
+  border-radius: 8px;
+  background: #f8fafc;
+  border: 1px solid #e8eef6;
+  font-size: 12px;
+  line-height: 1.65;
+  white-space: pre-wrap;
+  word-break: break-word;
+  color: #344054;
+}
+
+.ai-rule-confirm {
+  flex-shrink: 0;
+  margin: 0 10px 8px;
+  padding: 10px 12px;
+  border: 1px solid #f5d0a8;
+  border-radius: 10px;
+  background: linear-gradient(180deg, #fffaf3 0%, #fff7ec 100%);
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.ai-rule-confirm-main {
+  min-width: 0;
+  flex: 1;
+}
+
+.ai-rule-confirm-title {
+  font-size: 12px;
+  font-weight: 600;
+  color: #9a5b13;
+  margin-bottom: 4px;
+}
+
+.ai-rule-confirm-text {
+  font-size: 12px;
+  line-height: 1.55;
+  color: #5c3b1e;
+  word-break: break-word;
+}
+
+.ai-rule-confirm-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  flex-shrink: 0;
+}
+
+.ai-rule-btn {
+  border: 1px solid #d6e2ef;
+  border-radius: 8px;
+  background: #fff;
+  color: #475467;
+  font-size: 12px;
+  line-height: 1;
+  padding: 8px 10px;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.ai-rule-btn.is-primary {
+  border-color: #f0b35b;
+  background: #fff4e5;
+  color: #9a5b13;
+  font-weight: 600;
+}
+
+.ai-rule-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
 }
 
 .ai-chat-composer-box {

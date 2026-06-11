@@ -78,6 +78,26 @@ class SessionDetail(SessionOut):
     case_text: str = ""
 
 
+class BulkDeleteSessionsRequest(BaseModel):
+    session_ids: List[int] = Field(..., min_length=1, max_length=50)
+
+
+class BulkDeleteSessionsResponse(BaseModel):
+    ok: bool = True
+    deleted_count: int = 0
+
+
+class MergeSessionsRequest(BaseModel):
+    session_ids: List[int] = Field(..., min_length=2, max_length=20)
+    target_id: int
+
+
+class MergeSessionsResponse(BaseModel):
+    ok: bool = True
+    session_id: int
+    merged_count: int
+
+
 class SessionIntakeUpdate(BaseModel):
     title: Optional[str] = None
     patient_name: str = ""
@@ -151,10 +171,27 @@ class AssistantChatRequest(BaseModel):
         return self
 
 
+class RuleSuggestionOut(BaseModel):
+    rule_text: str
+    source_message: str = ""
+
+
+class SaveUserRuleRequest(BaseModel):
+    rule_text: str = Field(..., min_length=4, max_length=500)
+    source_message: str = Field("", max_length=2000)
+
+
+class SaveUserRuleResponse(BaseModel):
+    ok: bool
+    message: str
+
+
 class ChatResponse(BaseModel):
     session_id: int
     reply: str
     references: List[dict[str, Any]] = []
+    followups: List[str] = []
+    rule_suggestion: Optional[RuleSuggestionOut] = None
 
 
 # ---------- 知识库 ----------

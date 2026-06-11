@@ -9,7 +9,10 @@ export function normalizeReferences(refs) {
       category: String(item?.category || '').trim(),
       department: String(item?.department || '').trim(),
       source: String(item?.source || '').trim(),
-      score: item?.score
+      score: item?.score,
+      snippet: String(item?.snippet || '').trim(),
+      fileId: item?.file_id ?? item?.fileId ?? null,
+      filename: String(item?.filename || item?.department || '').trim()
     }))
     .filter((item) => {
       if (!item.title) return false
@@ -20,8 +23,15 @@ export function normalizeReferences(refs) {
     })
 }
 
+export function isUploadReference(ref) {
+  const category = ref?.category || ''
+  const source = ref?.source || ''
+  return category === '知识库上传' || source === 'upload'
+}
+
 /** @returns {{ name: string } | null} */
 export function referenceRoute(ref) {
+  if (isUploadReference(ref)) return null
   const category = ref?.category || ''
   const source = ref?.source || ''
   if (category === '方剂梳理' || source === 'jingfang') {
@@ -29,9 +39,6 @@ export function referenceRoute(ref) {
   }
   if (category === '伤寒论条文解读' || source === 'shanghan') {
     return { name: 'shanghan' }
-  }
-  if (category === '知识库上传' || source === 'upload') {
-    return { name: 'knowledge' }
   }
   return null
 }
@@ -41,6 +48,9 @@ export function referenceDisplayTitle(ref) {
   const category = String(ref?.category || '').trim()
   if (category === '知识库上传' && ref?.department) {
     return ref.department
+  }
+  if (isUploadReference(ref) && ref?.filename) {
+    return ref.filename
   }
   return title
 }

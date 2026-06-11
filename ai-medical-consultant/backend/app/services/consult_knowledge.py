@@ -327,6 +327,7 @@ def _load_upload_docs(db: Session) -> List[Dict]:
             if len(content) > MAX_DOC_CHARS:
                 content = content[:MAX_DOC_CHARS] + "…"
             doc["content"] = content
+            doc["file_id"] = row.id
             docs.append(doc)
     return docs
 
@@ -381,10 +382,65 @@ class ConsultKnowledgeRetriever:
         query: str,
         prescription_names: List[str],
         k: int = 6,
+        *,
+        extra_formula_names: List[str] | None = None,
     ) -> List[Dict]:
-        prescription_docs = lookup_formula_docs_by_names(prescription_names)
+        all_names = _dedupe_names(list(prescription_names) + list(extra_formula_names or []))
+        prescription_docs = lookup_formula_docs_by_names(all_names)
         vector_docs = self.search(db, query, k=k) if (query or "").strip() else []
-        return merge_retrieved_docs(prescription_docs, vector_docs)
+        merged = merge_retrieved_docs(prescription_docs, vector_docs)
+        if not merged:
+            return merged
+        return self._boost_compare_docs(query, merged, all_names)
+
+    @staticmethod
+    def _boost_compare_docs(query: str, docs: List[Dict], formula_names: List[str]) -> List[Dict]:
+        """鉴别类问题或多方并用时，把方剂「对比」字段前置到摘录内容。"""
+        from .consult_chat_prompt import is_compare_query
+
+        if not is_compare_query(query) and len(formula_names) < 2:
+            return docs
+        boosted: List[Dict] = []
+        for doc in docs:
+            if doc.get("source") != "jingfang" and doc.get("category") != "方剂梳理":
+                boosted.append(doc)
+                continue
+            content = str(doc.get("content") or "")
+            if "对比：" not in content:
+                boosted.append(doc)
+                continue
+            compare_part = ""
+            for line in content.splitlines():
+                if line.startswith("对比："):
+                    compare_part = line
+                    break
+            if compare_part:
+                new_doc = dict(doc)
+                new_doc["content"] = compare_part + "\n" + content
+                boosted.append(new_doc)
+            else:
+                boosted.append(doc)
+        return boosted
+
+    def search_enhanced(
+        self,
+        db: Session,
+        query: str,
+        prescription_names: List[str],
+        k: int = 6,
+    ) -> List[Dict]:
+        from .consult_chat_prompt import extract_formula_names_from_text, is_compare_query
+
+        extra: List[str] = []
+        if is_compare_query(query):
+            extra = extract_formula_names_from_text(query)
+        return self.search_with_prescriptions(
+            db,
+            query,
+            prescription_names,
+            k=k,
+            extra_formula_names=extra,
+        )
 
     @staticmethod
     def build_context(docs: List[Dict]) -> str:
@@ -402,16 +458,30 @@ class ConsultKnowledgeRetriever:
 
     @staticmethod
     def build_references(docs: List[Dict]) -> List[Dict]:
-        return [
-            {
+        refs: List[Dict] = []
+        for d in docs:
+            content = strip_markup(str(d.get("content") or ""))
+            snippet = ""
+            if content:
+                snippet = content[:MAX_CONTEXT_CHARS] + ("…" if len(content) > MAX_CONTEXT_CHARS else "")
+            ref: Dict = {
                 "title": d.get("title", ""),
                 "category": d.get("category", ""),
                 "department": d.get("department", ""),
                 "source": d.get("source", ""),
                 "score": round(float(d.get("score", 0.0)), 3),
             }
-            for d in docs
-        ]
+            if snippet:
+                ref["snippet"] = snippet
+            if d.get("source") == "upload":
+                file_id = d.get("file_id")
+                if file_id is not None:
+                    ref["file_id"] = int(file_id)
+                filename = str(d.get("department") or d.get("title") or "").strip()
+                if filename:
+                    ref["filename"] = filename
+            refs.append(ref)
+        return refs
 
     @staticmethod
     def build_inventory(db: Session) -> str:

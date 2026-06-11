@@ -36,10 +36,10 @@
 
     <section class="ai-home-main">
       <ConsultAiChat
-        :key="chatKey"
         :session-id="activeSessionId"
         :case-context="''"
         welcome-mode="home"
+        :asked-questions="askedQuestions"
         :redirect-to-consult="false"
         :embedded="false"
         @session-created="onSessionCreated"
@@ -64,7 +64,12 @@ const router = useRouter()
 const sessions = ref([])
 const loading = ref(false)
 const activeSessionId = ref(null)
-const chatKey = computed(() => activeSessionId.value || 'new')
+
+const askedQuestions = computed(() =>
+  sessions.value
+    .map((item) => String(item?.title || '').trim())
+    .filter((title) => title && title !== '新的对话' && title !== '新的问诊')
+)
 
 function parseSessionQuery(value) {
   const raw = Array.isArray(value) ? value[0] : value
@@ -85,7 +90,7 @@ function formatTime(value) {
 async function loadSessions() {
   loading.value = true
   try {
-    sessions.value = await consultApi.listAiChats()
+    sessions.value = (await consultApi.listAiChats()).filter((item) => !item.linked_case)
     const queryId = parseSessionQuery(route.query.session)
     if (queryId && sessions.value.some((item) => item.id === queryId)) {
       activeSessionId.value = queryId
@@ -118,10 +123,7 @@ function onMessageSent() {
 }
 
 async function removeSession(item) {
-  const ok = await confirmDeleteTwice(
-    `将删除对话「${item.title || '新的对话'}」。`,
-    `再次确认：删除后无法恢复，确定删除吗？`
-  )
+  const ok = await confirmDeleteTwice(`将删除对话「${item.title || '新的对话'}」，删除后无法恢复。`)
   if (!ok) return
   await consultApi.deleteSession(item.id)
   ElMessage.success('对话已删除')
