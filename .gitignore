@@ -3,8 +3,14 @@ node_modules/
 __pycache__/
 *.py[cod]
 .venv/
+.venv*/
 venv/
 env/
+
+# Local package manager caches and bundled tooling
+.npm-cache/
+**/.npm-cache/
+ai-medical-consultant/frontend/.tools/
 
 # Build and runtime output
 dist/
