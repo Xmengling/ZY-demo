@@ -103,6 +103,97 @@ npm run dev
 
 演示账号：**demo / demo123**（也可自行注册）
 
+## 🌐 单服务部署
+
+本项目已经支持“单服务部署”：构建时先打包 Vue 前端，再由 FastAPI 同时提供网页和 `/api` 接口。上线后朋友只需要访问一个网址。
+
+### 阿里云 ECS 部署
+
+在 ECS 服务器上安装 Docker 后，可以在 `ai-medical-consultant` 目录使用 Docker Compose 同时启动应用和 PostgreSQL：
+
+```bash
+cp env.production.example .env.production
+# 编辑 .env.production，至少修改 POSTGRES_PASSWORD 和 JWT_SECRET
+docker compose up -d --build
+```
+
+默认对外暴露 `80` 端口。上线前需要在阿里云安全组放行 `80`，之后如绑定域名再配置 HTTPS。
+
+### 推荐组合
+
+- 后端和网页：Render / Railway / Fly.io 的 Docker Web Service
+- 数据库：Neon PostgreSQL
+- 模型：通义千问 OpenAI 兼容接口，或其他 OpenAI 兼容服务
+
+不建议一开始就买云服务器。托管平台会自动处理 HTTPS、进程守护、部署日志和回滚，适合先给朋友试用。
+
+### 1. 创建 PostgreSQL
+
+在 Neon 创建项目后，复制连接串，并改成 SQLAlchemy 推荐格式：
+
+```bash
+postgresql+psycopg://user:password@host/dbname?sslmode=require
+```
+
+部署平台里设置：
+
+```bash
+DATABASE_URL=postgresql+psycopg://user:password@host/dbname?sslmode=require
+```
+
+### 2. 部署 Docker 服务
+
+以 Render 为例：
+
+1. 把代码推到 GitHub。
+2. 在 Render 新建 `Web Service`，选择仓库。
+3. Root Directory 填：
+
+```bash
+ai-medical-consultant
+```
+
+4. Environment 选择 `Docker`。
+5. Health Check Path 填：
+
+```bash
+/api/v1/health
+```
+
+6. 添加环境变量：
+
+```bash
+DATABASE_URL=postgresql+psycopg://user:password@host/dbname?sslmode=require
+OPENAI_API_KEY=你的模型密钥
+OPENAI_API_BASE=https://dashscope.aliyuncs.com/compatible-mode/v1
+OPENAI_CHAT_MODEL=qwen-plus
+JWT_SECRET=换成一个很长的随机字符串
+CORS_ORIGINS=
+```
+
+单服务部署时前端和 API 同源，`CORS_ORIGINS` 可以留空。
+
+### 3. 本地验证 Docker
+
+在 `ai-medical-consultant` 目录执行：
+
+```bash
+docker build -t zy-demo .
+docker run --rm -p 8000:8000 --env-file backend/env.example zy-demo
+```
+
+访问：
+
+- 网页：http://127.0.0.1:8000
+- 健康检查：http://127.0.0.1:8000/api/v1/health
+
+### 4. 上线前检查
+
+- `JWT_SECRET` 必须修改，不能使用默认值。
+- `OPENAI_API_KEY` 不要提交到 GitHub，只放在部署平台环境变量里。
+- 正式多人使用建议使用 PostgreSQL，不要用容器里的 SQLite。
+- 方剂库 `backend/data/jingfang.sqlite3` 目前仍作为随应用发布的 SQLite 文件使用；如果要多人在线编辑方剂，再单独迁移。
+
 ## ⚙️ 环境变量（backend/.env）
 
 | 变量 | 说明 | 默认 |

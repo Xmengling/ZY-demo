@@ -1,0 +1,18 @@
+services:
+  - type: web
+    name: zy-demo
+    env: docker
+    healthCheckPath: /api/v1/health
+    envVars:
+      - key: OPENAI_API_BASE
+        value: https://dashscope.aliyuncs.com/compatible-mode/v1
+      - key: OPENAI_CHAT_MODEL
+        value: qwen-plus
+      - key: JWT_SECRET
+        generateValue: true
+      - key: CORS_ORIGINS
+        value: ""
+      - key: DATABASE_URL
+        sync: false
+      - key: OPENAI_API_KEY
+        sync: false
