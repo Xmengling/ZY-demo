@@ -1,5 +1,5 @@
 <template>
-  <div class="inquiry-hints-text-wrap" @click.stop>
+  <div class="inquiry-hints-text-wrap" :class="{ 'is-editing': editing }" @click.stop>
     <template v-if="!editing">
       <span class="inquiry-hints-text">{{ displayText }}</span>
       <button type="button" class="inquiry-hints-link" @click="toggleEdit">编辑</button>
@@ -110,8 +110,13 @@ async function save() {
   color: #c5cdd8;
   flex-shrink: 0;
 }
+.inquiry-hints-text-wrap.is-editing {
+  flex: 1 1 auto;
+  min-width: min(100%, 520px);
+  max-width: 100%;
+}
 .inquiry-hints-input {
-  flex: 1;
+  flex: 1 1 auto;
   min-width: 160px;
   max-width: 100%;
   height: 26px;
@@ -122,6 +127,10 @@ async function save() {
   color: #4b5563;
   font-size: 12px;
   outline: none;
+}
+.inquiry-hints-text-wrap.is-editing .inquiry-hints-input {
+  min-width: 280px;
+  width: 100%;
 }
 .inquiry-hints-input:focus {
   border-color: #9fd4b6;

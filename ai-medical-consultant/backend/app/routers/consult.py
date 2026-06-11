@@ -24,6 +24,8 @@ from ..schemas import (
     ConsultAutoFillExampleOut,
     MessageOut,
     ModuleHintOut,
+    SymptomPresetBlockOut,
+    SymptomPresetBlockUpdate,
     BulkDeleteSessionsRequest,
     BulkDeleteSessionsResponse,
     MergeSessionsRequest,
@@ -493,6 +495,30 @@ def auto_fill_intake(
         notes=normalized["notes"],
         source="ai",
     )
+
+
+@router.put("/symptom-presets/blocks/{block_label}", response_model=SymptomPresetBlockOut)
+def update_symptom_preset_block(
+    block_label: str,
+    payload: SymptomPresetBlockUpdate,
+    db: Session = Depends(get_db),
+    user: User = Depends(get_current_user),
+):
+    del user
+    label = str(block_label or "").strip()
+    if not label:
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, "病理标签不能为空")
+    symptoms = [str(item).strip() for item in (payload.symptoms or []) if str(item).strip()]
+    row = (
+        db.query(ConsultSymptomPreset)
+        .filter(ConsultSymptomPreset.block_label == label)
+        .first()
+    )
+    if not row:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "病理块不存在")
+    row.symptoms = json.dumps(symptoms, ensure_ascii=False)
+    db.commit()
+    return SymptomPresetBlockOut(block_label=label, symptoms=symptoms)
 
 
 @router.put("/module-hints/{module_key}", response_model=ModuleHintOut)

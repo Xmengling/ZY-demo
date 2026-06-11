@@ -1,14 +1,5 @@
 <template>
   <div class="symptom-chips">
-    <div class="biao-symptoms-head">
-      <span class="row-title">常见症状</span>
-      <div class="symptom-actions">
-        <span v-if="editing" class="symptom-hint">双击改文字 · 可拖拽排序</span>
-        <button type="button" class="symptoms-edit-btn" :aria-pressed="editing" @click="toggleEdit">
-          {{ editing ? '完成' : '编辑' }}
-        </button>
-      </div>
-    </div>
     <div
       ref="chipsWrapRef"
       class="chips"
@@ -16,6 +7,7 @@
       @dragover.prevent="onDragOver"
       @drop.prevent="onDrop"
     >
+      <span v-if="editing" class="symptom-hint">双击改文字 · 可拖拽排序</span>
       <span
         v-for="(symptom, index) in displayChips"
         :key="`${blockLabel}-${symptom}-${index}`"
@@ -51,12 +43,23 @@
         >×</button>
       </span>
       <button v-if="editing" type="button" class="chip-add" @click="addChip">+ 添加</button>
+      <button
+        type="button"
+        class="symptoms-edit-btn"
+        :aria-pressed="editing"
+        :disabled="saving"
+        @click="toggleEdit"
+      >
+        {{ saving ? '保存中…' : editing ? '完成' : '编辑' }}
+      </button>
     </div>
   </div>
 </template>
 
 <script setup>
 import { computed, ref, watch } from 'vue'
+import { ElMessage } from 'element-plus'
+import { consultApi } from '../../api'
 import { removeSymptomFromNote, renameSymptomInNote, toggleSymptomInNote } from '../../utils/consultSymptoms'
 
 const props = defineProps({
@@ -66,9 +69,11 @@ const props = defineProps({
   note: { type: String, default: '' }
 })
 
-const emit = defineEmits(['update:chips', 'update:note', 'toggle-selected'])
+const emit = defineEmits(['update:chips', 'update:note', 'toggle-selected', 'persisted'])
 
 const editing = ref(false)
+const saving = ref(false)
+const chipsAtEditStart = ref([])
 const editingText = ref('')
 const editStartText = ref('')
 const dragIndex = ref(-1)
@@ -77,9 +82,41 @@ const chipsWrapRef = ref(null)
 
 const displayChips = computed(() => props.chips.filter(Boolean))
 
-function toggleEdit() {
-  if (editing.value) editingText.value = ''
-  editing.value = !editing.value
+function chipsSignature(list) {
+  return (list || []).filter(Boolean).join('\u0001')
+}
+
+async function persistChipsIfChanged() {
+  const symptoms = displayChips.value
+  if (chipsSignature(symptoms) === chipsSignature(chipsAtEditStart.value)) return true
+  saving.value = true
+  try {
+    const data = await consultApi.updateBlockSymptoms(props.blockLabel, { symptoms })
+    const next = data?.symptoms || symptoms
+    emit('update:chips', [...next])
+    emit('persisted', [...next])
+    ElMessage.success('常见症状已保存，对所有医案生效')
+    return true
+  } catch {
+    ElMessage.error('保存失败，请确认已登录')
+    return false
+  } finally {
+    saving.value = false
+  }
+}
+
+async function toggleEdit() {
+  if (saving.value) return
+  if (editing.value) {
+    editingText.value = ''
+    const ok = await persistChipsIfChanged()
+    if (!ok) return
+    editing.value = false
+    chipsAtEditStart.value = []
+    return
+  }
+  chipsAtEditStart.value = [...displayChips.value]
+  editing.value = true
 }
 
 function onChipClick(symptom, event) {
@@ -186,27 +223,14 @@ watch(editing, (val) => {
 </script>
 
 <style scoped>
-.biao-symptoms-head {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 8px;
-  margin-bottom: 7px;
-}
-.row-title {
-  color: #344054;
-  font-weight: 700;
-}
-.symptom-actions {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
 .symptom-hint {
+  flex: 1 1 100%;
   color: #8a94a6;
-  font-size: 12px;
+  font-size: 11px;
+  line-height: 22px;
 }
 .symptoms-edit-btn {
+  flex-shrink: 0;
   height: 22px;
   padding: 0 8px;
   border: 1px solid #e3e9f0;
@@ -227,11 +251,16 @@ watch(editing, (val) => {
   color: #2a8f5c;
   background: #f3fbf7;
 }
+.symptoms-edit-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
 .chips {
   display: flex;
   flex-wrap: wrap;
-  gap: 4px;
+  gap: 3px 4px;
   align-items: center;
+  row-gap: 3px;
 }
 .chip-item {
   display: inline-flex;

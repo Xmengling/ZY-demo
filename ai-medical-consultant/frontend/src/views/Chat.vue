@@ -53,11 +53,18 @@
           <button
             type="button"
             class="module-nav-action-btn"
-            :class="allVisibleCollapsed ? 'expand-all' : 'collapse-all'"
             :title="allVisibleCollapsed ? '展开全部' : '折叠全部'"
             :aria-label="allVisibleCollapsed ? '展开全部' : '折叠全部'"
             @click="toggleAllSections"
-          />
+          >
+            <span
+              class="module-nav-action-btn__chevrons"
+              :class="allVisibleCollapsed ? 'is-expand' : 'is-collapse'"
+              aria-hidden="true"
+            >
+              <i /><i />
+            </span>
+          </button>
         </div>
       </nav>
 
@@ -132,8 +139,8 @@
                   placeholder="最困扰的症状、开始时间、加重或缓解因素"
                 />
               </div>
-              <div class="field half label-wide">
-                <label>病程/诱因/既往史/用药史</label>
+              <div class="field half">
+                <label>病史</label>
                 <el-input
                   v-model="form.history"
                   class="consult-textarea"
@@ -216,44 +223,49 @@
                 </div>
                 <div v-else class="biao-body">
                   <div class="biao-row">
-                    <div class="biao-symptoms">
-                      <SymptomChips
-                        :block-label="block.label"
-                        :chips="chipsForBlock(block)"
-                        :selected="form.selected"
-                        :note="form.notes[block.label] || ''"
-                        @update:chips="(list) => setChipList(block.label, list)"
-                        @update:note="(val) => (form.notes[block.label] = val)"
-                        @toggle-selected="onToggleSelected"
-                      />
-                    </div>
                     <div class="biao-input">
-                      <div class="biao-input-title">本例所见</div>
                       <el-input
                         v-model="form.notes[block.label]"
                         type="textarea"
-                        :rows="4"
+                        :rows="2"
                         class="consult-textarea biao-note-textarea"
                         placeholder="记录本例所见、程度、时间、诱因"
                       />
+                      <div class="biao-input-symptoms">
+                        <SymptomChips
+                          :block-label="block.label"
+                          :chips="chipsForBlock(block)"
+                          :selected="form.selected"
+                          :note="form.notes[block.label] || ''"
+                          @update:chips="(list) => setChipList(block.label, list)"
+                          @persisted="(list) => onBlockSymptomsPersisted(block.label, list)"
+                          @update:note="(val) => (form.notes[block.label] = val)"
+                          @toggle-selected="onToggleSelected"
+                        />
+                      </div>
                     </div>
-                    <div class="biao-score">
-                      <div class="score-title">病理打分</div>
-                      <el-input-number
-                        v-model="form.scores[block.label]"
-                        :min="0"
-                        :max="100"
-                        :controls="false"
-                        class="score-input"
+                    <div class="biao-aside">
+                      <button
+                        type="button"
+                        class="biao-block-chevron"
+                        :aria-label="isBlockCollapsed(block.label) ? '展开' : '折叠'"
+                        @click.stop="toggleBlock(block.label)"
                       />
+                      <div class="biao-score">
+                        <PathologyStarRating
+                          :model-value="Number(form.scores[block.label]) || 0"
+                          :tone-class="pathologyToneClass(block.label)"
+                          @update:model-value="(value) => setPathologyScore(block.label, value)"
+                        />
+                      </div>
                     </div>
                   </div>
                 </div>
                 <button
+                  v-if="isBlockCollapsed(block.label)"
                   type="button"
-                  class="biao-block-chevron"
-                  :class="{ 'is-collapsed': isBlockCollapsed(block.label) }"
-                  :aria-label="isBlockCollapsed(block.label) ? '展开' : '折叠'"
+                  class="biao-block-chevron is-collapsed"
+                  aria-label="展开"
                   @click.stop="toggleBlock(block.label)"
                 />
               </div>
@@ -436,6 +448,7 @@ import SymptomChips from '../components/consult/SymptomChips.vue'
 import PrescriptionBlock from '../components/consult/PrescriptionBlock.vue'
 import ConsultAiChat from '../components/consult/ConsultAiChat.vue'
 import PathologyTag from '../components/consult/PathologyTag.vue'
+import PathologyStarRating from '../components/consult/PathologyStarRating.vue'
 import InquiryHints from '../components/consult/InquiryHints.vue'
 import { buildFormulaPowderIndex, lookupFormulaPowder, runDoseCalc } from '../utils/formulaPowder'
 import { getPathologyToneClass } from '../utils/pathologyTone'
@@ -744,17 +757,44 @@ function setChipList(label, list) {
   form.chipLists[label] = list
 }
 
+function onBlockSymptomsPersisted(label, list) {
+  const symptoms = Array.isArray(list) ? list.filter(Boolean) : []
+  for (const section of sections.value || []) {
+    for (const block of section.blocks || []) {
+      if (block.label === label) block.symptoms = [...symptoms]
+    }
+  }
+  delete form.chipLists[label]
+}
+
 function onToggleSelected({ symptom, active }) {
   form.selected[symptom] = active
   if (!active) delete form.selected[symptom]
   syncCollapseState()
 }
 
+function normalizePathologyScore(value) {
+  const num = Number(value)
+  if (Number.isNaN(num) || num <= 0) return 0
+  if (num <= 5) return Math.round(num)
+  return Math.min(5, Math.max(1, Math.round(num / 20)))
+}
+
+function setPathologyScore(label, value) {
+  const score = normalizePathologyScore(value)
+  if (score > 0) form.scores[label] = score
+  else delete form.scores[label]
+  syncCollapseState()
+}
+
 function hasPathologyScore(label) {
-  const raw = form.scores[label]
-  if (raw === undefined || raw === null || raw === '') return false
-  const num = Number(raw)
-  return !Number.isNaN(num) && num > 0
+  return normalizePathologyScore(form.scores[label]) > 0
+}
+
+function formatPathologyScoreStars(label) {
+  const count = normalizePathologyScore(form.scores[label])
+  if (!count) return ''
+  return `${'★'.repeat(count)}${'☆'.repeat(5 - count)}`
 }
 
 function scoredBlocks(section) {
@@ -777,7 +817,7 @@ function blockPreview(block) {
   if (note) return note.length > 48 ? `${note.slice(0, 48)}…` : note
   const selected = (block.symptoms || []).filter((symptom) => form.selected[symptom])
   if (selected.length) return selected.join('、')
-  if (hasPathologyScore(block.label)) return `病理打分 ${form.scores[block.label]}`
+  if (hasPathologyScore(block.label)) return formatPathologyScoreStars(block.label)
   return ''
 }
 
@@ -1173,6 +1213,13 @@ async function loadSession(id) {
     const detail = await consultApi.getSession(id)
     const data = detail.intake_data || {}
     Object.assign(form, emptyForm(), data)
+    if (form.scores && typeof form.scores === 'object') {
+      for (const [key, value] of Object.entries(form.scores)) {
+        const score = normalizePathologyScore(value)
+        if (score > 0) form.scores[key] = score
+        else delete form.scores[key]
+      }
+    }
     if (!form.prescription || !Array.isArray(form.prescription.rows)) {
       form.prescription = { ...defaultPrescription(), ...(form.prescription || {}) }
       if (!Array.isArray(form.prescription.rows)) form.prescription.rows = []

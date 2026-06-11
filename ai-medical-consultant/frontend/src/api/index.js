@@ -39,6 +39,8 @@ export const consultApi = {
   listAiChats: () => api.get('/v1/consult/sessions', { params: { ai_chat: true } }),
   symptomPresets: () => api.get('/v1/consult/symptom-presets'),
   updateModuleHints: (moduleKey, data) => api.put(`/v1/consult/module-hints/${moduleKey}`, data),
+  updateBlockSymptoms: (blockLabel, data) =>
+    api.put(`/v1/consult/symptom-presets/blocks/${encodeURIComponent(blockLabel)}`, data),
   getSession: (id) => api.get(`/v1/consult/sessions/${id}`),
   createSession: (data) => api.post('/v1/consult/sessions', data),
   saveIntake: (id, data) => api.patch(`/v1/consult/sessions/${id}/intake`, data),

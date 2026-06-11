@@ -153,6 +153,15 @@ class ModuleHintOut(BaseModel):
     hints: list[str] = []
 
 
+class SymptomPresetBlockUpdate(BaseModel):
+    symptoms: list[str] = []
+
+
+class SymptomPresetBlockOut(BaseModel):
+    block_label: str
+    symptoms: list[str] = []
+
+
 class ChatRequest(BaseModel):
     session_id: Optional[int] = None
     message: str

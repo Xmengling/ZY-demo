@@ -55,7 +55,18 @@
             <ChatDotRound v-else />
           </el-icon>
         </div>
-        <div class="ai-chat-bubble">
+        <div class="ai-chat-bubble-wrap">
+          <button
+            v-if="canCopyMessage(msg)"
+            type="button"
+            class="ai-chat-copy"
+            title="复制"
+            aria-label="复制"
+            @click="copyMessage(msg)"
+          >
+            <el-icon :size="13"><DocumentCopy /></el-icon>
+          </button>
+          <div class="ai-chat-bubble">
           <div v-if="msg.images?.length" class="ai-chat-images">
             <img
               v-for="(src, imgIndex) in msg.images"
@@ -102,6 +113,7 @@
                 </span>
               </template>
             </div>
+          </div>
           </div>
         </div>
       </div>
@@ -212,7 +224,7 @@
 import { computed, nextTick, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
-import { ChatDotRound, Picture, Promotion, User } from '@element-plus/icons-vue'
+import { ChatDotRound, DocumentCopy, Picture, Promotion, User } from '@element-plus/icons-vue'
 import { consultApi, knowledgeApi } from '../../api'
 import {
   isUploadReference,
@@ -346,6 +358,39 @@ function displayContent(msg) {
     return msg.streaming ? msg.content : formatAiReply(msg.content)
   }
   return msg.content
+}
+
+function canCopyMessage(msg) {
+  if (!msg || msg.streaming) return false
+  const text = String(displayContent(msg) || '').trim()
+  return Boolean(text && text !== '（已发送图片）')
+}
+
+async function copyTextToClipboard(text) {
+  if (navigator.clipboard?.writeText) {
+    await navigator.clipboard.writeText(text)
+    return
+  }
+  const textarea = document.createElement('textarea')
+  textarea.value = text
+  textarea.setAttribute('readonly', '')
+  textarea.style.position = 'fixed'
+  textarea.style.left = '-9999px'
+  document.body.appendChild(textarea)
+  textarea.select()
+  document.execCommand('copy')
+  document.body.removeChild(textarea)
+}
+
+async function copyMessage(msg) {
+  const text = String(displayContent(msg) || '').trim()
+  if (!text) return
+  try {
+    await copyTextToClipboard(text)
+    ElMessage.success('已复制')
+  } catch {
+    ElMessage.error('复制失败')
+  }
 }
 
 const isStreamingReply = computed(() =>
@@ -802,6 +847,63 @@ watch(
   flex-direction: row-reverse;
 }
 
+.ai-chat-bubble-wrap {
+  position: relative;
+  max-width: calc(100% - 40px);
+}
+
+.ai-chat-bubble-wrap:hover .ai-chat-copy,
+.ai-chat-bubble-wrap:focus-within .ai-chat-copy {
+  opacity: 1;
+}
+
+.ai-chat-copy {
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  z-index: 1;
+  width: 24px;
+  height: 24px;
+  padding: 0;
+  border: none;
+  border-radius: 6px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(255, 255, 255, 0.92);
+  color: #667085;
+  cursor: pointer;
+  opacity: 0;
+  transition: opacity 0.15s ease, background 0.15s ease, color 0.15s ease;
+  box-shadow: 0 1px 4px rgba(15, 23, 42, 0.08);
+}
+
+.ai-chat-row.user .ai-chat-copy {
+  top: 50%;
+  right: auto;
+  left: -30px;
+  transform: translateY(-50%);
+  background: #fff;
+  color: #667085;
+  border: 1px solid #e8eef6;
+  box-shadow: 0 1px 4px rgba(15, 23, 42, 0.06);
+}
+
+.ai-chat-copy:hover {
+  background: #f0f5ff;
+  color: #3559b8;
+}
+
+.ai-chat-row.user .ai-chat-copy:hover {
+  background: #f0f5ff;
+  color: #3559b8;
+  border-color: #d6e4ff;
+}
+
+.ai-chat-row.assistant .ai-chat-bubble-wrap:has(.ai-chat-copy) .ai-chat-bubble {
+  padding-top: 26px;
+}
+
 .ai-chat-avatar {
   width: 28px;
   height: 28px;
@@ -823,7 +925,7 @@ watch(
 }
 
 .ai-chat-bubble {
-  max-width: calc(100% - 40px);
+  max-width: 100%;
   padding: 9px 12px;
   border-radius: 12px;
   font-size: 12px;

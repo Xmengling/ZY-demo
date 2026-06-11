@@ -204,6 +204,29 @@ def split_by_separators(text: str, patterns: List[str], max_size: int = 0) -> Li
     return chunks
 
 
+SHANGHAN_ARTICLE_HEAD_RE = re.compile(r"^第\s*(\d+)\s*条\s*原文[：:]", re.M)
+SHANGHAN_ARTICLE_SPLIT_PATTERN = r"^第\s*\d+\s*条\s*原文[：:]"
+
+
+def split_shanghan_lecture_articles(text: str) -> List[tuple[str, str]]:
+    """按「第 N 条 + 原文」切分伤寒论讲稿，返回 [(条号, 正文), ...]。"""
+    text = (text or "").strip()
+    if not text:
+        return []
+    pieces = split_by_separators(text, [SHANGHAN_ARTICLE_SPLIT_PATTERN], max_size=0)
+    articles: List[tuple[str, str]] = []
+    for piece in pieces:
+        piece = piece.strip()
+        if not piece:
+            continue
+        match = SHANGHAN_ARTICLE_HEAD_RE.match(piece)
+        if not match:
+            continue
+        number = str(int(match.group(1)))
+        articles.append((number, piece))
+    return articles
+
+
 def split_text(text: str, config: Dict | None = None) -> List[str]:
     """切片策略分发：fixed / paragraph / separator / whole。"""
     config = config or {}
