@@ -119,6 +119,8 @@ class ConsultAutoFillResponse(BaseModel):
     fields: dict[str, str] = {}
     symptoms: list[str] = []
     pathology_notes: dict[str, str] = {}
+    uncertain_symptoms: list[dict[str, Any]] = []
+    new_symptom_terms: list[dict[str, Any]] = []
     source: str = "ai"
     notes: list[str] = []
 

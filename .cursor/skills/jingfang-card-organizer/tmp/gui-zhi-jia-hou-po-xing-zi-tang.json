@@ -1,7 +1,11 @@
 {
   "id": "gui-zhi-jia-hou-po-xing-zi-tang",
   "name": "桂枝加厚朴杏子汤",
-  "categories": ["表证", "气证", "里证"],
+  "categories": [
+    "表证",
+    "气证",
+    "里证"
+  ],
   "composition": "桂枝3 炙甘草2 生姜3 芍药3 大枣5 厚朴2 杏仁3",
   "herbImages": [
     "桂枝.jpg",

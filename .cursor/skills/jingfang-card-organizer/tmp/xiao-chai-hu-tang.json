@@ -1,7 +1,10 @@
 {
   "id": "xiao-chai-hu-tang",
   "name": "小柴胡汤",
-  "categories": ["半证", "里证"],
+  "categories": [
+    "半证",
+    "里证"
+  ],
   "composition": "柴胡8 黄芩3 人参3 半夏4 甘草3 生姜3 大枣5",
   "herbImages": [
     "柴胡.jpg",

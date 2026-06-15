@@ -1,7 +1,11 @@
 {
   "id": "zhu-ling-tang",
   "name": "猪苓汤",
-  "categories": ["里证", "水证", "血证"],
+  "categories": [
+    "里证",
+    "水证",
+    "血证"
+  ],
   "composition": "猪苓3 茯苓3 阿胶3 泽泻3 滑石3",
   "herbImages": [
     "猪苓.jpg",

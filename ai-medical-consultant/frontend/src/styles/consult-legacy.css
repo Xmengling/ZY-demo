@@ -68,6 +68,59 @@
   color: #6b7785;
   line-height: 1.6;
 }
+.autofill-candidates {
+  display: grid;
+  gap: 10px;
+  max-height: 58vh;
+  overflow: auto;
+  padding-right: 4px;
+}
+.autofill-candidate {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 360px;
+  gap: 12px;
+  align-items: start;
+  padding: 10px;
+  border: 1px solid #e3eaf2;
+  border-radius: 8px;
+  background: #fbfcfe;
+}
+.autofill-candidate.is-ignored {
+  opacity: 0.58;
+}
+.candidate-main {
+  min-width: 0;
+}
+.candidate-title {
+  color: #111827;
+  font-size: 14px;
+  font-weight: 800;
+  line-height: 1.35;
+  word-break: break-word;
+}
+.candidate-reason,
+.candidate-suggestions {
+  margin-top: 4px;
+  color: #667085;
+  font-size: 12px;
+  line-height: 1.45;
+  word-break: break-word;
+}
+.candidate-controls {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+.candidate-action,
+.candidate-block,
+.candidate-symptom,
+.candidate-name {
+  width: 100%;
+}
+.candidate-symptom,
+.candidate-name {
+  grid-column: span 2;
+}
 .hero-top {
   display: grid;
   grid-template-columns: auto minmax(0, 1fr) auto;
@@ -570,8 +623,8 @@
 .biao-block {
   position: relative;
   display: grid;
-  grid-template-columns: 44px minmax(0, 1fr);
-  column-gap: 10px;
+  grid-template-columns: 36px minmax(0, 1fr);
+  column-gap: 8px;
   align-items: stretch;
   padding: 8px 8px 8px 10px;
   border: 1px solid var(--path-border, #e8eef6);
@@ -592,8 +645,8 @@
   align-items: center;
   justify-content: center;
   align-self: center;
-  min-height: 72px;
-  padding: 10px 6px;
+  min-height: 58px;
+  padding: 8px 4px;
   font-weight: 800;
   writing-mode: vertical-rl;
   text-orientation: upright;
@@ -780,8 +833,9 @@
   width: 100%;
 }
 .biao-note-textarea :deep(.el-textarea__inner) {
-  min-height: 48px !important;
+  min-height: 34px !important;
   padding: 6px 8px;
+  resize: none;
 }
 .actions {
   flex-shrink: 0;
@@ -964,6 +1018,16 @@
   }
   .tongue-three-grid {
     grid-template-columns: 1fr;
+  }
+  .autofill-candidate {
+    grid-template-columns: 1fr;
+  }
+  .candidate-controls {
+    grid-template-columns: 1fr;
+  }
+  .candidate-symptom,
+  .candidate-name {
+    grid-column: auto;
   }
   .analysis {
     min-height: 480px;

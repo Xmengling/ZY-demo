@@ -227,7 +227,8 @@
                       <el-input
                         v-model="form.notes[block.label]"
                         type="textarea"
-                        :rows="2"
+                        :rows="1"
+                        :autosize="{ minRows: 1, maxRows: 6 }"
                         class="consult-textarea biao-note-textarea"
                         placeholder="记录本例所见、程度、时间、诱因"
                       />
@@ -319,11 +320,6 @@
               <div class="section-name">
                 <span class="num">10</span>
                 <span class="section-title-text">处方</span>
-                <InquiryHints
-                  module-key="prescription"
-                  :hints="prescriptionHints"
-                  @updated="(list) => (prescriptionHints = list)"
-                />
               </div>
             </div>
             <div class="section-head-meta">
@@ -435,6 +431,82 @@
         <el-button type="primary" :loading="autoFilling" @click="applyAutoFill">AI 解析并填充</el-button>
       </template>
     </el-dialog>
+
+    <el-dialog
+      v-model="candidateDialogVisible"
+      title="确认未自动填充的症状"
+      width="760px"
+      :close-on-click-modal="false"
+    >
+      <p class="autofill-tip">
+        这些词来自原文，但 AI 没有直接勾选。请确认是否填入本次医案，或加入对应症状目录，方便以后自动识别。
+      </p>
+      <div class="autofill-candidates">
+        <div
+          v-for="candidate in pendingSymptomCandidates"
+          :key="candidate.id"
+          class="autofill-candidate"
+          :class="{ 'is-ignored': candidate.action === 'ignore' }"
+        >
+          <div class="candidate-main">
+            <div class="candidate-title">{{ candidate.raw_text }}</div>
+            <div v-if="candidate.reason" class="candidate-reason">{{ candidate.reason }}</div>
+            <div v-if="candidate.suggested_symptoms.length" class="candidate-suggestions">
+              近似症状：{{ candidate.suggested_symptoms.join('、') }}
+            </div>
+          </div>
+          <div class="candidate-controls">
+            <el-select v-model="candidate.action" size="small" class="candidate-action">
+              <el-option label="填入本次" value="fill" />
+              <el-option label="填入并加入目录" value="add" />
+              <el-option label="忽略" value="ignore" />
+            </el-select>
+            <el-select
+              v-model="candidate.block_label"
+              size="small"
+              class="candidate-block"
+              filterable
+              placeholder="选择病理"
+              :disabled="candidate.action === 'ignore'"
+            >
+              <el-option
+                v-for="block in pathologyBlockOptions"
+                :key="block.label"
+                :label="block.label"
+                :value="block.label"
+              />
+            </el-select>
+            <el-select
+              v-if="candidate.suggested_symptoms.length"
+              v-model="candidate.selected_symptom"
+              size="small"
+              class="candidate-symptom"
+              clearable
+              placeholder="匹配已有症状"
+              :disabled="candidate.action === 'ignore'"
+            >
+              <el-option
+                v-for="symptom in candidate.suggested_symptoms"
+                :key="symptom"
+                :label="symptom"
+                :value="symptom"
+              />
+            </el-select>
+            <el-input
+              v-model="candidate.symptom_name"
+              size="small"
+              class="candidate-name"
+              placeholder="症状名"
+              :disabled="candidate.action === 'ignore' || Boolean(candidate.selected_symptom)"
+            />
+          </div>
+        </div>
+      </div>
+      <template #footer>
+        <el-button :disabled="candidateApplying" @click="candidateDialogVisible = false">稍后处理</el-button>
+        <el-button type="primary" :loading="candidateApplying" @click="applySymptomCandidates">确认填充</el-button>
+      </template>
+    </el-dialog>
   </div>
 </template>
 
@@ -475,6 +547,9 @@ const formulaNames = ref([])
 const fillDialogVisible = ref(false)
 const fillText = ref('')
 const autoFilling = ref(false)
+const candidateDialogVisible = ref(false)
+const pendingSymptomCandidates = ref([])
+const candidateApplying = ref(false)
 const sessionNavList = ref([])
 const collapsed = reactive({
   base: false,
@@ -484,7 +559,6 @@ const collapsed = reactive({
 const blockCollapsed = reactive({})
 const blockCollapseManual = reactive({})
 const sectionCollapseManual = reactive({})
-const prescriptionHints = ref(['合方录入', '目标用量', '份数换算'])
 
 const fallbackSections = [
   {
@@ -631,6 +705,16 @@ const allVisibleCollapsed = computed(() => {
 
 const selectedSymptoms = computed(() => Object.keys(form.selected).filter((k) => form.selected[k]))
 
+const pathologyBlockOptions = computed(() => {
+  const blocks = []
+  for (const section of sections.value || []) {
+    for (const block of section.blocks || []) {
+      if (block.label) blocks.push({ label: block.label, section: section.title })
+    }
+  }
+  return blocks
+})
+
 const pathologyScores = computed(() => {
   const items = Object.entries(form.scores)
     .map(([label, score]) => ({ label, score: Number(score || 0) }))
@@ -765,6 +849,75 @@ function onBlockSymptomsPersisted(label, list) {
     }
   }
   delete form.chipLists[label]
+}
+
+function findBlockByLabel(label) {
+  for (const section of sections.value || []) {
+    for (const block of section.blocks || []) {
+      if (block.label === label) return block
+    }
+  }
+  return null
+}
+
+function appendPathologyNote(label, text) {
+  const value = String(text || '').trim()
+  if (!label || !value) return
+  const current = String(form.notes[label] || '').trim()
+  if (!current) {
+    form.notes[label] = value
+    return
+  }
+  if (current.includes(value)) return
+  form.notes[label] = `${current}，${value}`
+}
+
+async function addSymptomToBlockCatalog(label, symptom) {
+  const value = String(symptom || '').trim()
+  if (!label || !value) return false
+  const block = findBlockByLabel(label)
+  if (!block) return false
+  const current = chipsForBlock(block)
+  if (current.includes(value)) return true
+  const next = [...current, value]
+  const data = await consultApi.updateBlockSymptoms(label, { symptoms: next })
+  onBlockSymptomsPersisted(label, data?.symptoms || next)
+  return true
+}
+
+function normalizeCandidateList(result) {
+  const items = []
+  const seen = new Set()
+  const sources = [
+    { list: result?.uncertain_symptoms, defaultAction: 'fill' },
+    { list: result?.new_symptom_terms, defaultAction: 'add' }
+  ]
+  sources.forEach(({ list, defaultAction }) => {
+    ;(Array.isArray(list) ? list : []).forEach((item) => {
+      const raw = String(item?.raw_text || item?.text || item?.symptom || '').trim()
+      if (!raw || seen.has(raw)) return
+      const suggestedBlocks = Array.isArray(item?.suggested_blocks)
+        ? item.suggested_blocks
+        : item?.suggested_block
+          ? [item.suggested_block]
+          : []
+      const suggestedSymptoms = Array.isArray(item?.suggested_symptoms) ? item.suggested_symptoms : []
+      const block = suggestedBlocks.find((label) => findBlockByLabel(label)) || ''
+      items.push({
+        id: `${items.length}-${raw}`,
+        raw_text: raw,
+        symptom_name: String(item?.symptom_name || raw).trim(),
+        suggested_symptoms: suggestedSymptoms.filter(Boolean),
+        selected_symptom: suggestedSymptoms[0] || '',
+        suggested_blocks: suggestedBlocks.filter(Boolean),
+        block_label: block,
+        reason: String(item?.reason || '').trim(),
+        action: item?.action === 'ignore' ? 'ignore' : item?.action === 'add' ? 'add' : defaultAction
+      })
+      seen.add(raw)
+    })
+  })
+  return items
 }
 
 function onToggleSelected({ symptom, active }) {
@@ -1096,6 +1249,7 @@ function applyFillResult(result, source = 'local') {
   const fields = result?.fields || {}
   const symptoms = Array.isArray(result?.symptoms) ? result.symptoms : []
   const pathologyNotes = result?.pathology_notes || {}
+  const candidates = normalizeCandidateList(result)
   const filled = []
   Object.entries(fields).forEach(([key, val]) => {
     if (val) {
@@ -1114,18 +1268,61 @@ function applyFillResult(result, source = 'local') {
       noteLabels.push(label)
     }
   })
-  if (!filled.length && !symptoms.length && !noteLabels.length) {
+  if (!filled.length && !symptoms.length && !noteLabels.length && !candidates.length) {
     return false
   }
   fillDialogVisible.value = false
   fillText.value = ''
+  if (candidates.length) {
+    pendingSymptomCandidates.value = candidates
+    candidateDialogVisible.value = true
+  }
   const parts = []
   if (filled.length) parts.push(`已填充：${filled.join('、')}`)
   if (symptoms.length) parts.push(`自动勾选 ${symptoms.length} 个症状`)
   if (noteLabels.length) parts.push(`整理 ${noteLabels.length} 个病理项`)
+  if (candidates.length) parts.push(`${candidates.length} 个症状待确认`)
   const prefix = source === 'ai' ? 'AI 解析完成' : '已使用本地规则解析'
   ElMessage.success(`${prefix}：${parts.join('；')}`)
   return true
+}
+
+async function applySymptomCandidates() {
+  const active = pendingSymptomCandidates.value.filter((item) => item.action !== 'ignore')
+  const missingBlock = active.find((item) => !item.block_label)
+  if (missingBlock) {
+    ElMessage.warning(`请先给「${missingBlock.raw_text}」选择病理`)
+    return
+  }
+  candidateApplying.value = true
+  try {
+    let filled = 0
+    let added = 0
+    for (const item of active) {
+      const rawText = String(item.raw_text || '').trim()
+      const symptomName = String(item.selected_symptom || item.symptom_name || rawText).trim()
+      const noteText = rawText || symptomName
+      if (item.selected_symptom) {
+        form.selected[item.selected_symptom] = true
+      }
+      if (item.action === 'add') {
+        await addSymptomToBlockCatalog(item.block_label, symptomName)
+        form.selected[symptomName] = true
+        added += 1
+      }
+      appendPathologyNote(item.block_label, noteText)
+      filled += 1
+    }
+    pendingSymptomCandidates.value = []
+    candidateDialogVisible.value = false
+    syncCollapseState()
+    const parts = []
+    if (filled) parts.push(`填入 ${filled} 个症状`)
+    if (added) parts.push(`加入目录 ${added} 个`)
+    ElMessage.success(parts.join('，') || '候选症状已处理')
+  } finally {
+    candidateApplying.value = false
+  }
 }
 
 async function parseWithAiOrLocal(text) {

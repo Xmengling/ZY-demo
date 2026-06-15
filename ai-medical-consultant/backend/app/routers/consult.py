@@ -96,6 +96,8 @@ PATHOLOGY_NOTE_ALIASES = {
     "水证": "水实",
 }
 
+AUTOFILL_ACTIONS = {"fill", "add", "ignore"}
+
 
 def _loads(text: str) -> dict:
     try:
@@ -221,10 +223,77 @@ def _normalize_auto_fill_payload(
         if block_label in allowed_blocks and text:
             pathology_notes[block_label] = text[:500]
 
+    def clean_candidate(item: Any) -> dict[str, Any] | None:
+        if isinstance(item, str):
+            raw_text = item.strip()
+            item = {"raw_text": raw_text}
+        if not isinstance(item, dict):
+            return None
+        raw_text = str(item.get("raw_text") or item.get("text") or item.get("symptom") or "").strip()
+        if not raw_text:
+            return None
+        suggested_symptoms = []
+        raw_suggested_symptoms = item.get("suggested_symptoms")
+        if isinstance(raw_suggested_symptoms, list):
+            for symptom in raw_suggested_symptoms:
+                symptom_text = str(symptom).strip()
+                if symptom_text in allowed_symptoms and symptom_text not in suggested_symptoms:
+                    suggested_symptoms.append(symptom_text)
+        suggested_blocks = []
+        raw_suggested_blocks = item.get("suggested_blocks")
+        if raw_suggested_blocks is None and item.get("suggested_block") is not None:
+            raw_suggested_blocks = [item.get("suggested_block")]
+        if isinstance(raw_suggested_blocks, list):
+            for block in raw_suggested_blocks:
+                block_label = PATHOLOGY_NOTE_ALIASES.get(str(block).strip(), str(block).strip())
+                if block_label in allowed_blocks and block_label not in suggested_blocks:
+                    suggested_blocks.append(block_label)
+        reason = str(item.get("reason") or "").strip()
+        action = str(item.get("action") or "fill").strip()
+        if action not in AUTOFILL_ACTIONS:
+            action = "fill"
+        symptom_name = str(item.get("symptom_name") or raw_text).strip()
+        candidate = {
+            "raw_text": raw_text[:80],
+            "symptom_name": symptom_name[:80],
+            "suggested_symptoms": suggested_symptoms[:5],
+            "suggested_blocks": suggested_blocks[:3],
+            "reason": reason[:160],
+            "action": action,
+        }
+        return candidate
+
+    uncertain_symptoms = []
+    seen_candidates: set[str] = set()
+    raw_uncertain = data.get("uncertain_symptoms") if isinstance(data.get("uncertain_symptoms"), list) else []
+    for item in raw_uncertain:
+        candidate = clean_candidate(item)
+        if not candidate:
+            continue
+        key = candidate["raw_text"]
+        if key in seen_candidates:
+            continue
+        uncertain_symptoms.append(candidate)
+        seen_candidates.add(key)
+
+    new_symptom_terms = []
+    raw_new_terms = data.get("new_symptom_terms") if isinstance(data.get("new_symptom_terms"), list) else []
+    for item in raw_new_terms:
+        candidate = clean_candidate(item)
+        if not candidate:
+            continue
+        key = candidate["raw_text"]
+        if key in seen_candidates:
+            continue
+        new_symptom_terms.append(candidate)
+        seen_candidates.add(key)
+
     return {
         "fields": fields,
         "symptoms": symptoms,
         "pathology_notes": pathology_notes,
+        "uncertain_symptoms": uncertain_symptoms[:20],
+        "new_symptom_terms": new_symptom_terms[:20],
         "notes": notes[:5],
     }
 
@@ -461,6 +530,10 @@ def auto_fill_intake(
                 "字段只能放在 fields 对象中，允许字段如下：\n"
                 f"{field_lines}\n\n"
                 "症状只能从 symptom_catalog 中原样选择，不允许改写、合并或新增；否定症状不要选择。\n"
+                "如果原文有明确症状，但不能确定应勾选哪个 symptom_catalog 症状，放入 uncertain_symptoms；"
+                "如果原文有明确症状词，但 symptom_catalog 没有贴近词，放入 new_symptom_terms。"
+                "这两类都要保留原文短词 raw_text，给出 suggested_blocks，能关联已有症状时给 suggested_symptoms，"
+                "不要把已经放入 symptoms 的确定项重复放入候选。\n"
                 "如果文本没有明确给出某字段，字段值留空或省略。\n"
                 "history 只写起病背景、病程演变、诱因、既往史、用药史；不要把所有现症、舌脉腹诊和检查都塞进去。\n"
                 "modern_diagnosis 可放现代诊断、检查、检验、辅助检查。\n\n"
@@ -475,7 +548,10 @@ def auto_fill_intake(
                 "\"visit_time\":\"\",\"doctor\":\"\","
                 "\"modern_diagnosis\":\"\",\"chief_complaint\":\"\",\"history\":\"\","
                 "\"tongue_body\":\"\",\"tongue_coat\":\"\",\"pulse\":\"\",\"abdominal\":\"\"},"
-                "\"symptoms\":[],\"pathology_notes\":{},\"notes\":[]}\n\n"
+                "\"symptoms\":[],\"pathology_notes\":{},"
+                "\"uncertain_symptoms\":[{\"raw_text\":\"\",\"suggested_symptoms\":[],\"suggested_blocks\":[],\"reason\":\"\"}],"
+                "\"new_symptom_terms\":[{\"raw_text\":\"\",\"suggested_block\":\"\",\"reason\":\"\"}],"
+                "\"notes\":[]}\n\n"
                 f"symptom_catalog:\n{json.dumps(catalog, ensure_ascii=False)}\n\n"
                 f"文本：\n{text[:9000]}"
             ),
@@ -492,6 +568,8 @@ def auto_fill_intake(
         fields=normalized["fields"],
         symptoms=normalized["symptoms"],
         pathology_notes=normalized["pathology_notes"],
+        uncertain_symptoms=normalized["uncertain_symptoms"],
+        new_symptom_terms=normalized["new_symptom_terms"],
         notes=normalized["notes"],
         source="ai",
     )
