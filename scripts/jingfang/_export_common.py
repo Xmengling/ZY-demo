@@ -44,7 +44,9 @@ def load_formula_summary() -> list[dict]:
             {
                 "id": item.get("id"),
                 "name": item.get("name") or "未命名方剂",
+                "composition": item.get("composition") or "",
                 "categories": item.get("categories") or [],
+                "pathology": item.get("pathology") or [],
                 "points": item.get("diagnosisPoints") or [],
                 "updated_at": updated_at,
             }

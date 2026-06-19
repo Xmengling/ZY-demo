@@ -4,7 +4,7 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>方剂梳理</title>
-  <link rel="stylesheet" href="styles.css?v=pathology-symptom-sm1" />
+  <link rel="stylesheet" href="styles.css?v=compare3" />
   <link rel="stylesheet" href="pathology-tone.css?v=1" />
 </head>
 <body>
@@ -116,6 +116,10 @@
             <span>慎用人群</span>
             <textarea id="field-caution" class="textarea-auto" rows="1" data-min-rows="2" data-max-rows="3" placeholder="留空则不显示；语法：[[红字]]、**粗体**、[[**红色加粗**]]；加紫为系统自动"></textarea>
           </label>
+          <label class="field">
+            <span>易混淆方</span>
+            <textarea id="field-compare" class="textarea-auto" rows="1" data-min-rows="3" data-max-rows="6" placeholder="格式：易混淆方：A、B&#10;核心区别：&#10;- 本方：...&#10;- A：..."></textarea>
+          </label>
         </form>
       </section>
     </section>
@@ -149,6 +153,10 @@
             <section id="card-caution-section" class="card-side-block card-side-section" hidden>
               <h4 class="ribbon">慎用人群</h4>
               <p id="card-caution" class="caution"></p>
+            </section>
+            <section id="card-compare-section" class="card-side-block card-side-section" hidden>
+              <h4 class="ribbon">易混淆方</h4>
+              <div id="card-compare" class="compare-text"></div>
             </section>
           </aside>
 
@@ -194,6 +202,6 @@
   </main>
 
   <div id="toast" class="toast" role="status"></div>
-  <script src="app.js?v=pathology-sort1"></script>
+  <script src="app.js?v=compare3"></script>
 </body>
 </html>

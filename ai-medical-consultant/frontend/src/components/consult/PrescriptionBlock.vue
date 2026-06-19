@@ -223,16 +223,20 @@ watch(
 
 <style scoped>
 .prescription-block {
+  min-width: 0;
+  max-width: 100%;
   background: #fff;
   border: 1px solid #e6ebf2;
   border-radius: 8px;
   padding: 12px;
+  box-sizing: border-box;
 }
 .prescription-block-title {
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 12px;
+  flex-wrap: wrap;
   margin-bottom: 12px;
   padding-bottom: 10px;
   border-bottom: 1px solid #eef2f6;
@@ -265,17 +269,22 @@ watch(
   padding: 0 8px;
 }
 .add-btn {
+  flex-shrink: 0;
   border-color: #d7e8de;
   color: #0f7c43;
 }
 .formula-table-wrap {
+  width: 100%;
+  max-width: 100%;
   overflow-x: auto;
+  overflow-y: hidden;
   border: 1px solid #e8edf3;
   border-radius: 7px;
+  box-sizing: border-box;
 }
 .formula-table {
   width: 100%;
-  min-width: 820px;
+  min-width: 780px;
   border-collapse: collapse;
   table-layout: fixed;
   font-size: 12px;

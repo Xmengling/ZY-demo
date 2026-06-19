@@ -60,7 +60,7 @@ FORMULA_FIELDS = [
     ("相关条文", "classicTexts"),
     ("胡希恕", "huXishuAnalysis"),
     ("李冠杰", "liGuanjieAnalysis"),
-    ("对比", "compare"),
+    ("对比", ("compare", "comparison")),
     ("医案", "cases"),
     ("注意", "caution"),
 ]
@@ -296,7 +296,14 @@ def formula_to_doc(formula: dict) -> Dict:
     categories = _stringify_value(formula.get("categories"))
     lines: List[str] = []
     for label, key in FORMULA_FIELDS:
-        text = _stringify_value(formula.get(key))
+        if isinstance(key, tuple):
+            text = ""
+            for item_key in key:
+                text = _stringify_value(formula.get(item_key))
+                if text:
+                    break
+        else:
+            text = _stringify_value(formula.get(key))
         if text:
             lines.append(f"{label}：{text}")
     case_items = formula.get("caseItems")

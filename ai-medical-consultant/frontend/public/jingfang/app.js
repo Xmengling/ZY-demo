@@ -29,6 +29,9 @@ const state = {
   accordionOpen: {},
   listCollapsed: false,
   proofreadFilterOnly: false,
+  autoSaveSnapshot: "",
+  autoSaveInFlight: false,
+  autoSavePending: false,
 };
 
 const $ = (selector) => document.querySelector(selector);
@@ -50,6 +53,7 @@ const fields = {
   cases: $("#field-cases"),
   addCase: $("#add-case"),
   caution: $("#field-caution"),
+  compare: $("#field-compare"),
 };
 
 const PATHOLOGY_OPTION_GROUPS = {
@@ -253,6 +257,56 @@ function highlight(text) {
   return html || escapeHtml(text || "未填写");
 }
 
+function parseCompareText(text) {
+  const lines = String(text || "")
+    .replace(/\r/g, "")
+    .split("\n")
+    .map((line) => line.trim())
+    .filter(Boolean);
+  const summaryLine = lines.find((line) => /^易混淆方[：:]/.test(line)) || "";
+  const summary = summaryLine.replace(/^易混淆方[：:]\s*/, "").trim();
+  const rows = [];
+
+  lines.forEach((line) => {
+    const clean = line.replace(/^[-–—•]\s*/, "").trim();
+    if (!clean || /^易混淆方[：:]/.test(clean) || /^核心区别[：:]?$/.test(clean)) return;
+    const match = clean.match(/^([^：:]{1,18})[：:]\s*(.+)$/);
+    if (!match) return;
+    rows.push({ name: match[1].trim(), detail: match[2].trim() });
+  });
+
+  return { summary, rows };
+}
+
+function renderCompareHtml(text, currentName = "") {
+  const { summary, rows } = parseCompareText(text);
+  if (!summary && !rows.length) return `<p class="caution">${highlight(text)}</p>`;
+  const chips = summary
+    ? `<div class="compare-chips" aria-label="易混淆方">${summary
+      .split(/[、,，]/)
+      .map((name) => name.trim())
+      .filter(Boolean)
+      .map((name) => `<span class="compare-chip">${escapeHtml(name)}</span>`)
+      .join("")}</div>`
+    : "";
+  const table = rows.length
+    ? `<table class="compare-table">
+        <thead>
+          <tr><th>方剂</th><th>核心区别</th></tr>
+        </thead>
+        <tbody>
+          ${rows.map((row) => `
+            <tr>
+              <th scope="row">${escapeHtml(row.name)}</th>
+              <td>${highlight(row.detail)}</td>
+            </tr>
+          `).join("")}
+        </tbody>
+      </table>`
+    : "";
+  return `${chips}${table}`;
+}
+
 function segmentFont(segment, baseFont) {
   const weight = segment.bold ? "900" : "400";
   return baseFont.replace(/^\d+/, weight);
@@ -444,8 +498,18 @@ function normalizeFormulaFromForm() {
     caseItems,
     cases: caseItems.join("\n\n"),
     caution: fields.caution.value.trim(),
+    compare: fields.compare.value.trim(),
+    comparison: fields.compare.value.trim(),
     proofreadComplete: $("#toggle-proofread")?.getAttribute("aria-pressed") === "true",
   };
+}
+
+function formulaSnapshot(formula = normalizeFormulaFromForm()) {
+  return JSON.stringify(formula);
+}
+
+function rememberFormulaSnapshot(formula = normalizeFormulaFromForm()) {
+  state.autoSaveSnapshot = formulaSnapshot(formula);
 }
 
 function isFormulaProofread(formula) {
@@ -494,6 +558,7 @@ function fillForm(formula) {
   fields.classics.value = listToText(formula.classicTexts || []);
   renderCaseRows(formula.caseItems?.length ? formula.caseItems : splitCaseText(formula.cases || ""));
   fields.caution.value = formula.caution || "";
+  fields.compare.value = formula.compare || formula.comparison || "";
   requestAnimationFrame(() => resizeAutoTextareas());
   $$("#field-categories input").forEach((input) => {
     input.checked = (formula.categories || []).includes(input.value);
@@ -502,6 +567,7 @@ function fillForm(formula) {
   updateProofreadButton(isFormulaProofread(formula));
   renderPreview(normalizeFormulaFromForm());
   renderFormulaList();
+  rememberFormulaSnapshot();
 }
 
 function renderEditorCategories() {
@@ -980,6 +1046,15 @@ function renderPreview(formula) {
     cautionSection.hidden = true;
     $("#card-caution").textContent = "";
   }
+  const compareText = String(formula.compare || formula.comparison || "").trim();
+  const compareSection = $("#card-compare-section");
+  if (compareText) {
+    compareSection.hidden = false;
+    $("#card-compare").innerHTML = renderCompareHtml(compareText, formula.name);
+  } else {
+    compareSection.hidden = true;
+    $("#card-compare").innerHTML = "";
+  }
   const previewCases = formula.caseItems?.length ? formula.caseItems : splitCaseText(formula.cases || "");
   $("#card-cases").innerHTML = previewCases.length
     ? previewCases.map((item) => `<p>${highlight(item)}</p>`).join("")
@@ -1034,7 +1109,7 @@ async function loadData() {
   requestAnimationFrame(fitFormulaCardPreview);
 }
 
-async function persistFormula(formula, { successMessage = "已保存到 SQLite 数据库" } = {}) {
+async function persistFormula(formula, { successMessage = "已保存到 SQLite 数据库", refreshForm = true } = {}) {
   const exists = state.formulas.some((item) => item.id === formula.id);
   const url = exists ? `${API_BASE}/${encodeURIComponent(formula.id)}` : API_BASE;
   const res = await fetch(url, {
@@ -1050,8 +1125,12 @@ async function persistFormula(formula, { successMessage = "已保存到 SQLite �
   const index = state.formulas.findIndex((item) => item.id === saved.id);
   if (index >= 0) state.formulas[index] = saved;
   else state.formulas.unshift(saved);
-  fillForm(saved);
-  toast(successMessage);
+  if (refreshForm) {
+    fillForm(saved);
+  } else {
+    renderFormulaList();
+  }
+  if (successMessage) toast(successMessage);
   return saved;
 }
 
@@ -1063,6 +1142,41 @@ async function saveCurrentFormula() {
     return;
   }
   await persistFormula(formula);
+}
+
+async function autoSaveCurrentFormula() {
+  if (state.autoSaveInFlight) {
+    state.autoSavePending = true;
+    return;
+  }
+  const formula = normalizeFormulaFromForm();
+  const snapshot = formulaSnapshot(formula);
+  if (snapshot === state.autoSaveSnapshot) return;
+  if (!formula.id || !formula.name || formula.name === "未命名方剂") return;
+
+  const selectedId = state.selectedId;
+  state.autoSaveInFlight = true;
+  try {
+    const saved = await persistFormula(formula, {
+      successMessage: "已自动保存",
+      refreshForm: false,
+    });
+    if (saved && state.selectedId === selectedId) {
+      rememberFormulaSnapshot(normalizeFormulaFromForm());
+    }
+  } finally {
+    state.autoSaveInFlight = false;
+    if (state.autoSavePending) {
+      state.autoSavePending = false;
+      autoSaveCurrentFormula();
+    }
+  }
+}
+
+function shouldAutoSaveOnBlur(target) {
+  if (!(target instanceof HTMLElement)) return false;
+  if (target.id === "field-id") return false;
+  return target.matches("input, textarea, select");
 }
 
 async function toggleProofreadComplete() {
@@ -1128,6 +1242,8 @@ function newFormula() {
     caseItems: [],
     cases: "",
     caution: "",
+    compare: "",
+    comparison: "",
     proofreadComplete: false,
   };
   fillForm(blank);
@@ -1234,6 +1350,96 @@ function wrapCanvasLines(ctx, text, maxWidth) {
   }
   if (line) lines.push(line);
   return lines.length ? lines : ["未填写"];
+}
+
+function drawCompareTable(ctx, text, currentName, x, y, width) {
+  const { summary, rows } = parseCompareText(text);
+  if (!summary && !rows.length) {
+    return drawMarkupText(ctx, text, x, y, width, 24, {
+      font: "700 16px Microsoft YaHei, sans-serif",
+      paragraphGap: 4,
+    });
+  }
+
+  let cursorY = y;
+  if (summary) {
+    ctx.font = "800 15px Microsoft YaHei, sans-serif";
+    const chips = summary.split(/[、,，]/).map((name) => name.trim()).filter(Boolean);
+    let chipX = x;
+    chips.forEach((name) => {
+      const chipW = Math.min(width, ctx.measureText(name).width + 18);
+      if (chipX > x && chipX + chipW > x + width) {
+        chipX = x;
+        cursorY += 28;
+      }
+      ctx.fillStyle = "#eff6ff";
+      ctx.strokeStyle = "#bfdbfe";
+      ctx.lineWidth = 1;
+      roundRect(ctx, chipX, cursorY, chipW, 22, 11);
+      ctx.fill();
+      ctx.stroke();
+      ctx.fillStyle = "#1d4ed8";
+      ctx.textBaseline = "middle";
+      ctx.fillText(name, chipX + 9, cursorY + 11);
+      chipX += chipW + 6;
+    });
+    cursorY += 34;
+  }
+
+  if (!rows.length) return cursorY;
+
+  const nameWidth = 82;
+  const detailWidth = width - nameWidth;
+  const lineHeight = 21;
+  const headerHeight = 32;
+  const cellPadX = 8;
+  const cellPadY = 7;
+  const tableTop = cursorY;
+
+  ctx.fillStyle = "#f3f7ff";
+  ctx.strokeStyle = "#d6e4ff";
+  ctx.lineWidth = 1;
+  ctx.fillRect(x, cursorY, width, headerHeight);
+  ctx.strokeRect(x, cursorY, width, headerHeight);
+  ctx.beginPath();
+  ctx.moveTo(x + nameWidth, cursorY);
+  ctx.lineTo(x + nameWidth, cursorY + headerHeight);
+  ctx.stroke();
+  ctx.font = "900 14px Microsoft YaHei, sans-serif";
+  ctx.fillStyle = "#36506f";
+  ctx.textBaseline = "middle";
+  ctx.fillText("方剂", x + cellPadX, cursorY + headerHeight / 2);
+  ctx.fillText("核心区别", x + nameWidth + cellPadX, cursorY + headerHeight / 2);
+  cursorY += headerHeight;
+
+  rows.forEach((row) => {
+    const nameLines = wrapCanvasLines(ctx, row.name, nameWidth - cellPadX * 2);
+    const detailLines = wrapMarkupTextLines(ctx, row.detail, detailWidth - cellPadX * 2, "700 14px Microsoft YaHei, sans-serif");
+    const rowHeight = Math.max(40, Math.max(nameLines.length, detailLines.length) * lineHeight + cellPadY * 2);
+    ctx.fillStyle = "#ffffff";
+    ctx.fillRect(x, cursorY, width, rowHeight);
+    ctx.strokeStyle = "#e4ecfb";
+    ctx.strokeRect(x, cursorY, width, rowHeight);
+    ctx.beginPath();
+    ctx.moveTo(x + nameWidth, cursorY);
+    ctx.lineTo(x + nameWidth, cursorY + rowHeight);
+    ctx.stroke();
+
+    ctx.font = "900 14px Microsoft YaHei, sans-serif";
+    ctx.fillStyle = "#1f2a44";
+    ctx.textBaseline = "top";
+    nameLines.forEach((line, index) => {
+      ctx.fillText(line, x + cellPadX, cursorY + cellPadY + index * lineHeight);
+    });
+    detailLines.forEach((line, index) => {
+      drawMarkupLine(ctx, line, x + nameWidth + cellPadX, cursorY + cellPadY + index * lineHeight, "700 14px Microsoft YaHei, sans-serif", "#1f2937");
+    });
+    cursorY += rowHeight;
+  });
+
+  ctx.strokeStyle = "#d6e4ff";
+  ctx.strokeRect(x, tableTop, width, cursorY - tableTop);
+  return cursorY + 2;
 }
 
 function computeHerbGalleryLayout(count, zone) {
@@ -1552,6 +1758,16 @@ function drawCardSideSections(ctx, formula, startY = 410) {
       paragraphGap: 4,
     });
     drawSideBlock(block3Top, y);
+    y += sectionGap;
+  }
+
+  const compareText = String(formula.compare || formula.comparison || "").trim();
+  if (compareText) {
+    const block4Top = y;
+    drawSectionTitle(ctx, "易混淆方", x, y);
+    y += 54;
+    y = drawCompareTable(ctx, compareText, formula.name, x, y, CARD_SIDE_CONTENT_WIDTH);
+    drawSideBlock(block4Top, y);
   }
   return y;
 }
@@ -1823,7 +2039,7 @@ async function downloadCardPng(mode = "partial") {
     const compTextY = compY + 9;
     drawPill(ctx, "组成", 380, compY, { minWidth: 86, height: 44, fill: "#ffffff", stroke: "#ff963d", color: "#111827" });
     drawDashedBox(ctx, compBoxX, compY, compBoxW, compBoxH, 6);
-    const isSingleLinePlain = !/\n|\[\[|\*\*/.test(compText);
+    const isSingleLinePlain = !/\n|\[\[|\*\*/.test(compText) && compSingleLineWidth <= compTextW;
     if (isSingleLinePlain) {
       ctx.save();
       ctx.font = compFont;
@@ -1975,6 +2191,10 @@ $("#formula-form")?.addEventListener("input", (event) => {
   }
 });
 
+$("#formula-form")?.addEventListener("focusout", (event) => {
+  if (shouldAutoSaveOnBlur(event.target)) autoSaveCurrentFormula();
+});
+
 $("#field-categories").addEventListener("change", () => {
   renderEditorCategories();
   expandSidebarCategories($$("#field-categories input:checked").map((input) => input.value));
@@ -2045,10 +2265,17 @@ function getCaseItemsFromForm() {
     .filter(Boolean);
 }
 
+function getCaseRowValuesFromForm() {
+  return $$("#field-cases .case-input").map((input) => input.value);
+}
+
 function renderCaseRows(items = []) {
   const rows = (items && items.length ? items : [""]).map((item) => item || "");
   fields.cases.innerHTML = rows.map((item, index) => `
-    <div class="case-row">
+    <div class="case-row" data-case-index="${index}">
+      <button class="case-drag-handle" type="button" draggable="true" data-case-index="${index}" aria-label="拖拽调整医案${index + 1}顺序" title="拖拽调整顺序">
+        <span aria-hidden="true">≡</span>
+      </button>
       <textarea class="case-input textarea-auto" rows="1" data-min-rows="3" placeholder="医案${index + 1}；语法：[[红字]]、**粗体**、[[**红色加粗**]]">${escapeHtml(item)}</textarea>
       <button class="case-remove-btn" type="button" data-case-index="${index}" aria-label="删除医案${index + 1}">×</button>
     </div>
@@ -2056,8 +2283,18 @@ function renderCaseRows(items = []) {
   requestAnimationFrame(() => resizeAutoTextareas(fields.cases));
 }
 
+function reorderCaseRows(fromIndex, toIndex) {
+  const items = getCaseRowValuesFromForm();
+  if (fromIndex === toIndex || fromIndex < 0 || toIndex < 0 || fromIndex >= items.length || toIndex >= items.length) return;
+  const [moved] = items.splice(fromIndex, 1);
+  items.splice(toIndex, 0, moved);
+  renderCaseRows(items);
+  renderPreview(normalizeFormulaFromForm());
+  autoSaveCurrentFormula();
+}
+
 fields.addCase?.addEventListener("click", () => {
-  const items = getCaseItemsFromForm();
+  const items = getCaseRowValuesFromForm();
   items.push("");
   renderCaseRows(items);
 });
@@ -2066,10 +2303,54 @@ fields.cases?.addEventListener("click", (event) => {
   const btn = event.target.closest(".case-remove-btn");
   if (!btn) return;
   const index = Number(btn.dataset.caseIndex);
-  const items = getCaseItemsFromForm();
+  const items = getCaseRowValuesFromForm();
   items.splice(index, 1);
   renderCaseRows(items.length ? items : [""]);
   renderPreview(normalizeFormulaFromForm());
+});
+
+fields.cases?.addEventListener("dragstart", (event) => {
+  const handle = event.target.closest(".case-drag-handle");
+  if (!handle) return;
+  const row = handle.closest(".case-row");
+  const index = Number(row?.dataset.caseIndex);
+  if (!Number.isFinite(index)) return;
+  event.dataTransfer.effectAllowed = "move";
+  event.dataTransfer.setData("text/plain", String(index));
+  row.classList.add("case-row-dragging");
+});
+
+fields.cases?.addEventListener("dragend", () => {
+  $$("#field-cases .case-row").forEach((row) => {
+    row.classList.remove("case-row-dragging", "case-row-drop-target");
+  });
+});
+
+fields.cases?.addEventListener("dragover", (event) => {
+  const row = event.target.closest(".case-row");
+  if (!row) return;
+  event.preventDefault();
+  event.dataTransfer.dropEffect = "move";
+  $$("#field-cases .case-row-drop-target").forEach((item) => {
+    if (item !== row) item.classList.remove("case-row-drop-target");
+  });
+  row.classList.add("case-row-drop-target");
+});
+
+fields.cases?.addEventListener("dragleave", (event) => {
+  const row = event.target.closest(".case-row");
+  if (!row || row.contains(event.relatedTarget)) return;
+  row.classList.remove("case-row-drop-target");
+});
+
+fields.cases?.addEventListener("drop", (event) => {
+  const row = event.target.closest(".case-row");
+  if (!row) return;
+  event.preventDefault();
+  const fromIndex = Number(event.dataTransfer.getData("text/plain"));
+  const toIndex = Number(row.dataset.caseIndex);
+  row.classList.remove("case-row-drop-target");
+  reorderCaseRows(fromIndex, toIndex);
 });
 initSidebarAccordion();
 updateProofreadFilterButton();

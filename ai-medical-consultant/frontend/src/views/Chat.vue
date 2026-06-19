@@ -28,6 +28,25 @@
             </button>
           </nav>
           <div class="hero-top-right">
+            <div class="visit-mode-switch" aria-label="诊次切换">
+              <button
+                type="button"
+                :class="{ active: activeVisitMode === 'first' }"
+                @click="switchVisitMode('first')"
+              >
+                首诊
+              </button>
+              <button
+                v-for="(visit, index) in form.followups"
+                :key="visit.id || index"
+                type="button"
+                :class="{ active: activeVisitMode === 'followup' && activeFollowupIndex === index }"
+                @click="switchFollowup(index)"
+              >
+                {{ visit.label || visitLabel(index) }}
+              </button>
+            </div>
+            <el-button size="small" type="success" plain @click="addFollowup">复诊</el-button>
             <el-button size="small" type="primary" plain @click="fillDialogVisible = true">粘贴自动填充</el-button>
             <el-tag :type="sessionId ? 'success' : 'warning'" effect="light">
               {{ sessionId ? '已建档' : draftSavedAt ? '草稿已保存' : '未保存' }}
@@ -36,7 +55,7 @@
         </div>
       </div>
 
-      <nav class="module-nav" aria-label="问诊模块导航">
+      <nav v-if="activeVisitMode === 'first'" class="module-nav" aria-label="问诊模块导航">
         <div class="module-tab-list">
           <button
             v-for="m in moduleNav"
@@ -68,7 +87,7 @@
         </div>
       </nav>
 
-      <div ref="formScrollRef" class="form-scroll">
+      <div v-if="activeVisitMode === 'first'" ref="formScrollRef" class="form-scroll">
         <!-- 基础信息 -->
         <section
           v-show="isSectionVisible('base')"
@@ -346,6 +365,124 @@
         </section>
       </div>
 
+      <div v-else ref="formScrollRef" class="form-scroll followup-scroll">
+        <section class="form-section collect-section followup-section">
+          <div class="section-head">
+            <div class="section-head-main">
+              <div class="section-name">
+                <span class="num">2</span>
+                <span class="section-title-text">{{ currentFollowup.label }}</span>
+              </div>
+            </div>
+            <div class="section-head-meta">
+              <div v-if="currentFollowup.changes?.length" class="section-score-summary">
+                <el-tag
+                  v-for="item in currentFollowup.changes"
+                  :key="item"
+                  type="success"
+                  effect="light"
+                >
+                  {{ item }}
+                </el-tag>
+              </div>
+            </div>
+          </div>
+          <div class="section-content">
+            <div class="followup-grid">
+              <div class="field followup-full followup-card followup-change-card">
+                <label class="followup-card-title">服药后变化</label>
+                <el-checkbox-group v-model="currentFollowup.changes" class="followup-change-group">
+                  <el-checkbox label="好转" />
+                  <el-checkbox label="无变化" />
+                  <el-checkbox label="加重" />
+                  <el-checkbox label="新增症状" />
+                </el-checkbox-group>
+              </div>
+
+              <div class="field followup-full followup-card followup-chief-card">
+                <div class="followup-blue-input-row biao-block">
+                  <label class="biao-label">主诉</label>
+                  <el-input
+                    v-model="currentFollowup.chief_complaint"
+                    class="consult-textarea followup-symptom-textarea"
+                    type="textarea"
+                    :autosize="{ minRows: 2, maxRows: 5 }"
+                    placeholder="复诊时最主要的问题、变化、持续时间"
+                  />
+                </div>
+              </div>
+
+              <div class="field followup-full followup-card followup-symptoms-card">
+                <label class="followup-card-title">当前症状</label>
+                <div class="followup-symptom-list">
+                  <div
+                    v-for="section in sections"
+                    :key="`followup-${section.key}`"
+                    class="followup-symptom-input-row biao-block"
+                    :class="pathologyToneClass(section.blocks?.[0]?.label || section.title)"
+                  >
+                    <label class="biao-label">{{ sectionDisplayTitle(section.title) }}</label>
+                    <el-input
+                      v-model="currentFollowup.notes[sectionDisplayTitle(section.title)]"
+                      class="consult-textarea followup-symptom-textarea"
+                      type="textarea"
+                      :autosize="{ minRows: 1, maxRows: 5 }"
+                      :placeholder="`记录${sectionDisplayTitle(section.title)}相关症状、变化、程度`"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              <div class="field followup-mini-card followup-blue-input-row biao-block">
+                <label class="biao-label">舌像</label>
+                <el-input
+                  v-model="currentFollowup.tongue_image"
+                  class="followup-inline-input"
+                  placeholder="如舌红转淡、苔腻减轻"
+                />
+              </div>
+              <div class="field followup-mini-card followup-blue-input-row biao-block">
+                <label class="biao-label">脉像</label>
+                <el-input
+                  v-model="currentFollowup.pulse"
+                  class="followup-inline-input"
+                  placeholder="如脉弦减、脉沉细"
+                />
+              </div>
+              <div class="field followup-mini-card followup-blue-input-row biao-block">
+                <label class="biao-label">腹诊</label>
+                <el-input
+                  v-model="currentFollowup.abdominal"
+                  class="followup-inline-input"
+                  placeholder="如心下痞减、少腹仍急"
+                />
+              </div>
+
+              <div class="field followup-full followup-card">
+                <label class="followup-card-title">上次方剂</label>
+                <div class="followup-blue-input-row biao-block">
+                  <label class="biao-label">方剂</label>
+                  <el-input
+                    v-model="currentFollowup.previous_formula"
+                    class="followup-inline-input"
+                    placeholder="默认取首诊处方，可手动修改"
+                  />
+                </div>
+              </div>
+
+              <div class="field followup-full followup-card followup-prescription-card">
+                <label class="followup-card-title">本次调整方剂</label>
+                <PrescriptionBlock
+                  v-model="currentFollowup.prescription"
+                  :formula-index="formulaIndex"
+                  :formula-names="formulaNames"
+                />
+              </div>
+            </div>
+          </div>
+        </section>
+      </div>
+
       <div class="actions">
         <span class="text-muted">{{ draftHint }}</span>
         <div class="action-buttons">
@@ -385,22 +522,31 @@
               </el-button>
             </div>
           </div>
-          <ul class="summary-list">
-            <li v-if="!hasConsultSummary" class="is-empty">左侧录入后，这里会生成病例摘要。</li>
+          <div class="summary-list">
+            <div v-if="!hasConsultSummary" class="is-empty">左侧录入后，这里会生成病例摘要。</div>
             <template v-else>
-              <li
-                v-for="item in consultSummaryLines"
-                :key="`${item.label}-${item.kind}`"
-                :title="formatConsultSummaryLine(item)"
+              <section
+                v-for="group in consultSummaryGroups"
+                :key="group.key"
+                class="summary-visit-group"
               >
-                <span
-                  class="summary-pathology-label"
-                  :class="item.kind === 'pathology' ? pathologyToneClass(item.label) : 'summary-label-meta'"
-                >{{ item.label }}<template v-if="item.score != null"><span class="summary-pathology-score">{{ item.score }}</span></template>：</span>
-                <span class="summary-line-text">{{ item.text }}</span>
-              </li>
+                <h4>{{ group.label }}</h4>
+                <ul>
+                  <li
+                    v-for="item in group.lines"
+                    :key="`${group.key}-${item.label}-${item.kind}`"
+                    :title="formatConsultSummaryLine(item)"
+                  >
+                    <span
+                      class="summary-pathology-label"
+                      :class="item.kind === 'pathology' ? pathologyToneClass(item.label) : 'summary-label-meta'"
+                    >{{ item.label }}<template v-if="item.score != null"><span class="summary-pathology-score">{{ item.score }}</span></template>：</span>
+                    <span class="summary-line-text">{{ item.text }}</span>
+                  </li>
+                </ul>
+              </section>
             </template>
-          </ul>
+          </div>
         </div>
 
         <div class="consult-ai-chat-wrap">
@@ -527,8 +673,9 @@ import { getPathologyToneClass } from '../utils/pathologyTone'
 import { parseCaseText, FIELD_LABELS } from '../utils/caseTextParser'
 import {
   buildConsultSummaryLines,
+  buildFollowupSummaryLines,
   formatConsultSummaryLine,
-  formatConsultSummaryText,
+  formatConsultSummaryGroups,
   formatVisitDate
 } from '../utils/consultSymptoms'
 
@@ -539,6 +686,8 @@ const router = useRouter()
 const sessionId = ref(route.params.id ? Number(route.params.id) : null)
 const summaryDockedLeft = ref(false)
 const activeModule = ref('all')
+const activeVisitMode = ref('first')
+const activeFollowupIndex = ref(0)
 const saving = ref(false)
 const draftSavedAt = ref('')
 const formScrollRef = ref(null)
@@ -652,6 +801,29 @@ function defaultPrescription() {
   }
 }
 
+function visitLabel(index = 0) {
+  const labels = ['二诊', '三诊', '四诊', '五诊', '六诊', '七诊', '八诊', '九诊', '十诊']
+  return labels[index] || `第${index + 2}诊`
+}
+
+function defaultFollowup(index = 0) {
+  return {
+    id: `followup-${Date.now()}-${index}`,
+    label: visitLabel(index),
+    changes: [],
+    chief_complaint: '',
+    symptoms_text: '',
+    selected: {},
+    notes: {},
+    chipLists: {},
+    tongue_image: '',
+    pulse: '',
+    abdominal: '',
+    previous_formula: '',
+    prescription: defaultPrescription()
+  }
+}
+
 const emptyForm = () => ({
   patient_name: '',
   phone: '',
@@ -670,7 +842,8 @@ const emptyForm = () => ({
   notes: {},
   scores: {},
   chipLists: {},
-  prescription: defaultPrescription()
+  prescription: defaultPrescription(),
+  followups: []
 })
 
 const form = reactive(emptyForm())
@@ -705,6 +878,11 @@ const allVisibleCollapsed = computed(() => {
 
 const selectedSymptoms = computed(() => Object.keys(form.selected).filter((k) => form.selected[k]))
 
+const currentFollowup = computed(() => {
+  ensureFollowup()
+  return form.followups[activeFollowupIndex.value]
+})
+
 const pathologyBlockOptions = computed(() => {
   const blocks = []
   for (const section of sections.value || []) {
@@ -726,7 +904,26 @@ const pathologyScores = computed(() => {
 
 const consultSummaryLines = computed(() => buildConsultSummaryLines(form, sections.value))
 
-const hasConsultSummary = computed(() => consultSummaryLines.value.some((item) => item.text))
+const visibleFollowups = computed(() => (form.followups || []).filter((visit) => {
+  return buildFollowupSummaryLines(visit, sections.value).some((item) => item.text)
+}))
+
+const consultSummaryGroups = computed(() => {
+  const groups = []
+  if (consultSummaryLines.value.some((item) => item.text)) {
+    groups.push({ key: 'first', label: '首诊', lines: consultSummaryLines.value })
+  }
+  visibleFollowups.value.forEach((visit, index) => {
+    groups.push({
+      key: visit.id || `followup-${index}`,
+      label: visit.label || visitLabel(index),
+      lines: buildFollowupSummaryLines(visit, sections.value)
+    })
+  })
+  return groups
+})
+
+const hasConsultSummary = computed(() => consultSummaryGroups.value.some((group) => group.lines.some((item) => item.text)))
 
 const hasChiefComplaint = computed(() => Boolean(String(form.chief_complaint || '').trim()))
 
@@ -736,7 +933,7 @@ const prescriptionSectionTags = computed(() =>
     .filter(Boolean)
 )
 
-const caseSummaryText = computed(() => formatConsultSummaryText(consultSummaryLines.value))
+const caseSummaryText = computed(() => formatConsultSummaryGroups(consultSummaryGroups.value))
 
 function sessionNavLabel(row) {
   if (!row) return ''
@@ -797,6 +994,7 @@ function goAdjacentSession(direction) {
 }
 
 const hasCaseContent = computed(() => {
+  const hasFollowupContent = (form.followups || []).some((visit) => buildFollowupSummaryLines(visit, sections.value).some((item) => item.text))
   return Boolean(
     form.patient_name ||
       form.chief_complaint ||
@@ -807,7 +1005,8 @@ const hasCaseContent = computed(() => {
       form.tongue_image ||
       form.pulse ||
       form.abdominal ||
-      (form.prescription?.rows || []).some((row) => row.name)
+      (form.prescription?.rows || []).some((row) => row.name) ||
+      hasFollowupContent
   )
 })
 
@@ -833,12 +1032,115 @@ function normalizeIntakeTongue(data) {
   }
 }
 
+function normalizeIntakeFollowups(data) {
+  if (!data) return
+  if (!Array.isArray(data.followups)) data.followups = []
+  data.followups.forEach((visit, index) => normalizeFollowup(visit, index))
+}
+
 function chipsForBlock(block) {
   return form.chipLists[block.label]?.length ? form.chipLists[block.label] : [...(block.symptoms || [])]
 }
 
 function setChipList(label, list) {
   form.chipLists[label] = list
+}
+
+function ensureFollowup() {
+  if (!Array.isArray(form.followups)) form.followups = []
+  if (!form.followups.length) {
+    form.followups.push({
+      ...defaultFollowup(0),
+      previous_formula: buildPrescriptionSummaryTextForForm(form.prescription)
+    })
+  }
+  if (!form.followups[activeFollowupIndex.value]) activeFollowupIndex.value = 0
+  normalizeFollowup(form.followups[activeFollowupIndex.value], activeFollowupIndex.value)
+}
+
+function normalizeFollowup(visit, index = 0) {
+  if (!visit) return
+  if (!visit.id) visit.id = `followup-${Date.now()}-${index}`
+  visit.label = visit.label || visitLabel(index)
+  visit.symptoms_text = String(visit.symptoms_text || '').trim()
+  if (!Array.isArray(visit.changes)) visit.changes = []
+  if (!visit.selected || typeof visit.selected !== 'object') visit.selected = {}
+  if (!visit.notes || typeof visit.notes !== 'object') visit.notes = {}
+  if (!visit.chipLists || typeof visit.chipLists !== 'object') visit.chipLists = {}
+  if (!visit.prescription || !Array.isArray(visit.prescription.rows)) {
+    visit.prescription = { ...defaultPrescription(), ...(visit.prescription || {}) }
+    if (!Array.isArray(visit.prescription.rows)) visit.prescription.rows = []
+  }
+  if (!String(visit.previous_formula || '').trim()) {
+    visit.previous_formula = buildPrescriptionSummaryTextForForm(form.prescription)
+  }
+}
+
+function buildPrescriptionSummaryTextForForm(prescription) {
+  return (prescription?.rows || [])
+    .map((row) => String(row?.name || '').trim())
+    .filter(Boolean)
+    .join('、')
+}
+
+function openFollowup() {
+  ensureFollowup()
+  activeVisitMode.value = 'followup'
+  nextTick(() => {
+    formScrollRef.value?.scrollTo({ top: 0, behavior: 'smooth' })
+  })
+}
+
+function addFollowup() {
+  if (!Array.isArray(form.followups)) form.followups = []
+  const index = form.followups.length
+  form.followups.push({
+    ...defaultFollowup(index),
+    previous_formula: previousFormulaForFollowup(index)
+  })
+  switchFollowup(index)
+}
+
+function previousFormulaForFollowup(index) {
+  if (index > 0) {
+    const previous = form.followups[index - 1]
+    const adjusted = buildPrescriptionSummaryTextForForm(previous?.prescription)
+    if (adjusted) return adjusted
+    if (previous?.previous_formula) return previous.previous_formula
+  }
+  return buildPrescriptionSummaryTextForForm(form.prescription)
+}
+
+function switchVisitMode(mode) {
+  activeVisitMode.value = mode
+  nextTick(() => {
+    formScrollRef.value?.scrollTo({ top: 0, behavior: 'smooth' })
+  })
+}
+
+function switchFollowup(index) {
+  if (!Array.isArray(form.followups) || !form.followups[index]) return
+  activeFollowupIndex.value = index
+  activeVisitMode.value = 'followup'
+  normalizeFollowup(form.followups[index], index)
+  nextTick(() => {
+    formScrollRef.value?.scrollTo({ top: 0, behavior: 'smooth' })
+  })
+}
+
+function followupChipsForBlock(block) {
+  const visit = currentFollowup.value
+  return visit.chipLists?.[block.label]?.length ? visit.chipLists[block.label] : [...(block.symptoms || [])]
+}
+
+function setFollowupChipList(label, list) {
+  currentFollowup.value.chipLists[label] = list
+}
+
+function onToggleFollowupSelected({ symptom, active }) {
+  const visit = currentFollowup.value
+  visit.selected[symptom] = active
+  if (!active) delete visit.selected[symptom]
 }
 
 function onBlockSymptomsPersisted(label, list) {
@@ -1074,7 +1376,9 @@ function loadDraft() {
   const raw = localStorage.getItem(draftKey())
   if (!raw) return false
   try {
-    Object.assign(form, emptyForm(), JSON.parse(raw))
+    const data = JSON.parse(raw)
+    Object.assign(form, emptyForm(), data)
+    normalizeIntakeFollowups(form)
     return true
   } catch {
     return false
@@ -1130,6 +1434,32 @@ function buildFormulaExportRows() {
   })
 }
 
+function buildPrescriptionExportRows(prescription) {
+  const rows = (prescription?.rows || []).filter((row) => row.name?.trim())
+  if (!rows.length) return ['- 未录入']
+
+  const calc = runDoseCalc(
+    rows.map((row) => {
+      const hit = lookupFormulaPowder(formulaIndex.value, row.name)
+      return {
+        id: row.id,
+        name: row.name,
+        unitTotal: hit?.total || 0,
+        portions: Number(row.portions) || 0
+      }
+    }),
+    prescription?.targetDose || 200
+  )
+  const finalMap = new Map(calc.rows.map((row) => [row.id, row]))
+
+  return rows.map((row) => {
+    const finalDose = finalMap.get(row.id)?.finalDose ?? '—'
+    const chunks = [`${row.name} × ${Number(row.portions) || 1}份`]
+    if (finalDose !== '—') chunks.push(`最终用量 ${finalDose}g`)
+    return `- ${chunks.join('；')}；`
+  })
+}
+
 function buildPathologyExportLines() {
   const lines = []
   for (const section of sections.value || []) {
@@ -1163,7 +1493,8 @@ function buildCaseMarkdown() {
     form.abdominal ? `腹诊：${form.abdominal}` : ''
   ].filter(Boolean)
 
-  return [
+  const firstVisitLines = [
+    '## 首诊',
     `患者：${patientParts.join('，') || '未填写'}`,
     `就诊：${visitDate}；主诊医生：${valueOrEmpty(form.doctor)}`,
     `现代诊断/检查：${valueOrEmpty(form.modern_diagnosis)}`,
@@ -1179,6 +1510,32 @@ function buildCaseMarkdown() {
     ...buildFormulaExportRows(),
     form.prescription?.note ? `处方备注：${form.prescription.note}` : ''
   ]
+
+  const followupLines = (form.followups || [])
+    .map((visit, index) => {
+      const lines = buildFollowupSummaryLines(visit, sections.value)
+      if (!lines.some((item) => item.text)) return []
+      const tonguePulseParts = [
+        visit.tongue_image ? `舌像：${visit.tongue_image}` : '',
+        visit.pulse ? `脉像：${visit.pulse}` : '',
+        visit.abdominal ? `腹诊：${visit.abdominal}` : ''
+      ].filter(Boolean)
+      return [
+        '',
+        `## ${visit.label || (index === 0 ? '二诊' : `第${index + 2}诊`)}`,
+        `服药后变化：${Array.isArray(visit.changes) && visit.changes.length ? visit.changes.join('、') : '未填写'}`,
+        `当前主诉：${valueOrEmpty(visit.chief_complaint)}`,
+        `当前症状：${buildFollowupSummaryLines(visit, sections.value).find((item) => item.label === '当前症状')?.text || '未填写'}`,
+        `舌脉腹诊变化：${tonguePulseParts.join('；') || '未填写'}`,
+        `上次方剂：${valueOrEmpty(visit.previous_formula)}`,
+        `本次调整方剂：目标用量 ${visit.prescription?.targetDose || 200}g`,
+        ...buildPrescriptionExportRows(visit.prescription),
+        visit.prescription?.note ? `处方备注：${visit.prescription.note}` : ''
+      ]
+    })
+    .flat()
+
+  return [...firstVisitLines, ...followupLines]
     .filter((line, index, arr) => {
       if (line !== '') return true
       return arr[index - 1] !== ''
@@ -1211,7 +1568,7 @@ async function copyCaseSummary() {
     ElMessage.warning('暂无可复制的病例摘要')
     return
   }
-  await copyTextToClipboard(formatConsultSummaryText(consultSummaryLines.value))
+  await copyTextToClipboard(caseSummaryText.value)
   ElMessage.success('病例摘要已复制')
 }
 
@@ -1365,6 +1722,8 @@ function resetBlockCollapseState() {
 function resetForm() {
   Object.assign(form, emptyForm())
   sessionId.value = null
+  activeVisitMode.value = 'first'
+  activeFollowupIndex.value = 0
   localStorage.removeItem('consult-draft-new')
   draftSavedAt.value = ''
   resetBlockCollapseState()
@@ -1410,6 +1769,7 @@ async function loadSession(id) {
     const detail = await consultApi.getSession(id)
     const data = detail.intake_data || {}
     Object.assign(form, emptyForm(), data)
+    normalizeIntakeFollowups(form)
     if (form.scores && typeof form.scores === 'object') {
       for (const [key, value] of Object.entries(form.scores)) {
         const score = normalizePathologyScore(value)

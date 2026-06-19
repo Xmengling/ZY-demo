@@ -3,7 +3,7 @@
     <iframe
       v-if="ready"
       class="formulas-frame"
-      src="/jingfang/index.html"
+      src="/jingfang/index.html?v=compare3"
       title="方剂梳理"
     />
     <div v-else class="formulas-loading">

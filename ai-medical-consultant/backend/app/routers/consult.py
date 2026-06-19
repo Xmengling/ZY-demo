@@ -44,7 +44,12 @@ from ..schemas import (
 from ..services.agent import medical_agent
 from ..services.consult_autofill import build_autofill_examples_prompt, load_autofill_examples
 from ..services.ai_reply_format import extract_followup_questions, format_ai_reply
-from ..services.consult_chat_prompt import build_assistant_system_prompt, classify_assistant_question
+from ..services.consult_chat_prompt import (
+    analyze_case_context,
+    build_assistant_system_prompt,
+    classify_assistant_question,
+    should_skip_case_retrieval,
+)
 from ..services.session_merge import merge_case_text, merge_intake_data
 from ..services.user_rules import append_user_rule, build_rule_suggestion
 from ..services.consult_knowledge import (
@@ -773,15 +778,6 @@ def _prepare_assistant_chat(
     prescription_names = collect_prescription_names(case_context, intake_data)
     prescription_items = collect_prescription_display_items(case_context, intake_data)
 
-    prescription_query = " ".join(prescription_names)
-    retrieve_query = " ".join(
-        part for part in (text, prescription_query, case_context[:1200]) if part
-    ) or "舌象 脉象 症状"
-    inventory = consult_knowledge.build_inventory(db)
-    docs = consult_knowledge.search_enhanced(db, retrieve_query, prescription_names, k=6)
-    kb_context = consult_knowledge.build_context(docs)
-    references = consult_knowledge.build_references(docs)
-
     prescription_notice = build_prescription_notice(prescription_items)
     prescription_authority = build_prescription_authority_block(case_context, prescription_items)
     question_type = classify_assistant_question(
@@ -789,6 +785,20 @@ def _prepare_assistant_chat(
         has_case=bool(case_context),
         prescription_names=prescription_names,
     )
+    case_profile = analyze_case_context(case_context)
+    inventory = consult_knowledge.build_inventory(db)
+    if should_skip_case_retrieval(case_profile, question_type):
+        docs = []
+        kb_context = "当前病例摘要缺少症状证据，本次不检索知识库，避免给出与空医案无关的参考来源。"
+        references = []
+    else:
+        prescription_query = " ".join(prescription_names)
+        retrieve_query = " ".join(
+            part for part in (text, prescription_query, case_context[:1200]) if part
+        ) or "舌象 脉象 症状"
+        docs = consult_knowledge.search_enhanced(db, retrieve_query, prescription_names, k=6)
+        kb_context = consult_knowledge.build_context(docs)
+        references = consult_knowledge.build_references(docs)
     system_content = build_assistant_system_prompt(
         question_type,
         case_context=case_context,

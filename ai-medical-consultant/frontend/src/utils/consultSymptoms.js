@@ -113,6 +113,28 @@ export function buildPrescriptionSummaryText(prescription) {
     .join('，')
 }
 
+export function buildFollowupSymptomText(visit, sections) {
+  const symptomText = String(visit?.symptoms_text || '').trim()
+  if (symptomText) return symptomText
+
+  const selected = visit?.selected || {}
+  const notes = visit?.notes || {}
+  const parts = []
+  for (const section of sections || []) {
+    const sectionLabel = String(section?.title || '').replace(/采集$/, '').trim()
+    const sectionText = String(notes?.[sectionLabel] || '').trim()
+    if (sectionLabel && sectionText) {
+      parts.push(`${sectionLabel}：${sectionText}`)
+      continue
+    }
+    for (const block of section.blocks || []) {
+      const text = buildPathologyBlockText(block, notes, selected)
+      if (text) parts.push(`${block.label}：${text}`)
+    }
+  }
+  return parts.join('；')
+}
+
 /** 病例摘要单行格式 */
 export function formatConsultSummaryLine(item) {
   let label = String(item?.label || '').trim()
@@ -157,4 +179,47 @@ export function buildConsultSummaryLines(form, sections) {
   }
 
   return lines
+}
+
+export function buildFollowupSummaryLines(visit, sections) {
+  const lines = []
+
+  const changes = Array.isArray(visit?.changes) ? visit.changes.filter(Boolean) : []
+  if (changes.length) lines.push({ label: '服药后变化', text: changes.join('、'), kind: 'meta' })
+
+  const chief = String(visit?.chief_complaint || '').trim()
+  if (chief) lines.push({ label: '当前主诉', text: chief, kind: 'meta' })
+
+  const symptomText = buildFollowupSymptomText(visit, sections)
+  if (symptomText) lines.push({ label: '当前症状', text: symptomText, kind: 'meta' })
+
+  const tonguePulseAbdominal = buildTonguePulseAbdominalText({
+    tongue_image: visit?.tongue_image,
+    pulse: visit?.pulse,
+    abdominal: visit?.abdominal
+  })
+  if (tonguePulseAbdominal) {
+    lines.push({ label: '舌脉腹变化', text: tonguePulseAbdominal, kind: 'meta' })
+  }
+
+  const previousFormula = String(visit?.previous_formula || '').trim()
+  if (previousFormula) lines.push({ label: '上次方剂', text: previousFormula, kind: 'meta' })
+
+  const prescriptionText = buildPrescriptionSummaryText(visit?.prescription)
+  if (prescriptionText) {
+    lines.push({ label: '本次调整方剂', text: prescriptionText, kind: 'meta' })
+  }
+
+  return lines
+}
+
+export function formatConsultSummaryGroups(groups) {
+  return (groups || [])
+    .filter((group) => Array.isArray(group?.lines) && group.lines.some((item) => String(item?.text || '').trim()))
+    .map((group) => {
+      const body = formatConsultSummaryText(group.lines)
+      return body ? `【${group.label}】\n${body}` : ''
+    })
+    .filter(Boolean)
+    .join('\n\n')
 }

@@ -30,6 +30,9 @@ const state = {
   articles: [],
   selectedId: null,
   listCollapsed: false,
+  autoSaveSnapshot: "",
+  autoSaveInFlight: false,
+  autoSavePending: false,
 };
 
 const $ = (selector) => document.querySelector(selector);
@@ -216,6 +219,14 @@ function normalizeArticleFromForm() {
     liGuanjie: fields.li.value.trim(),
     summary: fields.summary.value.trim(),
   };
+}
+
+function articleSnapshot(article = normalizeArticleFromForm()) {
+  return JSON.stringify(article);
+}
+
+function rememberArticleSnapshot(article = normalizeArticleFromForm()) {
+  state.autoSaveSnapshot = articleSnapshot(article);
 }
 
 function articleLevel(article) {
@@ -439,6 +450,7 @@ function fillForm(article = DEFAULT_ARTICLE) {
   renderArticleList();
   renderPreview(normalized);
   resizeAutoTextareas();
+  rememberArticleSnapshot();
 }
 
 function newArticle() {
@@ -463,12 +475,7 @@ async function loadData() {
   fillForm(state.articles[0]);
 }
 
-async function saveCurrentArticle() {
-  const article = normalizeArticleFromForm();
-  if (!article.number) {
-    toast("请先填写条文序号");
-    return;
-  }
+async function persistArticle(article, { successMessage = "已保存到 SQLite 数据库", refreshForm = true } = {}) {
   const exists = state.articles.some((item) => item.id === article.id);
   const url = exists ? `${API_BASE}/${encodeURIComponent(article.id)}` : API_BASE;
   const res = await fetch(url, {
@@ -478,14 +485,63 @@ async function saveCurrentArticle() {
   });
   if (!res.ok) {
     toast("保存失败，请确认已登录");
-    return;
+    return null;
   }
   const saved = await res.json();
   const index = state.articles.findIndex((item) => item.id === saved.id);
   if (index >= 0) state.articles[index] = saved;
   else state.articles.unshift(saved);
-  fillForm(saved);
-  toast("已保存到 SQLite 数据库");
+  if (refreshForm) {
+    fillForm(saved);
+  } else {
+    renderArticleList();
+  }
+  if (successMessage) toast(successMessage);
+  return saved;
+}
+
+async function saveCurrentArticle() {
+  const article = normalizeArticleFromForm();
+  if (!article.number) {
+    toast("请先填写条文序号");
+    return;
+  }
+  await persistArticle(article);
+}
+
+async function autoSaveCurrentArticle() {
+  if (state.autoSaveInFlight) {
+    state.autoSavePending = true;
+    return;
+  }
+  const article = normalizeArticleFromForm();
+  const snapshot = articleSnapshot(article);
+  if (snapshot === state.autoSaveSnapshot) return;
+  if (!article.id || !article.number) return;
+
+  const selectedId = state.selectedId;
+  state.autoSaveInFlight = true;
+  try {
+    const saved = await persistArticle(article, {
+      successMessage: "已自动保存",
+      refreshForm: false,
+    });
+    if (saved && state.selectedId === selectedId) {
+      rememberArticleSnapshot(normalizeArticleFromForm());
+    }
+  } finally {
+    state.autoSaveInFlight = false;
+    if (state.autoSavePending) {
+      state.autoSavePending = false;
+      autoSaveCurrentArticle();
+    }
+  }
+}
+
+function shouldAutoSaveOnBlur(target) {
+  if (!(target instanceof HTMLElement)) return false;
+  if (target.id === "field-id") return false;
+  return target.matches("input, textarea, select");
 }
 
 async function deleteCurrentArticle() {
@@ -980,6 +1036,10 @@ fields.terms?.addEventListener("input", () => renderPreview(normalizeArticleFrom
 
 $("#article-form").addEventListener("input", (event) => {
   if (event.target instanceof HTMLTextAreaElement) autoResizeTextarea(event.target);
+});
+
+$("#article-form").addEventListener("focusout", (event) => {
+  if (shouldAutoSaveOnBlur(event.target)) autoSaveCurrentArticle();
 });
 
 fields.addTerm?.addEventListener("click", () => {
