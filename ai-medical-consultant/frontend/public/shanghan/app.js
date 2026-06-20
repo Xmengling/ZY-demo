@@ -645,32 +645,41 @@ function measureMarkupLine(ctx, parts, baseFont) {
   }, 0);
 }
 
-function wrapMarkupParagraph(ctx, paragraph, maxWidth, baseFont) {
-  const segments = parseInlineMarkup(paragraph);
+function wrapSegments(ctx, segments, maxWidth, baseFont) {
   const lines = [];
   let currentLine = [];
 
   const pushChar = (char, style) => {
     const trial = [...currentLine];
     const last = trial[trial.length - 1];
-    if (last && last.bold === style.bold && last.red === style.red) {
+    if (
+      last
+      && last.bold === style.bold
+      && last.red === style.red
+      && last.color === style.color
+    ) {
       last.text += char;
     } else {
-      trial.push({ text: char, bold: style.bold, red: style.red });
+      trial.push({ text: char, bold: style.bold, red: style.red, color: style.color });
     }
     if (measureMarkupLine(ctx, trial, baseFont) > maxWidth && currentLine.length) {
       lines.push(currentLine);
-      currentLine = [{ text: char, bold: style.bold, red: style.red }];
+      currentLine = [{ text: char, bold: style.bold, red: style.red, color: style.color }];
     } else {
       currentLine = trial;
     }
   };
 
   segments.forEach((seg) => {
-    [...seg.text].forEach((char) => pushChar(char, seg));
+    [...String(seg.text || "")].forEach((char) => pushChar(char, seg));
   });
   if (currentLine.length) lines.push(currentLine);
   return lines.length ? lines : [[{ text: "未填写", bold: false, red: false }]];
+}
+
+function wrapMarkupParagraph(ctx, paragraph, maxWidth, baseFont) {
+  const segments = parseInlineMarkup(paragraph);
+  return wrapSegments(ctx, segments, maxWidth, baseFont);
 }
 
 function wrapMarkupTextLines(ctx, text, maxWidth, baseFont) {
@@ -683,7 +692,7 @@ function drawMarkupLine(ctx, parts, x, y, baseFont, defaultColor) {
   let drawX = x;
   parts.forEach((part) => {
     ctx.font = segmentFont(part, baseFont);
-    ctx.fillStyle = part.red ? "#ef3b35" : defaultColor;
+    ctx.fillStyle = part.red ? "#ef3b35" : (part.color || defaultColor);
     ctx.textBaseline = "top";
     ctx.fillText(part.text, drawX, y);
     drawX += ctx.measureText(part.text).width;
@@ -703,6 +712,45 @@ function drawMarkupText(ctx, text, x, y, maxWidth, lineHeight, options = {}) {
     cursorY += lineHeight;
   });
   return cursorY + (options.paragraphGap || 0);
+}
+
+function termSegments(item) {
+  const label = String(item?.label || "").trim();
+  const text = String(item?.text || "").trim() || "未填写";
+  const segments = [];
+  if (label) {
+    segments.push({ text: `${label}：`, bold: true, red: false, color: "#245ed6" });
+  }
+  parseInlineMarkup(text).forEach((seg) => segments.push(seg));
+  return segments;
+}
+
+function measureTermItemsBlock(ctx, items, width, font, lineHeight) {
+  const normalizedItems = (items || []).length ? items : [{ label: "", text: "未填写" }];
+  const textWidth = width - 40;
+  const rowsHeight = normalizedItems.reduce((height, item) => (
+    height + wrapSegments(ctx, termSegments(item), textWidth, font).length * lineHeight + 12
+  ), 0);
+  return 38 + 14 + rowsHeight + 74;
+}
+
+function drawTermItems(ctx, items, x, y, maxWidth) {
+  const normalizedItems = (items || []).length ? items : [{ label: "", text: "未填写" }];
+  const font = "400 23px Microsoft YaHei, sans-serif";
+  const lineHeight = 35;
+  let cursorY = y;
+  normalizedItems.forEach((item) => {
+    ctx.fillStyle = "#ff962e";
+    ctx.beginPath();
+    ctx.arc(x + 4, cursorY + 14, 4, 0, Math.PI * 2);
+    ctx.fill();
+    wrapSegments(ctx, termSegments(item), maxWidth - 22, font).forEach((line) => {
+      drawMarkupLine(ctx, line, x + 20, cursorY, font, "#172033");
+      cursorY += lineHeight;
+    });
+    cursorY += 12;
+  });
+  return cursorY;
 }
 
 function roundRect(ctx, x, y, width, height, radius) {
@@ -825,10 +873,8 @@ function drawSummaryMindMap(ctx, points, areaX, areaY) {
 
   layout.forEach((box, index) => {
     drawBlueDashedBox(ctx, branchStartX, box.top, box.width, box.height, 20);
-    const hasMarkup = /\[\[|\*\*/.test(box.point);
-    const defaultColor = hasMarkup
-      ? "#111827"
-      : (index === 0 ? "#8c61ff" : "#111827");
+    const emphasized = index === 0 || /\[\[\*\*/.test(box.point);
+    const defaultColor = emphasized ? "#8c61ff" : "#111827";
     let textY = box.top + 10;
     box.lines.forEach((line) => {
       drawMarkupLine(ctx, line, branchStartX + 15, textY, font, defaultColor);
@@ -842,28 +888,94 @@ function drawSummaryMindMap(ctx, points, areaX, areaY) {
   return Math.max(titleY + titleHeight, contentBottom) + 24;
 }
 
+function measureSummaryMindMapPanelHeight(ctx, points) {
+  const items = (points || []).map((item) => String(item || "").trim()).filter(Boolean).slice(0, 7);
+  if (!items.length) items.push("未填写");
+
+  const areaY = 12;
+  const maxTextWidth = 380;
+  const font = "700 22px Microsoft YaHei, sans-serif";
+  const lineHeight = 28;
+  const pointGap = 15;
+  const titleHeight = 50;
+  const listTop = areaY + 24;
+
+  ctx.font = font;
+  let pointY = listTop;
+  const layout = items.map((point) => {
+    const lines = wrapMarkupTextLines(ctx, point, maxTextWidth, font);
+    const height = lines.length * lineHeight + 14;
+    const top = pointY;
+    pointY += height + pointGap;
+    return { top, height };
+  });
+
+  const listHeight = layout.length ? pointY - pointGap - listTop : 0;
+  const titleY = listTop + Math.max(0, (listHeight - titleHeight) / 2);
+  const contentBottom = layout.length
+    ? layout[layout.length - 1].top + layout[layout.length - 1].height
+    : listTop;
+  const mapBottom = Math.max(titleY + titleHeight, contentBottom) + 24;
+  return Math.max(260, Math.ceil(mapBottom + 14));
+}
+
 async function downloadCardPng() {
   const article = normalizeArticleFromForm();
   const scale = 2;
+  const measureCanvas = document.createElement("canvas");
+  const measureCtx = measureCanvas.getContext("2d");
+  const leftX = 62;
+  const fullWidth = 956;
+  const titleText = article.original || "未填写";
+  const titleFont = "900 31px KaiTi, STKaiti, serif";
+  const titleLineHeight = 43;
+  const titleMaxWidth = 700;
+  const titleLines = wrapMarkupTextLines(measureCtx, titleText, titleMaxWidth, titleFont);
+  const headHeight = Math.max(182, 118 + titleLines.length * titleLineHeight);
+  const termItems = normalizeTermItems(article);
+  const termsHeight = Math.max(
+    170,
+    measureTermItemsBlock(measureCtx, termItems, fullWidth, "400 23px Microsoft YaHei, sans-serif", 35),
+  );
+  const summaryPoints = splitLines(article.summary);
+  const summaryMapHeight = measureSummaryMindMapPanelHeight(measureCtx, summaryPoints);
+  const huHeight = Math.max(
+    310,
+    measureBlock(measureCtx, "胡希恕讲解", article.huXishu, fullWidth, "400 25px Microsoft YaHei, sans-serif", 39),
+  );
+  const liHeight = Math.max(
+    310,
+    measureBlock(measureCtx, "李冠杰讲解", article.liGuanjie, fullWidth, "400 25px Microsoft YaHei, sans-serif", 39),
+  );
+  const contentTop = 54 + headHeight + 18;
+  const contentBottom = contentTop
+    + termsHeight + 18
+    + summaryMapHeight + 18
+    + huHeight + 18
+    + liHeight;
+  const footerLineY = Math.ceil(contentBottom + 54);
+  const footerTextY = footerLineY + 30;
+  const exportHeight = Math.max(CARD_EXPORT_HEIGHT, footerTextY + 58);
+
   const canvas = document.createElement("canvas");
   canvas.width = CARD_EXPORT_WIDTH * scale;
-  canvas.height = CARD_EXPORT_HEIGHT * scale;
+  canvas.height = exportHeight * scale;
   const ctx = canvas.getContext("2d");
   ctx.scale(scale, scale);
 
   ctx.fillStyle = "#ffffff";
-  ctx.fillRect(0, 0, CARD_EXPORT_WIDTH, CARD_EXPORT_HEIGHT);
+  ctx.fillRect(0, 0, CARD_EXPORT_WIDTH, exportHeight);
   ctx.fillStyle = "#f8fbff";
-  ctx.fillRect(0, 0, CARD_EXPORT_WIDTH, CARD_EXPORT_HEIGHT);
+  ctx.fillRect(0, 0, CARD_EXPORT_WIDTH, exportHeight);
   ctx.strokeStyle = "rgba(71,124,255,.09)";
   ctx.lineWidth = 1;
   for (let x = 0; x < CARD_EXPORT_WIDTH; x += 32) {
     ctx.beginPath();
     ctx.moveTo(x, 0);
-    ctx.lineTo(x, CARD_EXPORT_HEIGHT);
+    ctx.lineTo(x, exportHeight);
     ctx.stroke();
   }
-  for (let y = 0; y < CARD_EXPORT_HEIGHT; y += 32) {
+  for (let y = 0; y < exportHeight; y += 32) {
     ctx.beginPath();
     ctx.moveTo(0, y);
     ctx.lineTo(CARD_EXPORT_WIDTH, y);
@@ -872,7 +984,7 @@ async function downloadCardPng() {
 
   ctx.strokeStyle = "#2f68e6";
   ctx.lineWidth = 8;
-  roundRect(ctx, 8, 8, CARD_EXPORT_WIDTH - 16, CARD_EXPORT_HEIGHT - 16, 28);
+  roundRect(ctx, 8, 8, CARD_EXPORT_WIDTH - 16, exportHeight - 16, 28);
   ctx.stroke();
 
   ctx.fillStyle = "rgba(255,154,53,.16)";
@@ -881,13 +993,6 @@ async function downloadCardPng() {
   ctx.fill();
 
   const levelMeta = LEVEL_BADGE[articleLevel(article)] || LEVEL_BADGE["一级"];
-  const titleText = article.original || "未填写";
-  const titleFont = "900 31px KaiTi, STKaiti, serif";
-  const titleLineHeight = 43;
-  const titleMaxWidth = 700;
-  const titleLines = wrapMarkupTextLines(ctx, titleText, titleMaxWidth, titleFont);
-  const headHeight = Math.max(182, 118 + titleLines.length * titleLineHeight);
-
   drawPanel(ctx, 62, 54, 956, headHeight, { fill: "rgba(255,255,255,.9)" });
   ctx.fillStyle = "#fff8ef";
   ctx.strokeStyle = "#ff9a35";
@@ -946,26 +1051,17 @@ async function downloadCardPng() {
     color: "#172033",
   });
 
-  const leftX = 62;
-  const fullWidth = 956;
   let contentY = 54 + headHeight + 18;
 
-  const terms = termsTextFromItems(normalizeTermItems(article));
-  const termsHeight = Math.min(540, measureBlock(ctx, "词语解析", terms, fullWidth, "400 23px Microsoft YaHei, sans-serif", 35, 20));
   drawPanel(ctx, leftX, contentY, fullWidth, termsHeight, {});
   drawPill(ctx, leftX + 20, contentY + 20, "词语解析");
-  drawMarkupText(ctx, terms || "未填写", leftX + 20, contentY + 72, fullWidth - 40, 35, {
-    font: "400 23px Microsoft YaHei, sans-serif",
-  });
+  drawTermItems(ctx, termItems, leftX + 20, contentY + 72, fullWidth - 40);
   contentY += termsHeight + 18;
 
-  const summaryPoints = splitLines(article.summary);
-  const summaryMapHeight = Math.max(260, summaryPoints.length * 56 + 90);
   drawPanel(ctx, leftX, contentY, fullWidth, summaryMapHeight, {});
   drawSummaryMindMap(ctx, summaryPoints, leftX + 18, contentY + 12);
   contentY += summaryMapHeight + 18;
 
-  const huHeight = Math.max(310, measureBlock(ctx, "胡希恕讲解", article.huXishu, fullWidth, "400 25px Microsoft YaHei, sans-serif", 39));
   drawPanel(ctx, leftX, contentY, fullWidth, huHeight, {});
   drawPill(ctx, leftX + 26, contentY + 24, "胡希恕讲解");
   drawMarkupText(ctx, article.huXishu || "未填写", leftX + 26, contentY + 82, fullWidth - 52, 39, {
@@ -973,7 +1069,6 @@ async function downloadCardPng() {
   });
   contentY += huHeight + 18;
 
-  const liHeight = Math.max(310, Math.min(520, measureBlock(ctx, "李冠杰讲解", article.liGuanjie, fullWidth, "400 25px Microsoft YaHei, sans-serif", 39)));
   drawPanel(ctx, leftX, contentY, fullWidth, liHeight, {});
   drawPill(ctx, leftX + 26, contentY + 24, "李冠杰讲解");
   drawMarkupText(ctx, article.liGuanjie || "未填写", leftX + 26, contentY + 82, fullWidth - 52, 39, {
@@ -983,7 +1078,7 @@ async function downloadCardPng() {
   ctx.fillStyle = "rgba(71,124,255,.08)";
   ctx.font = "900 112px KaiTi, STKaiti, serif";
   ctx.save();
-  ctx.translate(980, 1040);
+  ctx.translate(980, Math.max(1040, exportHeight - 460));
   ctx.rotate(Math.PI / 2);
   ctx.fillText("傷寒論", 0, 0);
   ctx.restore();
@@ -991,13 +1086,13 @@ async function downloadCardPng() {
   ctx.strokeStyle = "#d7e3f8";
   ctx.lineWidth = 1;
   ctx.beginPath();
-  ctx.moveTo(120, 1426);
-  ctx.lineTo(960, 1426);
+  ctx.moveTo(120, footerLineY);
+  ctx.lineTo(960, footerLineY);
   ctx.stroke();
   ctx.fillStyle = "#718096";
   ctx.font = "400 18px Microsoft YaHei, sans-serif";
   ctx.textAlign = "center";
-  ctx.fillText("学习资料，仅供中医学习交流，不作为诊疗依据。", 540, 1458);
+  ctx.fillText("学习资料，仅供中医学习交流，不作为诊疗依据。", 540, footerTextY);
 
   const blob = await new Promise((resolve, reject) => {
     canvas.toBlob((result) => result ? resolve(result) : reject(new Error("PNG 生成失败")), "image/png");

@@ -9,6 +9,35 @@ function authHeaders(extra = {}) {
   };
 }
 
+async function readErrorMessage(response, fallback = "请求失败") {
+  try {
+    const payload = await response.json();
+    return typeof payload?.detail === "string" ? payload.detail : fallback;
+  } catch {
+    return fallback;
+  }
+}
+
+function redirectToLogin() {
+  localStorage.removeItem("token");
+  const target = `/login?redirect=${encodeURIComponent("/formulas")}`;
+  if (window.top && window.top !== window) {
+    window.top.location.href = target;
+  } else {
+    window.location.href = target;
+  }
+}
+
+async function handleWriteError(response, actionText) {
+  const message = await readErrorMessage(response, `${actionText}失败`);
+  if (response.status === 401) {
+    toast(`${message}，请重新登录`);
+    redirectToLogin();
+    return;
+  }
+  toast(`${actionText}失败：${message}`);
+}
+
 const CARD_EXPORT_WIDTH = 1080;
 const CARD_EXPORT_HEIGHT = 1501;
 const CARD_LAYOUT_WIDTH = 1200;
@@ -1118,7 +1147,7 @@ async function persistFormula(formula, { successMessage = "已保存到 SQLite �
     body: JSON.stringify(formula),
   });
   if (!res.ok) {
-    toast("保存失败");
+    await handleWriteError(res, "保存");
     return null;
   }
   const saved = await res.json();
@@ -1210,7 +1239,7 @@ async function deleteCurrentFormula() {
     headers: authHeaders(),
   });
   if (!res.ok) {
-    toast("删除失败");
+    await handleWriteError(res, "删除");
     return;
   }
   state.formulas = state.formulas.filter((item) => item.id !== formulaId);

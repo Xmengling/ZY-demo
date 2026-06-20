@@ -13,6 +13,24 @@ playwright install chromium
 
 在 **方剂梳理** 页面（http://127.0.0.1:5173/formulas）左上角点击 **「导出全部PDF」**，由后端调用可搜索网页版导出。
 
+## 方剂数据导入保护
+
+平时新增方剂后，继续运行普通导入：
+
+```bash
+python scripts/jingfang/import_formula_cards.py
+```
+
+普通导入会保护网页里已经编辑过的数据：
+
+- 如果数据库中的方剂记录比对应 JSON 文件更新，不会被旧 JSON 覆盖。
+- 如果网页里已经勾选「校对完成」，该方剂会成为强保护记录，普通导入不会覆盖。
+- 只有明确需要用 JSON 重刷数据库时，才使用 `--force`：
+
+```bash
+python scripts/jingfang/import_formula_cards.py --force
+```
+
 ## 命令行一键导出（推荐）
 
 ```bash

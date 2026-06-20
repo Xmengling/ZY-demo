@@ -90,7 +90,37 @@ def normalize_payload(payload: dict) -> dict:
     return payload
 
 
-def upsert(db_path: Path, payload: dict) -> None:
+def existing_formula(conn: sqlite3.Connection, formula_id: str) -> tuple[dict | None, int | None]:
+    row = conn.execute(
+        "select payload, updated_at from formulas where id = ?",
+        (formula_id,),
+    ).fetchone()
+    if row is None:
+        return None, None
+    try:
+        return json.loads(row[0]), int(row[1])
+    except (TypeError, ValueError, json.JSONDecodeError):
+        return None, int(row[1])
+
+
+def should_skip_existing(
+    existing_payload: dict | None,
+    existing_updated_at: int | None,
+    payload_path: str,
+    force: bool,
+) -> str | None:
+    if force or not existing_payload:
+        return None
+    if existing_payload.get("proofreadComplete") is True:
+        return "数据库记录已校对完成"
+    if payload_path != "-" and existing_updated_at is not None:
+        payload_mtime = int(Path(payload_path).stat().st_mtime)
+        if existing_updated_at > payload_mtime:
+            return "数据库记录比 JSON 文件更新"
+    return None
+
+
+def upsert(db_path: Path, payload: dict, payload_path: str, force: bool = False) -> tuple[bool, str | None]:
     db_path.parent.mkdir(parents=True, exist_ok=True)
     with sqlite3.connect(db_path) as conn:
         conn.execute(
@@ -102,6 +132,10 @@ def upsert(db_path: Path, payload: dict) -> None:
             )
             """
         )
+        current_payload, current_updated_at = existing_formula(conn, payload["id"])
+        skip_reason = should_skip_existing(current_payload, current_updated_at, payload_path, force)
+        if skip_reason:
+            return False, skip_reason
         conn.execute(
             """
             insert into formulas(id, payload, updated_at) values(?, ?, ?)
@@ -110,18 +144,22 @@ def upsert(db_path: Path, payload: dict) -> None:
             (payload["id"], json.dumps(payload, ensure_ascii=False), int(time.time())),
         )
         conn.commit()
+    return True, None
 
 
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--db", required=True, help="jingfang.sqlite3 数据库路径")
     parser.add_argument("--payload", required=True, help="JSON payload 文件路径；用 - 表示从 stdin 读取")
+    parser.add_argument("--force", action="store_true", help="强制覆盖数据库中已有记录")
     args = parser.parse_args()
 
     payload = normalize_payload(load_payload(args.payload))
-    upsert(Path(args.db), payload)
+    written, skip_reason = upsert(Path(args.db), payload, args.payload, force=args.force)
     print(json.dumps({
-        "ok": True,
+        "ok": written,
+        "skipped": not written,
+        "reason": skip_reason,
         "id": payload["id"],
         "name": payload["name"],
         "classic_count": len(payload.get("classicTexts", [])),
