@@ -38,8 +38,9 @@ skills-lock.json
 *.db
 *.db.*
 
-# 经方网页数据库（纳入版本库）
+# 经方网页数据库、问诊医案与知识库数据库（纳入版本库）
 !ai-medical-consultant/backend/data/jingfang.sqlite3
+!ai-medical-consultant/backend/medical.db
 
 # Temporary auth artifacts
 feishu-auth-qrcode.png

@@ -4,6 +4,7 @@ __pycache__/
 .venv/
 venv/
 *.db
+!backend/medical.db
 backend/vectorstore/
 backend/server.log
 .env
