@@ -1,6 +1,15 @@
 const API_BASE = "/api/v1/shanghan";
 const CARD_EXPORT_WIDTH = 1080;
 const CARD_EXPORT_HEIGHT = 1501;
+const SHANGHAN_COVER_URL = "shanghan-cover.png";
+const CHAPTER_COVER = {
+  width: 240,
+  height: 160,
+  left: 90,
+  radius: 8,
+  textGap: 20,
+  titleOffsetX: 56,
+};
 
 const TERM_ROWS_DEFAULT = [
   { label: "太阳病", text: "不是具体的某一种病，而是一般的证，有[[**脉浮、头项强痛、恶寒**]]这一系列症候反应的，都叫太阳病。" },
@@ -634,7 +643,8 @@ function fitArticleCardPreview() {
 }
 
 function segmentFont(segment, baseFont) {
-  const weight = segment.bold ? "900" : "400";
+  const baseWeight = baseFont.match(/^(\d+)/)?.[1] || "400";
+  const weight = segment.bold ? "900" : baseWeight;
   return baseFont.replace(/^\d+/, weight);
 }
 
@@ -686,6 +696,69 @@ function wrapMarkupTextLines(ctx, text, maxWidth, baseFont) {
   return String(text || "未填写")
     .split(/\n/)
     .flatMap((paragraph) => paragraph === "" ? [""] : wrapMarkupParagraph(ctx, paragraph, maxWidth, baseFont));
+}
+
+function rectWithin(parent, child) {
+  const parentRect = parent.getBoundingClientRect();
+  const childRect = child.getBoundingClientRect();
+  return {
+    left: childRect.left - parentRect.left,
+    top: childRect.top - parentRect.top,
+    width: childRect.width,
+    height: childRect.height,
+    centerY: childRect.top - parentRect.top + childRect.height / 2,
+  };
+}
+
+const SUMMARY_MAP_EXPORT = {
+  font: "900 20px Microsoft YaHei, sans-serif",
+  lineHeight: 29,
+  padX: 16,
+  padY: 10,
+};
+
+function measureSummaryMindMapLayoutFromDom(points) {
+  const card = document.getElementById("article-card");
+  const map = card?.querySelector(".summary-map");
+  if (!card || !map) return null;
+
+  const savedTransform = card.style.transform;
+  card.style.transform = "none";
+  layoutSummaryMindMapLines();
+
+  const titleEl = map.querySelector(".logic-title");
+  const branchEl = map.querySelector(".logic-branch");
+  const listEl = map.querySelector("#card-summary");
+  if (!titleEl || !branchEl || !listEl) {
+    card.style.transform = savedTransform;
+    return null;
+  }
+
+  const normalizedPoints = (points || []).map((item) => String(item || "").trim()).filter(Boolean);
+  const itemEls = [...listEl.querySelectorAll(".logic-item")];
+  const title = rectWithin(map, titleEl);
+  const branch = rectWithin(map, branchEl);
+  const items = itemEls.map((el, index) => ({
+    ...rectWithin(map, el),
+    text: normalizedPoints[index] || el.textContent || "",
+    emphasized: el.classList.contains("purple"),
+  }));
+  const centers = items.map((item) => item.centerY);
+  const trunkX = branch.left + 1;
+  const endX = branch.left + 34;
+  const midY = centers.length ? (centers[0] + centers[centers.length - 1]) / 2 : title.centerY;
+  const titleRight = title.left + title.width;
+  const leftConnectorStart = Math.min(branch.left - 12, titleRight + 8);
+  const mapHeight = map.offsetHeight;
+
+  card.style.transform = savedTransform;
+
+  return {
+    mapHeight,
+    title,
+    items,
+    connectors: { trunkX, endX, midY, leftConnectorStart, centers },
+  };
 }
 
 function drawMarkupLine(ctx, parts, x, y, baseFont, defaultColor) {
@@ -792,6 +865,14 @@ function measureBlock(ctx, title, content, width, font, lineHeight, padding = 26
   return 38 + 14 + lines.length * lineHeight + padding * 2;
 }
 
+function measureExplanationBlock(ctx, content, width, font, lineHeight) {
+  const horizontalPadding = 26;
+  const textTop = 82;
+  const bottomPadding = 24;
+  const lines = wrapMarkupTextLines(ctx, content || "未填写", width - horizontalPadding * 2, font);
+  return textTop + lines.length * lineHeight + bottomPadding;
+}
+
 function drawBlueDashedBox(ctx, x, y, width, height, radius = 10) {
   ctx.save();
   ctx.setLineDash([4, 5]);
@@ -802,125 +883,309 @@ function drawBlueDashedBox(ctx, x, y, width, height, radius = 10) {
   ctx.restore();
 }
 
+function drawSummaryMindMapConnectors(ctx, areaX, areaY, connectors) {
+  const { trunkX, endX, midY, leftConnectorStart, centers } = connectors;
+  const cornerR = 6;
+  if (!centers.length) return;
+
+  ctx.save();
+  ctx.strokeStyle = "#4f83ff";
+  ctx.lineWidth = 2;
+  ctx.setLineDash([4, 5]);
+  ctx.lineCap = "round";
+  ctx.lineJoin = "round";
+  ctx.beginPath();
+  ctx.moveTo(areaX + leftConnectorStart, areaY + midY);
+  ctx.lineTo(areaX + trunkX, areaY + midY);
+  ctx.moveTo(areaX + trunkX, areaY + centers[0]);
+  ctx.lineTo(areaX + trunkX, areaY + centers[centers.length - 1]);
+  centers.forEach((centerY) => {
+    ctx.moveTo(areaX + trunkX, areaY + centerY);
+    if (endX - trunkX > cornerR) {
+      ctx.lineTo(areaX + endX - cornerR, areaY + centerY);
+      ctx.quadraticCurveTo(areaX + endX, areaY + centerY, areaX + endX, areaY + centerY);
+    } else {
+      ctx.lineTo(areaX + endX, areaY + centerY);
+    }
+  });
+  ctx.stroke();
+  ctx.restore();
+}
+
 function drawSummaryMindMap(ctx, points, areaX, areaY) {
-  const items = (points || []).map((item) => String(item || "").trim()).filter(Boolean).slice(0, 7);
-  if (!items.length) items.push("未填写");
+  const layout = measureSummaryMindMapLayoutFromDom(points);
+  if (!layout) return 260;
 
-  const trunkX = areaX + 155;
-  const branchStartX = trunkX + 25;
-  const maxTextWidth = 380;
-  const font = "700 22px Microsoft YaHei, sans-serif";
-  const lineHeight = 28;
-  const pointGap = 15;
-  const titleHeight = 50;
-  const listTop = areaY + 24;
-  const cornerR = 8;
+  const { mapHeight, title, items, connectors } = layout;
+  const { font, lineHeight, padX, padY } = SUMMARY_MAP_EXPORT;
 
-  ctx.font = font;
-  const boxes = items.map((point) => {
-    const lines = wrapMarkupTextLines(ctx, point, maxTextWidth, font);
-    const width = Math.min(430, Math.max(130, ...lines.map((line) => measureMarkupLine(ctx, line, font))) + 30);
-    const height = lines.length * lineHeight + 14;
-    return { point, lines, width, height };
-  });
-
-  let pointY = listTop;
-  const layout = boxes.map((box) => {
-    const top = pointY;
-    const centerY = top + box.height / 2;
-    pointY += box.height + pointGap;
-    return { ...box, top, centerY };
-  });
-  const listHeight = layout.length ? pointY - pointGap - listTop : 0;
-  const titleY = listTop + Math.max(0, (listHeight - titleHeight) / 2);
-
-  ctx.font = "800 24px Microsoft YaHei, sans-serif";
-  const titleWidth = Math.max(138, ctx.measureText("要点总结").width + 36);
-  roundRect(ctx, areaX, titleY, titleWidth, titleHeight, 5);
+  roundRect(ctx, areaX + title.left, areaY + title.top, title.width, title.height, 5);
   ctx.fillStyle = "#477cff";
   ctx.fill();
   ctx.fillStyle = "#ffffff";
+  ctx.font = "800 24px Microsoft YaHei, sans-serif";
   ctx.textBaseline = "middle";
-  ctx.fillText("要点总结", areaX + 18, titleY + titleHeight / 2);
+  ctx.fillText("要点总结", areaX + title.left + 18, areaY + title.top + title.height / 2);
   ctx.textBaseline = "top";
 
-  if (layout.length) {
-    const y1 = layout[0].centerY;
-    const y2 = layout[layout.length - 1].centerY;
-    ctx.save();
-    ctx.strokeStyle = "#4f83ff";
-    ctx.lineWidth = 2;
-    ctx.setLineDash([4, 5]);
-    ctx.lineCap = "round";
-    ctx.lineJoin = "round";
-    ctx.beginPath();
-    ctx.moveTo(trunkX, y1);
-    ctx.lineTo(trunkX, y2);
-    ctx.stroke();
-    layout.forEach((box) => {
-      ctx.beginPath();
-      ctx.moveTo(trunkX, box.centerY);
-      if (branchStartX - trunkX > cornerR) {
-        ctx.lineTo(branchStartX - cornerR, box.centerY);
-        ctx.quadraticCurveTo(branchStartX, box.centerY, branchStartX, box.centerY);
-      } else {
-        ctx.lineTo(branchStartX, box.centerY);
-      }
-      ctx.stroke();
-    });
-    ctx.restore();
-  }
+  drawSummaryMindMapConnectors(ctx, areaX, areaY, connectors);
 
-  layout.forEach((box, index) => {
-    drawBlueDashedBox(ctx, branchStartX, box.top, box.width, box.height, 20);
-    const emphasized = index === 0 || /\[\[\*\*/.test(box.point);
-    const defaultColor = emphasized ? "#8c61ff" : "#111827";
-    let textY = box.top + 10;
-    box.lines.forEach((line) => {
-      drawMarkupLine(ctx, line, branchStartX + 15, textY, font, defaultColor);
+  items.forEach((item) => {
+    const radius = Math.min(item.height / 2, 24);
+    drawBlueDashedBox(ctx, areaX + item.left, areaY + item.top, item.width, item.height, radius);
+    const lines = wrapMarkupTextLines(ctx, item.text, item.width - padX * 2, font);
+    const defaultColor = item.emphasized ? "#8c61ff" : "#111827";
+    let textY = areaY + item.top + padY;
+    lines.forEach((line) => {
+      drawMarkupLine(ctx, line, areaX + item.left + padX, textY, font, defaultColor);
       textY += lineHeight;
     });
   });
 
-  const contentBottom = layout.length
-    ? layout[layout.length - 1].top + layout[layout.length - 1].height
-    : listTop;
-  return Math.max(titleY + titleHeight, contentBottom) + 24;
+  return mapHeight + 24;
 }
 
 function measureSummaryMindMapPanelHeight(ctx, points) {
-  const items = (points || []).map((item) => String(item || "").trim()).filter(Boolean).slice(0, 7);
-  if (!items.length) items.push("未填写");
+  const layout = measureSummaryMindMapLayoutFromDom(points);
+  return Math.max(260, Math.ceil((layout?.mapHeight || 260) + 24));
+}
 
-  const areaY = 12;
-  const maxTextWidth = 380;
-  const font = "700 22px Microsoft YaHei, sans-serif";
-  const lineHeight = 28;
-  const pointGap = 15;
-  const titleHeight = 50;
-  const listTop = areaY + 24;
+function drawCardCorners(ctx) {
+  const orange = "#ff962e";
+  const startX = 18;
+  const startY = 18;
+  const gap = 7;
+  const halfW = 20;
+  const height = 34;
+  ctx.fillStyle = orange;
+  for (let i = 0; i < 3; i += 1) {
+    const x = startX + i * (halfW * 2 + gap);
+    ctx.beginPath();
+    ctx.moveTo(x, startY);
+    ctx.lineTo(x + halfW * 2, startY);
+    ctx.lineTo(x + halfW, startY + height);
+    ctx.closePath();
+    ctx.fill();
+  }
+}
 
-  ctx.font = font;
-  let pointY = listTop;
-  const layout = items.map((point) => {
-    const lines = wrapMarkupTextLines(ctx, point, maxTextWidth, font);
-    const height = lines.length * lineHeight + 14;
-    const top = pointY;
-    pointY += height + pointGap;
-    return { top, height };
+async function loadShanghanCoverImage() {
+  return new Promise((resolve) => {
+    const image = new Image();
+    image.onload = () => resolve(image);
+    image.onerror = () => resolve(null);
+    image.src = SHANGHAN_COVER_URL;
   });
+}
 
-  const listHeight = layout.length ? pointY - pointGap - listTop : 0;
-  const titleY = listTop + Math.max(0, (listHeight - titleHeight) / 2);
-  const contentBottom = layout.length
-    ? layout[layout.length - 1].top + layout[layout.length - 1].height
-    : listTop;
-  const mapBottom = Math.max(titleY + titleHeight, contentBottom) + 24;
-  return Math.max(260, Math.ceil(mapBottom + 14));
+function measureCardHeadLayoutFromDom() {
+  const card = document.getElementById("article-card");
+  const head = card?.querySelector(".card-head");
+  if (!card || !head) return null;
+
+  const savedTransform = card.style.transform;
+  card.style.transform = "none";
+
+  const rectWithinCard = (el) => {
+    if (!el) return null;
+    const cardRect = card.getBoundingClientRect();
+    const rect = el.getBoundingClientRect();
+    return {
+      left: rect.left - cardRect.left,
+      top: rect.top - cardRect.top,
+      width: rect.width,
+      height: rect.height,
+      centerX: rect.left - cardRect.left + rect.width / 2,
+      centerY: rect.top - cardRect.top + rect.height / 2,
+    };
+  };
+
+  const layout = {
+    head: rectWithinCard(head),
+    cover: rectWithinCard(head.querySelector(".chapter-badge")),
+    coverImg: rectWithinCard(head.querySelector(".chapter-badge img")),
+    number: rectWithinCard(document.getElementById("card-number")),
+    levelBadge: rectWithinCard(head.querySelector(".level-badge--lg")),
+    titleText: rectWithinCard(head.querySelector(".card-title-text")),
+  };
+
+  card.style.transform = savedTransform;
+  return layout;
+}
+
+function drawCoverImageInRect(ctx, image, rect, radius = 8) {
+  if (!rect) return;
+  ctx.save();
+  ctx.shadowColor = "rgba(30, 45, 80, .1)";
+  ctx.shadowBlur = 8;
+  ctx.shadowOffsetY = 3;
+  roundRect(ctx, rect.left, rect.top, rect.width, rect.height, radius);
+  ctx.clip();
+  ctx.shadowColor = "transparent";
+  if (image) {
+    const scale = Math.min(rect.width / image.width, rect.height / image.height);
+    const drawW = image.width * scale;
+    const drawH = image.height * scale;
+    ctx.drawImage(
+      image,
+      rect.left + (rect.width - drawW) / 2,
+      rect.top + (rect.height - drawH) / 2,
+      drawW,
+      drawH,
+    );
+  } else {
+    ctx.fillStyle = "#f5ead6";
+    ctx.fillRect(rect.left, rect.top, rect.width, rect.height);
+    ctx.fillStyle = "#8b5a2b";
+    ctx.font = "900 28px KaiTi, STKaiti, serif";
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+    ctx.fillText("伤寒论", rect.centerX, rect.centerY);
+    ctx.textAlign = "left";
+    ctx.textBaseline = "top";
+  }
+  ctx.restore();
+}
+
+const LEVEL_BADGE_CANVAS_STYLES = {
+  "level-1": {
+    stops: [
+      [0, "#ffc9be"],
+      [0.42, "#e04a3a"],
+      [1, "#a82f24"],
+    ],
+    shadowColor: "rgba(168, 47, 36, .28)",
+    shadowBlur: 12,
+    shadowOffsetY: 4,
+    insetHighlight: "rgba(255, 255, 255, .48)",
+  },
+  "level-2": {
+    stops: [
+      [0, "#c3d9ff"],
+      [0.42, "#5b8def"],
+      [1, "#3d63b8"],
+    ],
+    shadowColor: "rgba(16, 24, 40, .16)",
+    shadowBlur: 10,
+    shadowOffsetY: 3,
+    insetHighlight: "rgba(255, 255, 255, .42)",
+  },
+  "level-3": {
+    stops: [
+      [0, "#dbe4f0"],
+      [0.42, "#9aadc4"],
+      [1, "#6f849f"],
+    ],
+    shadowColor: "rgba(16, 24, 40, .16)",
+    shadowBlur: 10,
+    shadowOffsetY: 3,
+    insetHighlight: "rgba(255, 255, 255, .42)",
+  },
+};
+
+function drawLevelBadgeOnCanvas(ctx, centerX, centerY, size, className, digit) {
+  const radius = size / 2;
+  const style = LEVEL_BADGE_CANVAS_STYLES[className] || LEVEL_BADGE_CANVAS_STYLES["level-1"];
+  const gradientCenterX = centerX - radius * 0.36;
+  const gradientCenterY = centerY - radius * 0.44;
+
+  ctx.save();
+  ctx.shadowColor = style.shadowColor;
+  ctx.shadowBlur = style.shadowBlur;
+  ctx.shadowOffsetX = 0;
+  ctx.shadowOffsetY = style.shadowOffsetY;
+
+  const gradient = ctx.createRadialGradient(
+    gradientCenterX,
+    gradientCenterY,
+    0,
+    centerX,
+    centerY,
+    radius,
+  );
+  style.stops.forEach(([stop, color]) => gradient.addColorStop(stop, color));
+
+  ctx.beginPath();
+  ctx.arc(centerX, centerY, radius, 0, Math.PI * 2);
+  ctx.fillStyle = gradient;
+  ctx.fill();
+
+  ctx.shadowColor = "transparent";
+  ctx.shadowBlur = 0;
+  ctx.shadowOffsetY = 0;
+
+  ctx.strokeStyle = style.insetHighlight;
+  ctx.lineWidth = 1;
+  ctx.beginPath();
+  ctx.arc(centerX, centerY - radius * 0.18, radius - 0.5, Math.PI * 1.15, Math.PI * 1.85);
+  ctx.stroke();
+
+  ctx.strokeStyle = "rgba(255, 255, 255, .22)";
+  ctx.beginPath();
+  ctx.arc(centerX, centerY, radius - 2, 0, Math.PI * 2);
+  ctx.stroke();
+
+  const fontSize = Math.round(size * 0.46875);
+  ctx.fillStyle = "#ffffff";
+  ctx.font = `900 ${fontSize}px Microsoft YaHei, sans-serif`;
+  ctx.textAlign = "center";
+  ctx.textBaseline = "middle";
+  ctx.fillText(digit, centerX, centerY);
+  ctx.restore();
+}
+
+function drawCardHeadFromDom(ctx, coverImage, article, titleText, titleFont, titleLineHeight, layout) {
+  if (!layout?.head) return null;
+
+  const { head, cover, coverImg, number, levelBadge, titleText: titleTextRect } = layout;
+  const levelMeta = LEVEL_BADGE[articleLevel(article)] || LEVEL_BADGE["一级"];
+
+  drawPanel(ctx, head.left, head.top, head.width, head.height, { fill: "rgba(255,255,255,.9)" });
+  drawCoverImageInRect(ctx, coverImage, coverImg || cover, CHAPTER_COVER.radius);
+
+  if (number) {
+    ctx.fillStyle = "#245ed6";
+    ctx.font = "900 28px Microsoft YaHei, sans-serif";
+    ctx.textBaseline = "top";
+    ctx.fillText(article.number ? `第${article.number}条` : "未编号", number.left, number.top);
+  }
+
+  if (levelBadge) {
+    drawLevelBadgeOnCanvas(
+      ctx,
+      levelBadge.centerX,
+      levelBadge.centerY,
+      levelBadge.width,
+      levelMeta.className,
+      levelMeta.digit,
+    );
+    ctx.textAlign = "left";
+    ctx.textBaseline = "top";
+  }
+
+  if (titleTextRect) {
+    drawMarkupText(
+      ctx,
+      titleText,
+      titleTextRect.left,
+      titleTextRect.top,
+      titleTextRect.width,
+      titleLineHeight,
+      { font: titleFont, color: "#172033" },
+    );
+  }
+
+  return head;
 }
 
 async function downloadCardPng() {
   const article = normalizeArticleFromForm();
+  renderPreview(article);
+  await new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve)));
+  layoutSummaryMindMapLines();
+  fitArticleCardPreview();
+  await new Promise((resolve) => requestAnimationFrame(resolve));
+
   const scale = 2;
   const measureCanvas = document.createElement("canvas");
   const measureCtx = measureCanvas.getContext("2d");
@@ -929,9 +1194,10 @@ async function downloadCardPng() {
   const titleText = article.original || "未填写";
   const titleFont = "900 31px KaiTi, STKaiti, serif";
   const titleLineHeight = 43;
-  const titleMaxWidth = 700;
+  const titleMaxWidth = 620;
   const titleLines = wrapMarkupTextLines(measureCtx, titleText, titleMaxWidth, titleFont);
-  const headHeight = Math.max(182, 118 + titleLines.length * titleLineHeight);
+  const headLayout = measureCardHeadLayoutFromDom();
+  const headHeight = headLayout?.head?.height || Math.max(208, 118 + titleLines.length * titleLineHeight);
   const termItems = normalizeTermItems(article);
   const termsHeight = Math.max(
     170,
@@ -939,15 +1205,22 @@ async function downloadCardPng() {
   );
   const summaryPoints = splitLines(article.summary);
   const summaryMapHeight = measureSummaryMindMapPanelHeight(measureCtx, summaryPoints);
-  const huHeight = Math.max(
-    310,
-    measureBlock(measureCtx, "胡希恕讲解", article.huXishu, fullWidth, "400 25px Microsoft YaHei, sans-serif", 39),
+  const coverImage = await loadShanghanCoverImage();
+  const huHeight = measureExplanationBlock(
+    measureCtx,
+    article.huXishu,
+    fullWidth,
+    "400 25px Microsoft YaHei, sans-serif",
+    39,
   );
-  const liHeight = Math.max(
-    310,
-    measureBlock(measureCtx, "李冠杰讲解", article.liGuanjie, fullWidth, "400 25px Microsoft YaHei, sans-serif", 39),
+  const liHeight = measureExplanationBlock(
+    measureCtx,
+    article.liGuanjie,
+    fullWidth,
+    "400 25px Microsoft YaHei, sans-serif",
+    39,
   );
-  const contentTop = 54 + headHeight + 18;
+  const contentTop = (headLayout?.head?.top ?? 54) + headHeight + 18;
   const contentBottom = contentTop
     + termsHeight + 18
     + summaryMapHeight + 18
@@ -955,7 +1228,7 @@ async function downloadCardPng() {
     + liHeight;
   const footerLineY = Math.ceil(contentBottom + 54);
   const footerTextY = footerLineY + 30;
-  const exportHeight = Math.max(CARD_EXPORT_HEIGHT, footerTextY + 58);
+  const exportHeight = footerTextY + 58;
 
   const canvas = document.createElement("canvas");
   canvas.width = CARD_EXPORT_WIDTH * scale;
@@ -992,66 +1265,18 @@ async function downloadCardPng() {
   ctx.arc(920, 60, 220, 0, Math.PI * 2);
   ctx.fill();
 
-  const levelMeta = LEVEL_BADGE[articleLevel(article)] || LEVEL_BADGE["一级"];
-  drawPanel(ctx, 62, 54, 956, headHeight, { fill: "rgba(255,255,255,.9)" });
-  ctx.fillStyle = "#fff8ef";
-  ctx.strokeStyle = "#ff9a35";
-  ctx.lineWidth = 4;
-  ctx.beginPath();
-  ctx.arc(152, 54 + headHeight / 2, 62, 0, Math.PI * 2);
-  ctx.fill();
-  ctx.stroke();
-  ctx.fillStyle = "#d96b00";
-  ctx.font = "900 32px KaiTi, STKaiti, serif";
-  ctx.textAlign = "center";
-  ctx.textBaseline = "middle";
-  ctx.fillText("伤寒论", 152, 54 + headHeight / 2);
-  ctx.textAlign = "left";
+  drawCardCorners(ctx);
 
-  ctx.fillStyle = "#245ed6";
-  ctx.font = "900 28px Microsoft YaHei, sans-serif";
-  ctx.fillText(article.number ? `第${article.number}条` : "未编号", 242, 92);
-
-  const levelBadgeCenterX = 264;
-  const levelBadgeCenterY = 140;
-  const levelBadgeRadius = 22;
-  const levelGradients = {
-    "level-1": ["#ffc9be", "#a82f24"],
-    "level-2": ["#c3d9ff", "#3d63b8"],
-    "level-3": ["#dbe4f0", "#6f849f"],
-  };
-  const [levelTop, levelBottom] = levelGradients[levelMeta.className] || levelGradients["level-1"];
-  const levelGradient = ctx.createRadialGradient(
-    levelBadgeCenterX,
-    levelBadgeCenterY - levelBadgeRadius * 0.25,
-    levelBadgeRadius * 0.15,
-    levelBadgeCenterX,
-    levelBadgeCenterY,
-    levelBadgeRadius,
+  const drawnHead = drawCardHeadFromDom(
+    ctx,
+    coverImage,
+    article,
+    titleText,
+    titleFont,
+    titleLineHeight,
+    headLayout,
   );
-  levelGradient.addColorStop(0, levelTop);
-  levelGradient.addColorStop(1, levelBottom);
-  ctx.beginPath();
-  ctx.arc(levelBadgeCenterX, levelBadgeCenterY, levelBadgeRadius, 0, Math.PI * 2);
-  ctx.fillStyle = levelGradient;
-  ctx.fill();
-  ctx.strokeStyle = "rgba(255,255,255,.55)";
-  ctx.lineWidth = 2;
-  ctx.stroke();
-  ctx.fillStyle = "#ffffff";
-  ctx.font = "900 24px Microsoft YaHei, sans-serif";
-  ctx.textAlign = "center";
-  ctx.textBaseline = "middle";
-  ctx.fillText(levelMeta.digit, levelBadgeCenterX, levelBadgeCenterY + 1);
-  ctx.textAlign = "left";
-  ctx.textBaseline = "top";
-
-  drawMarkupText(ctx, titleText, 312, 124, titleMaxWidth, titleLineHeight, {
-    font: titleFont,
-    color: "#172033",
-  });
-
-  let contentY = 54 + headHeight + 18;
+  let contentY = (drawnHead?.top ?? 54) + (drawnHead?.height ?? headHeight) + 18;
 
   drawPanel(ctx, leftX, contentY, fullWidth, termsHeight, {});
   drawPill(ctx, leftX + 20, contentY + 20, "词语解析");

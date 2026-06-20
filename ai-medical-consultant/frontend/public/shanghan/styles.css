@@ -358,9 +358,9 @@ p {
 }
 
 .level-badge--lg {
-  width: 44px;
-  height: 44px;
-  font-size: 21px;
+  width: 32px;
+  height: 32px;
+  font-size: 15px;
 }
 
 .editor-headline-text {
@@ -907,8 +907,8 @@ p {
 .card-head {
   position: relative;
   display: grid;
-  grid-template-columns: 156px 1fr;
-  gap: 24px;
+  grid-template-columns: 260px 1fr;
+  gap: 20px;
   align-items: center;
   padding: 24px 28px;
   border: 2px solid var(--line);
@@ -917,17 +917,22 @@ p {
 }
 
 .chapter-badge {
-  display: grid;
-  place-items: center;
-  width: 132px;
-  height: 132px;
-  border: 4px solid var(--orange);
-  border-radius: 50%;
-  background: #fff8ef;
-  color: #d96b00;
-  font-family: "STKaiti", "KaiTi", serif;
-  font-size: 32px;
-  font-weight: 900;
+  display: block;
+  width: 240px;
+  height: 160px;
+  border: none;
+  border-radius: 8px;
+  overflow: hidden;
+  background: transparent;
+  box-shadow: none;
+}
+
+.chapter-badge img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  filter: drop-shadow(0 3px 8px rgba(30, 45, 80, .1));
 }
 
 .card-number {
@@ -940,13 +945,13 @@ p {
 .card-article-title {
   display: flex;
   align-items: flex-start;
-  gap: 16px;
+  gap: 12px;
   margin: 0;
   min-width: 0;
 }
 
 .card-article-title .level-badge--lg {
-  margin-top: 2px;
+  margin-top: 1px;
 }
 
 .card-title-text {
@@ -1042,14 +1047,18 @@ p {
 .logic-item {
   width: fit-content;
   max-width: 100%;
+  box-sizing: border-box;
   border: 2px dotted var(--blue);
   border-radius: 999px;
-  padding: 7px 16px;
+  padding: 10px 16px;
   background: #fff;
   color: var(--ink);
   font-size: 20px;
   font-weight: 900;
-  line-height: 1.3;
+  line-height: 1.45;
+  white-space: normal;
+  overflow-wrap: anywhere;
+  word-break: break-word;
 }
 
 .logic-item.purple {
