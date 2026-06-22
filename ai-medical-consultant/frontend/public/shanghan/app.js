@@ -1226,9 +1226,9 @@ async function downloadCardPng() {
     + summaryMapHeight + 18
     + huHeight + 18
     + liHeight;
-  const footerLineY = Math.ceil(contentBottom + 54);
-  const footerTextY = footerLineY + 30;
-  const exportHeight = footerTextY + 58;
+  const footerLineY = Math.ceil(contentBottom + 28);
+  const footerTextY = footerLineY + 24;
+  const exportHeight = footerTextY + 38;
 
   const canvas = document.createElement("canvas");
   canvas.width = CARD_EXPORT_WIDTH * scale;
