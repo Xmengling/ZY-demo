@@ -1,6 +1,10 @@
 <template>
   <div class="consult-page" :class="{ 'is-summary-docked-left': summaryDockedLeft }">
-    <section class="collector panel consult-form" :class="{ 'has-summary-overlay': summaryDockedLeft }">
+    <section
+      class="collector panel consult-form"
+      :class="{ 'has-summary-overlay': summaryDockedLeft }"
+      @focusout="handleCollectFocusout"
+    >
       <div class="collector-hero">
         <div class="hero-top">
           <h2>问诊信息采集</h2>
@@ -40,10 +44,17 @@
                 v-for="(visit, index) in form.followups"
                 :key="visit.id || index"
                 type="button"
+                class="visit-mode-tab"
                 :class="{ active: activeVisitMode === 'followup' && activeFollowupIndex === index }"
                 @click="switchFollowup(index)"
               >
-                {{ visit.label || visitLabel(index) }}
+                <span>{{ visit.label || visitLabel(index) }}</span>
+                <span
+                  v-if="isFollowupEmpty(visit)"
+                  class="visit-tab-delete"
+                  title="删除空复诊"
+                  @click.stop="deleteEmptyFollowup(index)"
+                >×</span>
               </button>
             </div>
             <el-button size="small" type="success" plain @click="addFollowup">复诊</el-button>
@@ -391,82 +402,37 @@
             <div class="followup-grid">
               <div class="field followup-full followup-card followup-change-card">
                 <label class="followup-card-title">服药后变化</label>
-                <el-checkbox-group v-model="currentFollowup.changes" class="followup-change-group">
-                  <el-checkbox label="好转" />
-                  <el-checkbox label="无变化" />
-                  <el-checkbox label="加重" />
-                  <el-checkbox label="新增症状" />
-                </el-checkbox-group>
-              </div>
-
-              <div class="field followup-full followup-card followup-chief-card">
-                <div class="followup-blue-input-row biao-block">
-                  <label class="biao-label">主诉</label>
-                  <el-input
-                    v-model="currentFollowup.chief_complaint"
-                    class="consult-textarea followup-symptom-textarea"
-                    type="textarea"
-                    :autosize="{ minRows: 2, maxRows: 5 }"
-                    placeholder="复诊时最主要的问题、变化、持续时间"
-                  />
-                </div>
-              </div>
-
-              <div class="field followup-full followup-card followup-symptoms-card">
-                <label class="followup-card-title">当前症状</label>
-                <div class="followup-symptom-list">
-                  <div
-                    v-for="section in sections"
-                    :key="`followup-${section.key}`"
-                    class="followup-symptom-input-row biao-block"
-                    :class="pathologyToneClass(section.blocks?.[0]?.label || section.title)"
-                  >
-                    <label class="biao-label">{{ sectionDisplayTitle(section.title) }}</label>
+                <div class="followup-change-fields">
+                  <div class="followup-change-field is-improved">
+                    <label>好转的症状</label>
                     <el-input
-                      v-model="currentFollowup.notes[sectionDisplayTitle(section.title)]"
-                      class="consult-textarea followup-symptom-textarea"
+                      v-model="currentFollowup.improved_symptoms"
+                      class="consult-textarea followup-change-textarea"
                       type="textarea"
-                      :autosize="{ minRows: 1, maxRows: 5 }"
-                      :placeholder="`记录${sectionDisplayTitle(section.title)}相关症状、变化、程度`"
+                      :autosize="{ minRows: 1, maxRows: 4 }"
+                      placeholder="如便秘好转、胃痛减轻、睡眠改善"
                     />
                   </div>
-                </div>
-              </div>
-
-              <div class="field followup-mini-card followup-blue-input-row biao-block">
-                <label class="biao-label">舌像</label>
-                <el-input
-                  v-model="currentFollowup.tongue_image"
-                  class="followup-inline-input"
-                  placeholder="如舌红转淡、苔腻减轻"
-                />
-              </div>
-              <div class="field followup-mini-card followup-blue-input-row biao-block">
-                <label class="biao-label">脉像</label>
-                <el-input
-                  v-model="currentFollowup.pulse"
-                  class="followup-inline-input"
-                  placeholder="如脉弦减、脉沉细"
-                />
-              </div>
-              <div class="field followup-mini-card followup-blue-input-row biao-block">
-                <label class="biao-label">腹诊</label>
-                <el-input
-                  v-model="currentFollowup.abdominal"
-                  class="followup-inline-input"
-                  placeholder="如心下痞减、少腹仍急"
-                />
-              </div>
-
-              <div class="field followup-full followup-card">
-                <label class="followup-card-title">上次方剂</label>
-                <div class="followup-blue-input-row biao-block">
-                  <label class="biao-label">方剂</label>
-                  <el-input
-                    v-model="currentFollowup.previous_formula"
-                    class="followup-inline-input"
-                    placeholder="默认取首诊处方，可手动修改"
-                  />
+                  <div class="followup-change-field is-worsened">
+                    <label>加重的症状</label>
+                    <el-input
+                      v-model="currentFollowup.worsened_symptoms"
+                      class="consult-textarea followup-change-textarea"
+                      type="textarea"
+                      :autosize="{ minRows: 1, maxRows: 4 }"
+                      placeholder="如小便灼痛加重、新增腹胀"
+                    />
+                  </div>
+                  <div class="followup-change-field is-remaining">
+                    <label>仍存在的症状</label>
+                    <el-input
+                      v-model="currentFollowup.remaining_symptoms"
+                      class="consult-textarea followup-change-textarea"
+                      type="textarea"
+                      :autosize="{ minRows: 1, maxRows: 4 }"
+                      placeholder="如口干仍存、头晕仍有、睡眠仍浅"
+                    />
+                  </div>
                 </div>
               </div>
 
@@ -476,6 +442,8 @@
                   v-model="currentFollowup.prescription"
                   :formula-index="formulaIndex"
                   :formula-names="formulaNames"
+                  show-import-previous
+                  @import-previous="importPreviousPrescription"
                 />
               </div>
             </div>
@@ -535,13 +503,29 @@
                   <li
                     v-for="item in group.lines"
                     :key="`${group.key}-${item.label}-${item.kind}`"
+                    :class="{ 'summary-change-row': item.kind === 'changeGroups' }"
                     :title="formatConsultSummaryLine(item)"
                   >
-                    <span
-                      class="summary-pathology-label"
-                      :class="item.kind === 'pathology' ? pathologyToneClass(item.label) : 'summary-label-meta'"
-                    >{{ item.label }}<template v-if="item.score != null"><span class="summary-pathology-score">{{ item.score }}</span></template>：</span>
-                    <span class="summary-line-text">{{ item.text }}</span>
+                    <template v-if="item.kind === 'changeGroups'">
+                      <div class="summary-change-groups">
+                        <div
+                          v-for="changeGroup in item.groups.filter((changeItem) => changeItem.text)"
+                          :key="changeGroup.key"
+                          class="summary-change-group"
+                          :class="`is-${changeGroup.tone}`"
+                        >
+                          <span class="summary-change-label">{{ changeGroup.label }}</span>
+                          <span class="summary-change-text">{{ changeGroup.text }}</span>
+                        </div>
+                      </div>
+                    </template>
+                    <template v-else>
+                      <span
+                        class="summary-pathology-label"
+                        :class="item.kind === 'pathology' ? pathologyToneClass(item.label) : 'summary-label-meta'"
+                      >{{ item.label }}<template v-if="item.score != null"><span class="summary-pathology-score">{{ item.score }}</span></template>：</span>
+                      <span class="summary-line-text">{{ item.text }}</span>
+                    </template>
                   </li>
                 </ul>
               </section>
@@ -673,6 +657,7 @@ import { getPathologyToneClass } from '../utils/pathologyTone'
 import { parseCaseText, FIELD_LABELS } from '../utils/caseTextParser'
 import {
   buildConsultSummaryLines,
+  buildFollowupChangeGroups,
   buildFollowupSummaryLines,
   formatConsultSummaryLine,
   formatConsultSummaryGroups,
@@ -689,6 +674,9 @@ const activeModule = ref('all')
 const activeVisitMode = ref('first')
 const activeFollowupIndex = ref(0)
 const saving = ref(false)
+const autoSaving = ref(false)
+const autoSavePending = ref(false)
+const autoSaveSnapshot = ref('')
 const draftSavedAt = ref('')
 const formScrollRef = ref(null)
 const formulaIndex = ref(new Map())
@@ -811,6 +799,9 @@ function defaultFollowup(index = 0) {
     id: `followup-${Date.now()}-${index}`,
     label: visitLabel(index),
     changes: [],
+    improved_symptoms: '',
+    worsened_symptoms: '',
+    remaining_symptoms: '',
     chief_complaint: '',
     symptoms_text: '',
     selected: {},
@@ -1064,6 +1055,9 @@ function normalizeFollowup(visit, index = 0) {
   visit.label = visit.label || visitLabel(index)
   visit.symptoms_text = String(visit.symptoms_text || '').trim()
   if (!Array.isArray(visit.changes)) visit.changes = []
+  visit.improved_symptoms = String(visit.improved_symptoms || '').trim()
+  visit.worsened_symptoms = String(visit.worsened_symptoms || '').trim()
+  visit.remaining_symptoms = String(visit.remaining_symptoms || '').trim()
   if (!visit.selected || typeof visit.selected !== 'object') visit.selected = {}
   if (!visit.notes || typeof visit.notes !== 'object') visit.notes = {}
   if (!visit.chipLists || typeof visit.chipLists !== 'object') visit.chipLists = {}
@@ -1078,7 +1072,11 @@ function normalizeFollowup(visit, index = 0) {
 
 function buildPrescriptionSummaryTextForForm(prescription) {
   return (prescription?.rows || [])
-    .map((row) => String(row?.name || '').trim())
+    .map((row) => {
+      const name = String(row?.name || '').trim()
+      if (!name) return ''
+      return name
+    })
     .filter(Boolean)
     .join('、')
 }
@@ -1101,6 +1099,29 @@ function addFollowup() {
   switchFollowup(index)
 }
 
+function isFollowupEmpty(visit) {
+  return !buildFollowupSummaryLines(visit, sections.value).some((item) => String(item?.text || '').trim())
+}
+
+function deleteEmptyFollowup(index) {
+  if (!Array.isArray(form.followups) || !form.followups[index]) return
+  if (!isFollowupEmpty(form.followups[index])) {
+    ElMessage.warning('该复诊已有内容，不能删除')
+    return
+  }
+  form.followups.splice(index, 1)
+  form.followups.forEach((visit, visitIndex) => {
+    visit.label = visitLabel(visitIndex)
+  })
+  if (!form.followups.length) {
+    activeVisitMode.value = 'first'
+    activeFollowupIndex.value = 0
+  } else if (activeVisitMode.value === 'followup') {
+    activeFollowupIndex.value = Math.min(index, form.followups.length - 1)
+  }
+  saveDraft()
+}
+
 function previousFormulaForFollowup(index) {
   if (index > 0) {
     const previous = form.followups[index - 1]
@@ -1109,6 +1130,51 @@ function previousFormulaForFollowup(index) {
     if (previous?.previous_formula) return previous.previous_formula
   }
   return buildPrescriptionSummaryTextForForm(form.prescription)
+}
+
+function previousPrescriptionRowsForFollowup(index) {
+  const source = index > 0 ? form.followups[index - 1]?.prescription : form.prescription
+  return (source?.rows || [])
+    .filter((row) => String(row?.name || '').trim())
+    .map((row) => ({
+      id: `import-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+      name: String(row.name || '').trim(),
+      basis: String(row.basis || '').trim(),
+      portions: Number(row.portions) || 1
+    }))
+}
+
+function isBlankPrescriptionRow(row) {
+  return !String(row?.name || '').trim() && !String(row?.basis || '').trim()
+}
+
+function importPreviousPrescription() {
+  const visit = currentFollowup.value
+  if (!visit?.prescription) return
+  const importedRows = previousPrescriptionRowsForFollowup(activeFollowupIndex.value)
+  if (!importedRows.length) {
+    ElMessage.warning('上诊暂无可引入的方剂')
+    return
+  }
+
+  const currentRows = (visit.prescription.rows || []).filter((row) => !isBlankPrescriptionRow(row))
+  const rowByName = new Map(currentRows.map((row) => [String(row.name || '').trim(), row]))
+  let added = 0
+  importedRows.forEach((row) => {
+    const existing = rowByName.get(row.name)
+    if (existing) {
+      if (!String(existing.basis || '').trim() && row.basis) existing.basis = row.basis
+      if (!Number(existing.portions)) existing.portions = row.portions
+      return
+    }
+    currentRows.push(row)
+    rowByName.set(row.name, row)
+    added += 1
+  })
+  visit.prescription.rows = currentRows
+  saveDraft()
+  autoSaveIntake()
+  ElMessage.success(added ? `已引入上诊方剂 ${added} 个` : '上诊方剂已在当前处方中')
 }
 
 function switchVisitMode(mode) {
@@ -1430,6 +1496,7 @@ function buildFormulaExportRows() {
     const finalDose = finalMap.get(row.id)?.finalDose ?? '—'
     const chunks = [`${row.name} × ${Number(row.portions) || 1}份`]
     if (finalDose !== '—') chunks.push(`最终用量 ${finalDose}g`)
+    if (String(row.basis || '').trim()) chunks.push(`用方依据：${String(row.basis).trim()}`)
     return `- ${chunks.join('；')}；`
   })
 }
@@ -1456,6 +1523,7 @@ function buildPrescriptionExportRows(prescription) {
     const finalDose = finalMap.get(row.id)?.finalDose ?? '—'
     const chunks = [`${row.name} × ${Number(row.portions) || 1}份`]
     if (finalDose !== '—') chunks.push(`最终用量 ${finalDose}g`)
+    if (String(row.basis || '').trim()) chunks.push(`用方依据：${String(row.basis).trim()}`)
     return `- ${chunks.join('；')}；`
   })
 }
@@ -1515,19 +1583,13 @@ function buildCaseMarkdown() {
     .map((visit, index) => {
       const lines = buildFollowupSummaryLines(visit, sections.value)
       if (!lines.some((item) => item.text)) return []
-      const tonguePulseParts = [
-        visit.tongue_image ? `舌像：${visit.tongue_image}` : '',
-        visit.pulse ? `脉像：${visit.pulse}` : '',
-        visit.abdominal ? `腹诊：${visit.abdominal}` : ''
-      ].filter(Boolean)
+      const changeGroups = buildFollowupChangeGroups(visit)
       return [
         '',
         `## ${visit.label || (index === 0 ? '二诊' : `第${index + 2}诊`)}`,
-        `服药后变化：${Array.isArray(visit.changes) && visit.changes.length ? visit.changes.join('、') : '未填写'}`,
-        `当前主诉：${valueOrEmpty(visit.chief_complaint)}`,
-        `当前症状：${buildFollowupSummaryLines(visit, sections.value).find((item) => item.label === '当前症状')?.text || '未填写'}`,
-        `舌脉腹诊变化：${tonguePulseParts.join('；') || '未填写'}`,
-        `上次方剂：${valueOrEmpty(visit.previous_formula)}`,
+        `好转的症状：${changeGroups.find((item) => item.key === 'improved')?.text || '未填写'}`,
+        `加重的症状：${changeGroups.find((item) => item.key === 'worsened')?.text || '未填写'}`,
+        `仍存在的症状：${changeGroups.find((item) => item.key === 'remaining')?.text || '未填写'}`,
         `本次调整方剂：目标用量 ${visit.prescription?.targetDose || 200}g`,
         ...buildPrescriptionExportRows(visit.prescription),
         visit.prescription?.note ? `处方备注：${visit.prescription.note}` : ''
@@ -1722,6 +1784,8 @@ function resetBlockCollapseState() {
 function resetForm() {
   Object.assign(form, emptyForm())
   sessionId.value = null
+  autoSaveSnapshot.value = ''
+  autoSavePending.value = false
   activeVisitMode.value = 'first'
   activeFollowupIndex.value = 0
   localStorage.removeItem('consult-draft-new')
@@ -1745,6 +1809,58 @@ function buildPayload(status = 'collecting') {
   }
 }
 
+function intakeSnapshot() {
+  return JSON.stringify(buildPayload('collecting'))
+}
+
+function rememberAutoSaveSnapshot() {
+  autoSaveSnapshot.value = intakeSnapshot()
+}
+
+function isAutoSaveField(target) {
+  if (!(target instanceof HTMLElement)) return false
+  return Boolean(target.closest('input, textarea, select, [contenteditable="true"]'))
+}
+
+function handleCollectFocusout(event) {
+  if (!isAutoSaveField(event.target)) return
+  autoSaveIntake()
+}
+
+async function autoSaveIntake() {
+  if (autoSaving.value || saving.value) {
+    autoSavePending.value = true
+    return
+  }
+  if (!sessionId.value && !hasCaseContent.value) return
+  const snapshot = intakeSnapshot()
+  if (snapshot === autoSaveSnapshot.value) return
+
+  autoSaving.value = true
+  const shouldCreate = !sessionId.value
+  try {
+    if (!sessionId.value) {
+      const created = await consultApi.createSession({ title: form.chief_complaint || form.patient_name || '新的问诊' })
+      sessionId.value = created.id
+    }
+    const saved = await consultApi.saveIntake(sessionId.value, buildPayload('collecting'))
+    sessionId.value = saved.id
+    if (shouldCreate) {
+      localStorage.removeItem('consult-draft-new')
+      router.replace(`/consult/${saved.id}`)
+      await loadSessionNavList()
+    }
+    saveDraft()
+    rememberAutoSaveSnapshot()
+  } finally {
+    autoSaving.value = false
+    if (autoSavePending.value) {
+      autoSavePending.value = false
+      autoSaveIntake()
+    }
+  }
+}
+
 async function saveIntake() {
   saving.value = true
   try {
@@ -1758,6 +1874,7 @@ async function saveIntake() {
     saveDraft()
     router.replace(`/consult/${saved.id}`)
     await loadSessionNavList()
+    rememberAutoSaveSnapshot()
     ElMessage.success('问诊已保存')
   } finally {
     saving.value = false
@@ -1788,6 +1905,7 @@ async function loadSession(id) {
     form.age = detail.age || form.age
     form.modern_diagnosis = detail.modern_diagnosis || form.modern_diagnosis
     resetBlockCollapseState()
+    rememberAutoSaveSnapshot()
   } catch {
     ElMessage.error('加载问诊记录失败')
   }
@@ -1840,8 +1958,10 @@ watch(
     } else if (!loadDraft()) {
       Object.assign(form, emptyForm())
       resetBlockCollapseState()
+      rememberAutoSaveSnapshot()
     } else {
       resetBlockCollapseState()
+      rememberAutoSaveSnapshot()
     }
   }
 )
@@ -1857,8 +1977,13 @@ watch(
 onMounted(async () => {
   await Promise.all([loadSymptomPresets(), loadFormulas(), loadSessionNavList()])
   if (sessionId.value) await loadSession(sessionId.value)
-  else if (loadDraft()) resetBlockCollapseState()
-  else initBlockCollapseState()
+  else if (loadDraft()) {
+    resetBlockCollapseState()
+    rememberAutoSaveSnapshot()
+  } else {
+    initBlockCollapseState()
+    rememberAutoSaveSnapshot()
+  }
   if (route.query.module && sessionId.value) {
     focusConsultModule(String(route.query.module))
   }

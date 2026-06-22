@@ -1,5 +1,5 @@
 <template>
-  <div class="prescription-block">
+  <div ref="prescriptionRoot" class="prescription-block">
     <div class="prescription-block-title">
       <div class="prescription-title-main">
         <span>合方录入</span>
@@ -16,7 +16,17 @@
           <span>g</span>
         </label>
       </div>
-      <el-button size="small" class="add-btn" @click="addRow">+ 添加方剂</el-button>
+      <div class="prescription-title-actions">
+        <el-button
+          v-if="showImportPrevious"
+          size="small"
+          class="import-previous-btn"
+          @click="$emit('import-previous')"
+        >
+          引入上诊方剂
+        </el-button>
+        <el-button size="small" class="add-btn" @click="addRow">+ 添加方剂</el-button>
+      </div>
     </div>
 
     <div class="formula-table-wrap">
@@ -25,6 +35,7 @@
           <col class="col-name" />
           <col class="col-pathology" />
           <col class="col-main-symptoms" />
+          <col class="col-basis" />
           <col class="col-unit" />
           <col class="col-portions" />
           <col class="col-final" />
@@ -35,6 +46,7 @@
             <th class="col-name">方剂名</th>
             <th class="col-pathology">病理</th>
             <th class="col-main-symptoms">主要症状</th>
+            <th class="col-basis">用方依据</th>
             <th class="num">单方量</th>
             <th class="num">份数</th>
             <th class="num">最终用量</th>
@@ -43,7 +55,7 @@
         </thead>
         <tbody>
           <tr v-if="!modelValue.rows.length" class="formula-empty-row">
-            <td colspan="7">暂未添加方剂，点击「+ 添加方剂」开始录入</td>
+            <td colspan="8">暂未添加方剂，点击「+ 添加方剂」开始录入</td>
           </tr>
           <tr
             v-for="(row, index) in modelValue.rows"
@@ -76,6 +88,18 @@
               >
                 {{ rowMeta(row).mainSymptomsText || '—' }}
               </span>
+            </td>
+            <td class="col-basis">
+              <el-input
+                v-model="row.basis"
+                class="basis-input"
+                type="textarea"
+                :rows="1"
+                placeholder="输入用方依据"
+                @input="handleBasisInput"
+                @change="handleBasisInput"
+                @blur="handleBasisInput"
+              />
             </td>
             <td class="num">
               <span class="formula-unit-total" :class="{ 'is-auto': rowMeta(row).unitTotal > 0 }">
@@ -117,7 +141,7 @@
 </template>
 
 <script setup>
-import { computed, ref, watch } from 'vue'
+import { computed, nextTick, onMounted, ref, watch } from 'vue'
 import PathologyTag from './PathologyTag.vue'
 import { formatMainSymptomsText, lookupFormulaPowder, runDoseCalc } from '../../utils/formulaPowder'
 
@@ -131,13 +155,15 @@ const props = defineProps({
     })
   },
   formulaIndex: { type: Map, default: () => new Map() },
-  formulaNames: { type: Array, default: () => [] }
+  formulaNames: { type: Array, default: () => [] },
+  showImportPrevious: { type: Boolean, default: false }
 })
 
-const emit = defineEmits(['update:modelValue'])
+const emit = defineEmits(['update:modelValue', 'import-previous'])
 
 const localTarget = ref(props.modelValue.targetDose ?? 200)
 const localNote = ref(props.modelValue.note ?? '')
+const prescriptionRoot = ref(null)
 
 let rowSeq = 1
 function newRowId() {
@@ -191,7 +217,7 @@ function queryFormula(query, cb) {
 }
 
 function addRow() {
-  const rows = [...(props.modelValue.rows || []), { id: newRowId(), name: '', portions: 1 }]
+  const rows = [...(props.modelValue.rows || []), { id: newRowId(), name: '', basis: '', portions: 1 }]
   emit('update:modelValue', buildPayload(rows))
 }
 
@@ -203,7 +229,12 @@ function buildPayload(rows) {
   return {
     targetDose: localTarget.value,
     note: localNote.value,
-    rows: rows.map((r) => ({ id: r.id, name: r.name, portions: Number(r.portions) || 1 }))
+    rows: rows.map((r) => ({
+      id: r.id,
+      name: r.name,
+      basis: String(r.basis || '').trim(),
+      portions: Number(r.portions) || 1
+    }))
   }
 }
 
@@ -211,14 +242,33 @@ function emitUpdate() {
   emit('update:modelValue', buildPayload(props.modelValue.rows || []))
 }
 
+function resizeBasisTextareas() {
+  const root = prescriptionRoot.value
+  if (!root) return
+  root.querySelectorAll('.basis-input textarea').forEach((textarea) => {
+    textarea.style.height = 'auto'
+    textarea.style.height = `${textarea.scrollHeight}px`
+  })
+}
+
+function handleBasisInput() {
+  emitUpdate()
+  nextTick(resizeBasisTextareas)
+}
+
 watch(
   () => props.modelValue,
   (val) => {
     localTarget.value = val?.targetDose ?? 200
     localNote.value = val?.note ?? ''
+    nextTick(resizeBasisTextareas)
   },
   { deep: true }
 )
+
+onMounted(() => {
+  nextTick(resizeBasisTextareas)
+})
 </script>
 
 <style scoped>
@@ -273,6 +323,20 @@ watch(
   border-color: #d7e8de;
   color: #0f7c43;
 }
+.prescription-title-actions {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+.import-previous-btn {
+  flex-shrink: 0;
+  border-color: #b9d8c7;
+  background: #f4fbf7;
+  color: #0f7c43;
+  font-weight: 700;
+}
 .formula-table-wrap {
   width: 100%;
   max-width: 100%;
@@ -284,19 +348,31 @@ watch(
 }
 .formula-table {
   width: 100%;
-  min-width: 780px;
+  min-width: 980px;
   border-collapse: collapse;
   table-layout: fixed;
   font-size: 12px;
 }
 .formula-table .col-name {
-  width: 16%;
+  width: 15%;
 }
 .formula-table .col-pathology {
-  width: 22%;
+  width: 14%;
 }
 .formula-table .col-main-symptoms {
-  width: 30%;
+  width: 20%;
+}
+.formula-table .col-basis {
+  width: 28%;
+}
+.formula-table .col-unit {
+  width: 78px;
+}
+.formula-table .col-portions {
+  width: 86px;
+}
+.formula-table .col-final {
+  width: 86px;
 }
 .formula-table th,
 .formula-table td {
@@ -318,7 +394,9 @@ watch(
 .formula-table th.col-pathology,
 .formula-table td.col-pathology,
 .formula-table th.col-main-symptoms,
-.formula-table td.col-main-symptoms {
+.formula-table td.col-main-symptoms,
+.formula-table th.col-basis,
+.formula-table td.col-basis {
   text-align: left;
   vertical-align: top;
 }
@@ -351,6 +429,24 @@ watch(
 }
 .name-input :deep(.el-input__inner) {
   text-align: left;
+}
+.basis-input {
+  width: min(100%, 320px);
+}
+.basis-input :deep(.el-input__wrapper) {
+  min-height: 34px;
+  border-radius: 7px;
+}
+.basis-input :deep(.el-textarea__inner) {
+  min-height: 34px !important;
+  padding: 7px 10px;
+  border-radius: 7px;
+  font-size: 11px;
+  line-height: 1.42;
+  resize: none;
+  overflow-y: hidden;
+  text-align: left;
+  word-break: break-word;
 }
 .portions-input {
   width: 64px;

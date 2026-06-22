@@ -113,6 +113,13 @@ export function buildPrescriptionSummaryText(prescription) {
     .join('，')
 }
 
+export function stripFormulaBasisText(value) {
+  return String(value || '')
+    .replace(/（依据：[^）]*）/g, '')
+    .replace(/\(依据：[^)]*\)/g, '')
+    .trim()
+}
+
 export function buildFollowupSymptomText(visit, sections) {
   const symptomText = String(visit?.symptoms_text || '').trim()
   if (symptomText) return symptomText
@@ -137,6 +144,12 @@ export function buildFollowupSymptomText(visit, sections) {
 
 /** 病例摘要单行格式 */
 export function formatConsultSummaryLine(item) {
+  if (item?.kind === 'changeGroups') {
+    return (item.groups || [])
+      .filter((group) => String(group?.text || '').trim())
+      .map((group) => `${group.label}：${String(group.text || '').trim()}`)
+      .join('\n')
+  }
   let label = String(item?.label || '').trim()
   if (item?.score != null) label += ` ${item.score}`
   return `${label}：${String(item?.text || '').trim()}`
@@ -145,7 +158,7 @@ export function formatConsultSummaryLine(item) {
 /** 病例摘要全文（用于复制） */
 export function formatConsultSummaryText(lines) {
   return (lines || [])
-    .filter((item) => String(item?.text || '').trim())
+    .filter((item) => String(item?.text || '').trim() || (item?.groups || []).some((group) => String(group?.text || '').trim()))
     .map((item) => formatConsultSummaryLine(item))
     .join('\n')
 }
@@ -184,26 +197,15 @@ export function buildConsultSummaryLines(form, sections) {
 export function buildFollowupSummaryLines(visit, sections) {
   const lines = []
 
-  const changes = Array.isArray(visit?.changes) ? visit.changes.filter(Boolean) : []
-  if (changes.length) lines.push({ label: '服药后变化', text: changes.join('、'), kind: 'meta' })
-
-  const chief = String(visit?.chief_complaint || '').trim()
-  if (chief) lines.push({ label: '当前主诉', text: chief, kind: 'meta' })
-
-  const symptomText = buildFollowupSymptomText(visit, sections)
-  if (symptomText) lines.push({ label: '当前症状', text: symptomText, kind: 'meta' })
-
-  const tonguePulseAbdominal = buildTonguePulseAbdominalText({
-    tongue_image: visit?.tongue_image,
-    pulse: visit?.pulse,
-    abdominal: visit?.abdominal
-  })
-  if (tonguePulseAbdominal) {
-    lines.push({ label: '舌脉腹变化', text: tonguePulseAbdominal, kind: 'meta' })
+  const changeGroups = buildFollowupChangeGroups(visit)
+  if (changeGroups.some((group) => group.text)) {
+    lines.push({
+      label: '服药后变化',
+      text: changeGroups.map((group) => group.text).filter(Boolean).join('；'),
+      kind: 'changeGroups',
+      groups: changeGroups
+    })
   }
-
-  const previousFormula = String(visit?.previous_formula || '').trim()
-  if (previousFormula) lines.push({ label: '上次方剂', text: previousFormula, kind: 'meta' })
 
   const prescriptionText = buildPrescriptionSummaryText(visit?.prescription)
   if (prescriptionText) {
@@ -211,6 +213,24 @@ export function buildFollowupSummaryLines(visit, sections) {
   }
 
   return lines
+}
+
+export function buildFollowupChangeGroups(visit) {
+  const changes = Array.isArray(visit?.changes) ? visit.changes.filter(Boolean) : []
+  const improved = splitSymptomText(visit?.improved_symptoms)
+  const worsened = splitSymptomText(visit?.worsened_symptoms)
+  const remaining = splitSymptomText(visit?.remaining_symptoms)
+
+  if (changes.includes('好转') && !improved.length) improved.push('好转')
+  if (changes.includes('加重') && !worsened.length) worsened.push('加重')
+  if (changes.includes('无变化') && !remaining.length) remaining.push('无变化')
+  if (changes.includes('新增症状') && !worsened.includes('新增症状')) worsened.push('新增症状')
+
+  return [
+    { key: 'improved', label: '好转的症状', text: joinSymptomText(improved), tone: 'green' },
+    { key: 'worsened', label: '加重的症状', text: joinSymptomText(worsened), tone: 'red' },
+    { key: 'remaining', label: '仍存在的症状', text: joinSymptomText(remaining), tone: 'orange' }
+  ]
 }
 
 export function formatConsultSummaryGroups(groups) {

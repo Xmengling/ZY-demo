@@ -72,6 +72,9 @@
   background: #f8fafc;
 }
 .visit-mode-switch button {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
   height: 22px;
   padding: 0 9px;
   border: 0;
@@ -84,6 +87,29 @@
 }
 .visit-mode-switch button.active {
   background: #18a058;
+  color: #fff;
+}
+.visit-tab-delete {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 14px;
+  height: 14px;
+  border-radius: 999px;
+  color: #98a2b3;
+  font-size: 13px;
+  font-weight: 900;
+  line-height: 1;
+}
+.visit-tab-delete:hover {
+  background: #fee4e2;
+  color: #b42318;
+}
+.visit-mode-switch button.active .visit-tab-delete {
+  color: rgba(255, 255, 255, 0.82);
+}
+.visit-mode-switch button.active .visit-tab-delete:hover {
+  background: rgba(255, 255, 255, 0.22);
   color: #fff;
 }
 .autofill-tip {
@@ -457,6 +483,56 @@
   color: inherit;
   font-size: 13px;
   font-weight: 800;
+}
+.followup-change-fields {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+}
+.followup-change-field {
+  display: grid;
+  gap: 6px;
+  padding: 10px;
+  border: 1px solid #dbe5f1;
+  border-radius: 8px;
+  background: #ffffff;
+}
+.followup-change-field > label {
+  font-size: 13px;
+  font-weight: 900;
+  line-height: 18px;
+}
+.followup-change-field.is-improved {
+  border-color: #bbf7d0;
+  background: #f0fdf4;
+}
+.followup-change-field.is-improved > label {
+  color: #15803d;
+}
+.followup-change-field.is-worsened {
+  border-color: #fecaca;
+  background: #fef2f2;
+}
+.followup-change-field.is-worsened > label {
+  color: #b42318;
+}
+.followup-change-field.is-remaining {
+  border-color: #fed7aa;
+  background: #fff7ed;
+}
+.followup-change-field.is-remaining > label {
+  color: #c2410c;
+}
+.followup-change-textarea :deep(.el-textarea__inner) {
+  min-height: 38px !important;
+  padding: 7px 9px;
+  border-color: #d8e1ec;
+  border-radius: 7px;
+  color: #344054;
+  font-size: 14px;
+  font-weight: 700;
+  line-height: 1.55;
+  box-shadow: none;
 }
 .followup-chief-card {
   padding-top: 10px;
@@ -1206,7 +1282,7 @@
   gap: 8px;
   color: #4b5563;
   font-size: 12px;
-  line-height: 22px;
+  line-height: 1.65;
   margin: 0;
   padding: 0;
   list-style: none;
@@ -1240,17 +1316,73 @@
 .summary-list li,
 .summary-list .is-empty {
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   gap: 0;
-  height: 22px;
   min-height: 22px;
-  max-height: 22px;
-  padding: 0 2px;
+  padding: 1px 2px;
   border-radius: 3px;
-  overflow: hidden;
+  overflow: visible;
 }
 .summary-list li:not(.is-empty):hover {
   background: #f6f8fb;
+}
+.summary-list li.summary-change-row {
+  display: block;
+  padding: 2px 0;
+}
+.summary-list li.summary-change-row:hover {
+  background: transparent;
+}
+.summary-change-groups {
+  display: grid;
+  gap: 5px;
+  width: 100%;
+}
+.summary-change-group {
+  display: grid;
+  grid-template-columns: 86px minmax(0, 1fr);
+  gap: 8px;
+  align-items: start;
+  padding: 6px 8px;
+  border: 1px solid #dbe5f1;
+  border-radius: 6px;
+  background: #ffffff;
+}
+.summary-change-group.is-green {
+  border-color: #bbf7d0;
+  background: #f0fdf4;
+}
+.summary-change-group.is-red {
+  border-color: #fecaca;
+  background: #fef2f2;
+}
+.summary-change-group.is-orange {
+  border-color: #fed7aa;
+  background: #fff7ed;
+}
+.summary-change-label {
+  font-size: 12px;
+  font-weight: 900;
+  line-height: 1.55;
+  white-space: nowrap;
+}
+.summary-change-group.is-green .summary-change-label {
+  color: #15803d;
+}
+.summary-change-group.is-red .summary-change-label {
+  color: #b42318;
+}
+.summary-change-group.is-orange .summary-change-label {
+  color: #c2410c;
+}
+.summary-change-text {
+  min-width: 0;
+  color: #344054;
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 1.55;
+  overflow-wrap: anywhere;
+  word-break: break-word;
 }
 .summary-list .is-empty {
   color: #98a2b3;
@@ -1262,16 +1394,18 @@
 .summary-line-text {
   flex: 1;
   min-width: 0;
-  line-height: 22px;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  line-height: 1.65;
+  overflow: visible;
+  text-overflow: clip;
+  white-space: normal;
+  overflow-wrap: anywhere;
+  word-break: break-word;
 }
 .summary-pathology-label {
   flex-shrink: 0;
   font-size: 12px;
   font-weight: 800;
-  line-height: 22px;
+  line-height: 1.65;
   color: var(--path-fg, #182230);
   white-space: nowrap;
 }
@@ -1330,8 +1464,15 @@
   .followup-grid {
     grid-template-columns: 1fr;
   }
+  .followup-change-fields {
+    grid-template-columns: 1fr;
+  }
   .followup-symptom-input-row {
     grid-template-columns: 36px minmax(0, 1fr);
+  }
+  .summary-change-group {
+    grid-template-columns: 1fr;
+    gap: 2px;
   }
   .autofill-candidate {
     grid-template-columns: 1fr;

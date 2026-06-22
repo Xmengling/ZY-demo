@@ -105,6 +105,10 @@ def merge_intake_data(base: dict[str, Any], other: dict[str, Any]) -> dict[str, 
                 existing["portions"] = int(existing.get("portions") or 1) + int(row.get("portions") or 1)
             except (TypeError, ValueError):
                 existing["portions"] = existing.get("portions") or row.get("portions") or 1
+            existing_basis = str(existing.get("basis") or "").strip()
+            incoming_basis = str(row.get("basis") or "").strip()
+            if incoming_basis and incoming_basis not in existing_basis:
+                existing["basis"] = "；".join(part for part in (existing_basis, incoming_basis) if part)
         else:
             rows.append(copy.deepcopy(row))
             row_by_name[name] = rows[-1]

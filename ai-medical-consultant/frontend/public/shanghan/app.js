@@ -660,7 +660,7 @@ function wrapSegments(ctx, segments, maxWidth, baseFont) {
   let currentLine = [];
 
   const pushChar = (char, style) => {
-    const trial = [...currentLine];
+    const trial = currentLine.map((part) => ({ ...part }));
     const last = trial[trial.length - 1];
     if (
       last

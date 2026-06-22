@@ -222,7 +222,8 @@ def parse_prescription_display_from_intake(intake: dict) -> List[str]:
         if not name:
             continue
         portions = int(row.get("portions") or 1)
-        displays.append(f"{name}{portions}份")
+        basis = str(row.get("basis") or "").strip()
+        displays.append(f"{name}{portions}份" + (f"（依据：{basis}）" if basis else ""))
     return displays
 
 

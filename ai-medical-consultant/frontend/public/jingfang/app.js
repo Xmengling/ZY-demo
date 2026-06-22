@@ -354,7 +354,7 @@ function wrapMarkupParagraph(ctx, paragraph, maxWidth, baseFont) {
   let currentLine = [];
 
   const pushChar = (char, style) => {
-    const trial = [...currentLine];
+    const trial = currentLine.map((part) => ({ ...part }));
     const last = trial[trial.length - 1];
     if (last && last.bold === style.bold && last.red === style.red) {
       last.text += char;
