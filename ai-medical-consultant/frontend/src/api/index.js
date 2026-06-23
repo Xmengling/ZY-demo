@@ -34,6 +34,18 @@ export const formulasApi = {
   list: () => api.get('/v1/formulas')
 }
 
+export const shanghanStudyApi = {
+  progress: () => api.get('/v1/shanghan/study/progress'),
+  chatHistory: () => api.get('/v1/shanghan/study/chat'),
+  chat: (data) => api.post('/v1/shanghan/study/chat', data, { timeout: 180000 }),
+  startSession: (data) => api.post('/v1/shanghan/study/session/start', data),
+  answer: (sessionId, data) => api.post(`/v1/shanghan/study/session/${sessionId}/answer`, data),
+  completeArticle: (sessionId, data) =>
+    api.post(`/v1/shanghan/study/session/${sessionId}/complete-article`, data),
+  completeArticleByNumber: (data) => api.post('/v1/shanghan/study/complete-article', data),
+  reviews: () => api.get('/v1/shanghan/study/reviews')
+}
+
 export const consultApi = {
   listSessions: (params = {}) => api.get('/v1/consult/sessions', { params }),
   listAiChats: () => api.get('/v1/consult/sessions', { params: { ai_chat: true } }),

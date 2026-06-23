@@ -21,6 +21,7 @@
         <el-menu-item index="/knowledge"><el-icon><Reading /></el-icon><span>知识库</span></el-menu-item>
         <el-menu-item index="/formulas"><el-icon><Collection /></el-icon><span>方剂梳理</span></el-menu-item>
         <el-menu-item index="/shanghan"><el-icon><Reading /></el-icon><span>伤寒论条文解读</span></el-menu-item>
+        <el-menu-item index="/shanghan-study"><el-icon><Notebook /></el-icon><span>伤寒论读书课堂</span></el-menu-item>
       </el-menu>
       <button type="button" class="collapse-btn" :title="collapsed ? '展开菜单' : '折叠菜单'" @click="toggleCollapse">
         <el-icon :size="18">
@@ -74,7 +75,14 @@ function toggleCollapse() {
   localStorage.setItem(SIDEBAR_COLLAPSED_KEY, collapsed.value ? '1' : '0')
 }
 
-const titles = { home: 'AI 问答', records: '医案记录', knowledge: '知识库', formulas: '方剂梳理', shanghan: '伤寒论条文解读' }
+const titles = {
+  home: 'AI 问答',
+  records: '医案记录',
+  knowledge: '知识库',
+  formulas: '方剂梳理',
+  shanghan: '伤寒论条文解读',
+  shanghanStudy: '伤寒论读书课堂'
+}
 
 const isConsultEdit = computed(() => {
   if (!route.path.startsWith('/consult')) return false
