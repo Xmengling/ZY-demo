@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 import re
+from difflib import SequenceMatcher
 from urllib.parse import unquote
 
 from fastapi import APIRouter, Depends, HTTPException, status
@@ -18,11 +19,117 @@ from ..services.shanghan_teacher_prompt import build_system_prompt, build_user_p
 router = APIRouter(prefix="/api/v1/shanghan", tags=["shanghan"])
 
 
+def _clean_markdown(text: str) -> str:
+    return (
+        text.replace("[[**", "")
+        .replace("**]]", "")
+        .replace("**", "")
+        .replace("###", "")
+        .replace("##", "")
+        .strip()
+    )
+
+
 def _last_assistant_prompt(history: list[dict]) -> str:
     for item in reversed(history):
         if item.get("role") == "assistant":
             return str(item.get("content") or "").strip()
     return ""
+
+
+def _normalize_question(text: str) -> str:
+    cleaned = _clean_markdown(text)
+    cleaned = re.sub(r"^[\-*、\d.\s：:]+", "", cleaned)
+    cleaned = re.sub(r"\s+", "", cleaned)
+    cleaned = cleaned.rstrip("？?。.!！")
+    return cleaned
+
+
+def _extract_questions(text: str) -> list[str]:
+    cleaned = _clean_markdown(text)
+    candidates: list[str] = []
+    for match in re.finditer(r"([^。！？\n]{4,90}[？?])", cleaned):
+        candidates.append(match.group(1).strip())
+    for raw_line in cleaned.splitlines():
+        line = raw_line.strip()
+        if not line:
+            continue
+        if "问题：" in line or "小问题：" in line:
+            question = re.split(r"问题：|小问题：", line, maxsplit=1)[-1].strip()
+            if question and question not in candidates:
+                candidates.append(question)
+    unique: list[str] = []
+    seen: set[str] = set()
+    for item in candidates:
+        normalized = _normalize_question(item)
+        if normalized and normalized not in seen:
+            seen.add(normalized)
+            unique.append(item)
+    return unique
+
+
+def _recent_assistant_questions(history: list[dict], limit: int = 6) -> list[str]:
+    questions: list[str] = []
+    seen: set[str] = set()
+    for item in reversed(history):
+        if item.get("role") != "assistant":
+            continue
+        for question in reversed(_extract_questions(str(item.get("content") or ""))):
+            normalized = _normalize_question(question)
+            if normalized and normalized not in seen:
+                seen.add(normalized)
+                questions.append(question)
+            if len(questions) >= limit:
+                return list(reversed(questions))
+    return list(reversed(questions))
+
+
+def _is_similar_question(candidate: str, asked_questions: set[str]) -> bool:
+    normalized = _normalize_question(candidate)
+    if not normalized:
+        return False
+    if normalized in asked_questions:
+        return True
+    for asked in asked_questions:
+        if not asked:
+            continue
+        shorter, longer = sorted((normalized, asked), key=len)
+        if len(shorter) >= 8 and shorter in longer:
+            return True
+        if SequenceMatcher(None, normalized, asked).ratio() >= 0.86:
+            return True
+    return False
+
+
+def _fallback_question(article: dict, recent_questions: list[str]) -> str:
+    candidates = [
+        "请换个角度回答：这一条里哪一个词最能提示病位在表？",
+        "你用一句话说说：为什么这些症状要合在一起看，不能拆开单独判断？",
+        "这一条最容易被误解成具体病名，问题出在哪里？",
+        "如果只记一个辨证边界，你会记哪一句？",
+        "这一组症状成立太阳病的关键条件是什么？",
+    ]
+    asked = {_normalize_question(question) for question in recent_questions}
+    for candidate in candidates:
+        if not _is_similar_question(candidate, asked):
+            return candidate
+    number = article.get("number") or article.get("articleNo") or "当前"
+    return f"请从第{number}条里另选一个你认为最重要的字词，说说它为什么是抓手。"
+
+
+def _avoid_repeated_question(reply: str, recent_questions: list[str], article: dict) -> str:
+    asked = {_normalize_question(question) for question in recent_questions}
+    questions = _extract_questions(reply)
+    if not questions:
+        return reply
+    last_question = questions[-1]
+    if not _is_similar_question(last_question, asked):
+        return reply
+    replacement = _fallback_question(article, recent_questions)
+    index = reply.rfind(last_question)
+    if index < 0:
+        return f"{reply.rstrip()}\n\n### 换一个角度追问\n{replacement}"
+    return f"{reply[:index].rstrip()}\n\n### 换一个角度追问\n{replacement}"
 
 
 def _is_answer_to_previous_prompt(question: str, last_assistant: str) -> bool:
@@ -119,6 +226,7 @@ def study_chat(payload: dict, user: User = Depends(get_current_user)):
     state = str(payload.get("state") or "normal")
     history = shanghan_store.get_chat_history(user.id)[-10:]
     last_assistant = _last_assistant_prompt(history)
+    recent_questions = _recent_assistant_questions(history)
     interaction_mode = (
         "answer_feedback"
         if _is_answer_to_previous_prompt(question, last_assistant)
@@ -142,6 +250,7 @@ def study_chat(payload: dict, user: User = Depends(get_current_user)):
                 state=state,
                 interaction_mode=interaction_mode,
                 last_assistant=last_assistant,
+                recent_questions=recent_questions,
             ),
         }
     )
@@ -151,6 +260,7 @@ def study_chat(payload: dict, user: User = Depends(get_current_user)):
     except Exception as exc:
         raise HTTPException(status.HTTP_502_BAD_GATEWAY, "AI 回复失败，请稍后重试") from exc
 
+    reply = _avoid_repeated_question(reply, recent_questions, article)
     messages = shanghan_store.append_chat_exchange(
         user.id,
         question=question,

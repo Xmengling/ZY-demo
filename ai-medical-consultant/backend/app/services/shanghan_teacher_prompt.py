@@ -80,6 +80,7 @@ def build_system_prompt() -> str:
             "硬规则：讲胡希恕、李冠杰时，先给讲稿原文节选，让用户先归纳；用户未归纳前，不给完整总结。",
             "硬规则：所有讲稿原文节选必须主动标重点。对主症、核心病机、辨证边界、误治风险、类方区别等短语使用 [[**重点文字**]] 包起来。",
             "硬规则：每轮只问一个问题。用户答错时先提示，不直接长篇公布答案。",
+            "硬规则：如果输出选择题或判断题，必须在题目后追加一行隐藏机读答案，格式严格为：<!--QUIZ:{\"type\":\"single\",\"answer\":\"B\",\"explanation\":\"简短解析\"}-->；判断题 type 用 judge，answer 用 对 或 错。隐藏答案不要用 Markdown 代码块包裹。",
             "硬规则：如果本轮是用户回答上一轮问题，必须点评用户答案，禁止重复上一轮讲解或重新派任务卡。",
             "硬规则：用户说停、累、今天到这里，立即收束，不继续加码。",
             "术语规则：讲稿明确使用表虚证、表实证、里热、水气等术语时，优先保留原术语，不强行改成其他标签。",
@@ -98,11 +99,14 @@ def build_user_prompt(
     state: str,
     interaction_mode: str = "ask",
     last_assistant: str = "",
+    recent_questions: list[str] | None = None,
 ) -> str:
     article_no = article.get("number") or article.get("articleNo") or progress.get("nextArticleNo")
     local_card_context = shanghan_store.article_context(article)
     lecture = lecture_block(article_no)
     rules = classroom_rules()
+    recent_questions = recent_questions or []
+    recent_question_text = "\n".join(f"- {item}" for item in recent_questions)
 
     blocks = [
         f"【必须遵守的本地读书规则】\n{rules}" if rules else "",
@@ -117,7 +121,8 @@ def build_user_prompt(
             f"【用户状态】{state}",
             f"【数据库当前进度】下一次从第{progress.get('nextArticleNo')}条开始；当前关卡：{progress.get('currentLevel')}。如果它与页面当前选择条文或用户问题冲突，以页面当前选择和用户问题为准。",
             f"【本轮交互模式】{interaction_mode}",
-            f"【上一轮老师内容】\n{last_assistant}" if last_assistant else "",
+            f"【上一轮老师内容，仅用于判断用户是否在作答，不要照抄或重复追问】\n{last_assistant}" if last_assistant else "",
+            f"【最近已经问过的问题，禁止原样或换皮重复】\n{recent_question_text}" if recent_question_text else "",
             f"【用户本轮输入】\n{question}",
             f"【再次强调】本轮必须围绕第{article_no}条回答，不要切换到其他条文。",
         ]
@@ -132,7 +137,7 @@ def build_user_prompt(
             "   - 抓得对的是：...\n"
             "   - 需要补充或纠偏的是：...\n"
             "   ### 下一小步\n"
-            "   只问一个更小的问题。\n"
+            "   只问一个更小的问题，并且必须避开【最近已经问过的问题】。\n"
             "4. 如果用户答错，先给提示一，不要直接长篇公布答案。"
         )
     else:
@@ -144,5 +149,7 @@ def build_user_prompt(
             "4. 回答要像老师带读，不要像资料库百科。\n"
             "5. 不要解释系统如何选择条文，不要重复询问用户状态。"
             "\n6. 如果输出讲稿原文节选，必须在原文内部用 [[**...**]] 标出 3-8 个重点短语，帮助阅读。"
+            "\n7. 结尾只能问一个问题，且必须避开【最近已经问过的问题】；如果需要继续追问，换成病理、边界、误治、类方鉴别等不同角度。"
+            "\n8. 如果本轮包含选择题或判断题，题干和选项正常展示，但标准答案只能放在隐藏机读答案里，例如 <!--QUIZ:{\"type\":\"single\",\"answer\":\"D\",\"explanation\":\"口渴想饮冷水提示合并里热，不是单纯太阳病。\"}-->。"
         )
     return "\n\n".join(block for block in blocks if block)

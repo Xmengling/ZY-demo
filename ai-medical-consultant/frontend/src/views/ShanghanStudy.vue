@@ -10,8 +10,8 @@
           </div>
 
           <div
-            v-for="(message, index) in messages"
-            :key="`${message.role}-${index}-${message.createdAt || index}`"
+            v-for="message in renderedMessages"
+            :key="message.key"
             class="chat-row"
             :class="message.role"
           >
@@ -19,7 +19,36 @@
               <el-icon v-if="message.role === 'assistant'"><Reading /></el-icon>
               <el-icon v-else><User /></el-icon>
             </div>
-            <div class="chat-bubble" v-html="formatMessage(message.content)" />
+            <div class="chat-bubble">
+              <div v-html="formatMessage(message.displayContent)" />
+              <div v-if="message.quiz" class="quiz-card">
+                <div class="quiz-kicker">{{ message.quiz.type === 'judge' ? '判断题' : '选择题' }}</div>
+                <div class="quiz-question" v-html="formatMessage(message.quiz.question)" />
+                <div class="quiz-options">
+                  <button
+                    v-for="option in message.quiz.options"
+                    :key="option.key"
+                    type="button"
+                    class="quiz-option"
+                    :class="quizOptionClass(message, option.key)"
+                    :disabled="Boolean(quizSelections[message.key])"
+                    @click="chooseQuizAnswer(message.key, option.key)"
+                  >
+                    <span class="quiz-option-key">{{ option.key }}</span>
+                    <span class="quiz-option-text" v-html="formatInline(option.text)" />
+                  </button>
+                </div>
+                <div
+                  v-if="quizSelections[message.key]"
+                  class="quiz-result"
+                  :class="quizResultClass(message)"
+                >
+                  <strong>{{ quizResultTitle(message) }}</strong>
+                  <span v-if="message.quiz.answer">正确答案：{{ message.quiz.answer }}。</span>
+                  <span>{{ message.quiz.explanation || '这道题没有返回解析，可以继续让 AI 点评你的选择。' }}</span>
+                </div>
+              </div>
+            </div>
           </div>
 
           <div v-if="sending" class="chat-row assistant">
@@ -186,6 +215,7 @@ const selectedArticleNo = ref(1)
 const loading = ref(false)
 const sending = ref(false)
 const feedRef = ref(null)
+const quizSelections = ref({})
 
 const currentArticleTitle = computed(() => {
   const number = currentArticle.value?.number || selectedArticleNo.value || progress.value?.nextArticleNo || 1
@@ -194,6 +224,19 @@ const currentArticleTitle = computed(() => {
 
 const articleOriginal = computed(() => {
   return currentArticle.value?.originalText || currentArticle.value?.original || '当前条文资料待加载。'
+})
+
+const renderedMessages = computed(() => {
+  return messages.value.map((message, index) => {
+    const key = `${message.role}-${index}-${message.createdAt || index}`
+    const parsed = message.role === 'assistant' ? parseQuizMessage(message.content) : null
+    return {
+      ...message,
+      key,
+      displayContent: parsed?.content || message.content,
+      quiz: parsed?.quiz || null
+    }
+  })
 })
 
 onMounted(async () => {
@@ -256,6 +299,142 @@ async function scrollToBottom() {
   if (feedRef.value) {
     feedRef.value.scrollTop = feedRef.value.scrollHeight
   }
+}
+
+function parseQuizMessage(content = '') {
+  const rawContent = String(content)
+  let quizMeta = null
+  let cleanedContent = rawContent.replace(/<!--\s*QUIZ:([\s\S]*?)\s*-->/g, (_, jsonText) => {
+    try {
+      quizMeta = JSON.parse(jsonText)
+    } catch {
+      quizMeta = null
+    }
+    return ''
+  })
+
+  const answerPattern = /^\s*(?:答案|正确答案|标准答案)[:：]\s*([A-D对错√×正确错误])(?:[，。,.\s]*(.*))?$/i
+  let visibleAnswer = ''
+  let visibleExplanation = ''
+  cleanedContent = cleanedContent
+    .split('\n')
+    .filter((line) => {
+      const match = line.match(answerPattern)
+      if (!match) return true
+      visibleAnswer = match[1]
+      visibleExplanation = match[2] || ''
+      return false
+    })
+    .join('\n')
+
+  const lines = cleanedContent.split('\n')
+  const optionPattern = /^\s*([A-D])[\.\、]\s*(.+?)\s*$/
+  const optionStart = lines.findIndex((line) => optionPattern.test(line))
+  const judgeQuestionIndex = lines.findIndex((line) => /判断题|对\/错|对错|正确还是错误/.test(line))
+  if (optionStart < 0 && judgeQuestionIndex < 0) return null
+
+  const isJudge = quizMeta?.type === 'judge' || (judgeQuestionIndex >= 0 && optionStart < 0)
+  const type = isJudge ? 'judge' : 'single'
+  const options = []
+
+  if (optionStart >= 0) {
+    for (let index = optionStart; index < lines.length; index += 1) {
+      const match = lines[index].match(optionPattern)
+      if (!match) {
+        if (lines[index].trim()) break
+        continue
+      }
+      options.push({ key: match[1], text: match[2] })
+    }
+  } else {
+    options.push({ key: '对', text: '正确' }, { key: '错', text: '错误' })
+  }
+
+  if (!options.length) return null
+
+  const questionStart = findQuizQuestionStart(lines, optionStart >= 0 ? optionStart : judgeQuestionIndex)
+  const optionEnd = optionStart >= 0 ? findQuizOptionEnd(lines, optionStart) : judgeQuestionIndex + 1
+  const questionLines = lines.slice(questionStart, optionStart >= 0 ? optionStart : optionEnd)
+  const question = questionLines.join('\n').replace(/^\s*(?:#{2,3}\s*)?(?:小测题|选择题|判断题)[：:]\s*/g, '').trim()
+  const displayContent = [
+    ...lines.slice(0, questionStart),
+    ...lines.slice(optionEnd)
+  ].join('\n').trim()
+
+  return {
+    content: displayContent,
+    quiz: {
+      type,
+      question: question || (type === 'judge' ? '请判断下面说法是否正确。' : '请选择最准确的一项。'),
+      options,
+      answer: normalizeQuizAnswer(quizMeta?.answer || visibleAnswer || ''),
+      explanation: quizMeta?.explanation || visibleExplanation || ''
+    }
+  }
+}
+
+function findQuizQuestionStart(lines, optionStart) {
+  for (let index = optionStart - 1; index >= 0; index -= 1) {
+    const line = lines[index].trim()
+    if (!line) return index + 1
+    if (/^(#{2,3}\s*)?(小测题|选择题|判断题)/.test(line)) return index
+  }
+  return Math.max(0, optionStart - 1)
+}
+
+function findQuizOptionEnd(lines, optionStart) {
+  const optionPattern = /^\s*([A-D])[\.\、]\s*(.+?)\s*$/
+  let end = optionStart
+  for (let index = optionStart; index < lines.length; index += 1) {
+    const line = lines[index]
+    if (optionPattern.test(line) || !line.trim()) {
+      end = index + 1
+      continue
+    }
+    break
+  }
+  return end
+}
+
+function normalizeQuizAnswer(answer = '') {
+  const text = String(answer).trim().toUpperCase()
+  if (!text) return ''
+  if (['A', 'B', 'C', 'D'].includes(text)) return text
+  if (['对', '正确', 'TRUE', 'T', '√'].includes(text)) return '对'
+  if (['错', '错误', 'FALSE', 'F', '×', 'X'].includes(text)) return '错'
+  return text
+}
+
+function chooseQuizAnswer(messageKey, optionKey) {
+  if (quizSelections.value[messageKey]) return
+  quizSelections.value = {
+    ...quizSelections.value,
+    [messageKey]: optionKey
+  }
+}
+
+function quizOptionClass(message, optionKey) {
+  const selected = quizSelections.value[message.key]
+  if (!selected) return ''
+  const answer = normalizeQuizAnswer(message.quiz?.answer || '')
+  if (answer && optionKey === answer) return 'correct'
+  if (answer && optionKey === selected && optionKey !== answer) return 'wrong'
+  if (optionKey === selected) return 'selected'
+  return ''
+}
+
+function quizResultClass(message) {
+  const selected = quizSelections.value[message.key]
+  const answer = normalizeQuizAnswer(message.quiz?.answer || '')
+  if (!answer) return 'neutral'
+  return selected === answer ? 'correct' : 'wrong'
+}
+
+function quizResultTitle(message) {
+  const selected = quizSelections.value[message.key]
+  const answer = normalizeQuizAnswer(message.quiz?.answer || '')
+  if (!answer) return `已选择：${selected}。`
+  return selected === answer ? '答对了。' : '这题不对。'
 }
 
 function formatMessage(value = '') {
@@ -587,9 +766,147 @@ h1 {
   background: #dce6ef;
 }
 
+.quiz-card {
+  margin-top: 14px;
+  padding: 14px;
+  border: 1px solid #cfe6d9;
+  border-radius: 12px;
+  background:
+    linear-gradient(135deg, rgba(24, 160, 88, 0.08), rgba(24, 160, 88, 0.02)),
+    #fff;
+}
+
+.quiz-kicker {
+  display: inline-flex;
+  align-items: center;
+  margin-bottom: 10px;
+  padding: 3px 9px;
+  border-radius: 999px;
+  background: #e7f6ef;
+  color: #0f7c43;
+  font-size: 13px;
+  font-weight: 850;
+}
+
+.quiz-question {
+  margin-bottom: 12px;
+  color: #172033;
+  font-size: 16px;
+  font-weight: 800;
+  line-height: 1.65;
+}
+
+.quiz-question :deep(.md-paragraph) {
+  margin-bottom: 0;
+}
+
+.quiz-options {
+  display: grid;
+  gap: 9px;
+}
+
+.quiz-option {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  padding: 10px 12px;
+  border: 1px solid #d8e3ee;
+  border-radius: 10px;
+  background: #fff;
+  color: #202b3d;
+  text-align: left;
+  cursor: pointer;
+  transition: all 0.16s ease;
+}
+
+.quiz-option:hover:not(:disabled) {
+  border-color: #18a058;
+  background: #f3fbf7;
+  transform: translateY(-1px);
+}
+
+.quiz-option:disabled {
+  cursor: default;
+}
+
+.quiz-option-key {
+  width: 28px;
+  height: 28px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 8px;
+  background: #edf3f9;
+  color: #475467;
+  font-weight: 900;
+}
+
+.quiz-option-text {
+  font-size: 15px;
+  font-weight: 700;
+  line-height: 1.55;
+}
+
+.quiz-option.selected {
+  border-color: #409eff;
+  background: #edf6ff;
+}
+
+.quiz-option.correct {
+  border-color: #18a058;
+  background: #eaf8f0;
+}
+
+.quiz-option.correct .quiz-option-key {
+  background: #18a058;
+  color: #fff;
+}
+
+.quiz-option.wrong {
+  border-color: #ef4444;
+  background: #fff1f1;
+}
+
+.quiz-option.wrong .quiz-option-key {
+  background: #ef4444;
+  color: #fff;
+}
+
+.quiz-result {
+  margin-top: 12px;
+  padding: 10px 12px;
+  border-radius: 10px;
+  line-height: 1.6;
+}
+
+.quiz-result strong {
+  margin-right: 8px;
+}
+
+.quiz-result.correct {
+  background: #eaf8f0;
+  color: #0f7c43;
+}
+
+.quiz-result.wrong {
+  background: #fff1f1;
+  color: #b42318;
+}
+
+.quiz-result.neutral {
+  background: #f2f4f7;
+  color: #475467;
+}
+
 .chat-bubble :deep(strong) {
   color: #0f7c43;
   font-weight: 850;
+}
+
+.quiz-result strong {
+  color: inherit;
 }
 
 .chat-row.user .chat-bubble :deep(.md-heading),
