@@ -571,7 +571,53 @@ function expandSidebarCategories(categories = []) {
   });
 }
 
+function formulaListScrollKey(listEl) {
+  if (!listEl) return "";
+  return `${listEl.dataset.category || ""}::${listEl.dataset.subgroup || ""}`;
+}
+
+function captureFormulaListScrollState() {
+  const listPanel = document.querySelector(".list-panel");
+  const listScroll = new Map();
+  $$("#category-formula-accordions .formula-list").forEach((listEl) => {
+    listScroll.set(formulaListScrollKey(listEl), listEl.scrollTop);
+  });
+  return {
+    panelTop: listPanel?.scrollTop || 0,
+    listScroll,
+  };
+}
+
+function keepElementVisibleInContainer(element, container) {
+  if (!element || !container) return;
+  const elementRect = element.getBoundingClientRect();
+  const containerRect = container.getBoundingClientRect();
+  if (elementRect.top < containerRect.top) {
+    container.scrollTop -= containerRect.top - elementRect.top;
+  } else if (elementRect.bottom > containerRect.bottom) {
+    container.scrollTop += elementRect.bottom - containerRect.bottom;
+  }
+}
+
+function restoreFormulaListScrollState(scrollState) {
+  if (!scrollState) return;
+  requestAnimationFrame(() => {
+    const listPanel = document.querySelector(".list-panel");
+    if (listPanel) listPanel.scrollTop = scrollState.panelTop || 0;
+    $$("#category-formula-accordions .formula-list").forEach((listEl) => {
+      const savedTop = scrollState.listScroll?.get(formulaListScrollKey(listEl));
+      if (typeof savedTop === "number") listEl.scrollTop = savedTop;
+    });
+
+    const activeItem = $("#category-formula-accordions .formula-item.active");
+    const activeList = activeItem?.closest(".formula-list");
+    keepElementVisibleInContainer(activeItem, activeList);
+    keepElementVisibleInContainer(activeItem, listPanel);
+  });
+}
+
 function fillForm(formula) {
+  const listScrollState = captureFormulaListScrollState();
   state.selectedId = formula.id;
   expandSidebarCategories(formula.categories || []);
   $("#editor-title").textContent = `编辑方剂：${formula.name}`;
@@ -595,7 +641,7 @@ function fillForm(formula) {
   renderPathologyChoices(formula.pathology || []);
   updateProofreadButton(isFormulaProofread(formula));
   renderPreview(normalizeFormulaFromForm());
-  renderFormulaList();
+  renderFormulaList({ preserveScroll: listScrollState });
   rememberFormulaSnapshot();
 }
 
@@ -914,13 +960,14 @@ function renderCategoryPanelContent(category, formulas) {
     : '<p class="empty-hint">该分类暂无方剂</p>';
 }
 
-function renderFormulaList() {
+function renderFormulaList({ preserveScroll = null } = {}) {
   const container = $("#category-formula-accordions");
   const categories = visibleFormulaCategories();
 
   if (!categories.length) {
     container.innerHTML = '<p class="empty-hint">暂无分类方剂</p>';
     updateFormulaListSummary();
+    restoreFormulaListScrollState(preserveScroll);
     return;
   }
 
@@ -951,6 +998,7 @@ function renderFormulaList() {
     });
   });
   updateFormulaListSummary();
+  restoreFormulaListScrollState(preserveScroll);
 }
 
 function getFormulaPreviewMaxWidth() {
