@@ -61,19 +61,38 @@
             v-for="(row, index) in modelValue.rows"
             :key="row.id"
             class="formula-table-row"
-            :class="{ 'is-missing-total': rowMeta(row).missing }"
+            :class="{
+              'is-missing-total': rowMeta(row).missing,
+              'is-dragging': dragRowIndex === index,
+              'is-drop-target': dropRowIndex === index && dragRowIndex !== index
+            }"
+            @dragover.prevent="onRowDragOver(index)"
+            @drop.prevent="onRowDrop(index)"
           >
             <td class="col-name">
-              <el-autocomplete
-                v-model="row.name"
-                :fetch-suggestions="queryFormula"
-                placeholder="方剂名"
-                :trigger-on-focus="true"
-                clearable
-                class="name-input"
-                @select="() => emitUpdate()"
-                @blur="emitUpdate"
-              />
+              <div class="formula-name-cell">
+                <button
+                  type="button"
+                  class="formula-drag-handle"
+                  draggable="true"
+                  aria-label="拖拽调整方剂顺序"
+                  title="拖拽换行"
+                  @dragstart="onRowDragStart(index, $event)"
+                  @dragend="onRowDragEnd"
+                >
+                  ⋮⋮
+                </button>
+                <el-autocomplete
+                  v-model="row.name"
+                  :fetch-suggestions="queryFormula"
+                  placeholder="方剂名"
+                  :trigger-on-focus="true"
+                  clearable
+                  class="name-input"
+                  @select="() => emitUpdate()"
+                  @blur="emitUpdate"
+                />
+              </div>
             </td>
             <td class="col-pathology">
               <span class="formula-pathology-cell">
@@ -164,6 +183,8 @@ const emit = defineEmits(['update:modelValue', 'import-previous'])
 const localTarget = ref(props.modelValue.targetDose ?? 200)
 const localNote = ref(props.modelValue.note ?? '')
 const prescriptionRoot = ref(null)
+const dragRowIndex = ref(null)
+const dropRowIndex = ref(null)
 
 let rowSeq = 1
 function newRowId() {
@@ -223,6 +244,37 @@ function addRow() {
 
 function removeRow(index) {
   emit('update:modelValue', buildPayload(props.modelValue.rows.filter((_, i) => i !== index)))
+}
+
+function reorderRows(fromIndex, toIndex) {
+  const rows = [...(props.modelValue.rows || [])]
+  if (fromIndex === toIndex || fromIndex < 0 || toIndex < 0 || fromIndex >= rows.length || toIndex >= rows.length) return
+  const [moved] = rows.splice(fromIndex, 1)
+  rows.splice(toIndex, 0, moved)
+  emit('update:modelValue', buildPayload(rows))
+  nextTick(resizeBasisTextareas)
+}
+
+function onRowDragStart(index, event) {
+  dragRowIndex.value = index
+  dropRowIndex.value = index
+  event.dataTransfer.effectAllowed = 'move'
+  event.dataTransfer.setData('text/plain', String(index))
+}
+
+function onRowDragOver(index) {
+  if (dragRowIndex.value === null) return
+  dropRowIndex.value = index
+}
+
+function onRowDrop(index) {
+  if (dragRowIndex.value !== null) reorderRows(dragRowIndex.value, index)
+  onRowDragEnd()
+}
+
+function onRowDragEnd() {
+  dragRowIndex.value = null
+  dropRowIndex.value = null
 }
 
 function buildPayload(rows) {
@@ -414,8 +466,20 @@ onMounted(() => {
 .formula-table tbody tr:hover td {
   background: #fbfcfd;
 }
+.formula-table-row.is-dragging td {
+  opacity: 0.58;
+  background: #eef5ff;
+}
+.formula-table-row.is-drop-target td {
+  background: #eff6ff;
+  box-shadow: inset 0 2px 0 #3b82f6;
+}
 .formula-table-row.is-missing-total td {
   background: #fffaf3;
+}
+.formula-table-row.is-missing-total.is-dragging td,
+.formula-table-row.is-missing-total.is-drop-target td {
+  background: #eff6ff;
 }
 .formula-empty-row td {
   padding: 24px 12px;
@@ -423,6 +487,34 @@ onMounted(() => {
   color: #98a2b3;
   font-size: 12px;
   background: #fafbfc;
+}
+.formula-name-cell {
+  display: grid;
+  grid-template-columns: 22px minmax(0, 1fr);
+  align-items: center;
+  gap: 6px;
+}
+.formula-drag-handle {
+  width: 22px;
+  height: 32px;
+  border: 1px solid transparent;
+  border-radius: 6px;
+  background: transparent;
+  color: #98a2b3;
+  cursor: grab;
+  font-size: 14px;
+  font-weight: 900;
+  line-height: 1;
+  letter-spacing: -3px;
+  writing-mode: vertical-rl;
+}
+.formula-drag-handle:hover {
+  border-color: #c7d7fe;
+  background: #eff6ff;
+  color: #3b82f6;
+}
+.formula-drag-handle:active {
+  cursor: grabbing;
 }
 .name-input {
   width: 100%;
