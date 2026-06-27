@@ -38,6 +38,9 @@
         />
         <el-button type="primary" plain @click="load">搜索</el-button>
         <el-button @click="resetFilters">重置</el-button>
+        <el-button type="primary" :loading="exporting" :disabled="!total" @click="exportWord">
+          导出 Word
+        </el-button>
       </div>
 
       <div v-if="selectedRows.length" class="bulk-bar">
@@ -158,7 +161,7 @@
 <script setup>
 import { computed, reactive, onMounted, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
-import { ElMessage } from 'element-plus'
+import { ElMessage, ElMessageBox } from 'element-plus'
 import { Plus } from '@element-plus/icons-vue'
 import { consultApi } from '../api'
 import { confirmDeleteTwice } from '../utils/confirm'
@@ -172,6 +175,7 @@ const pageSize = ref(10)
 const mergeDialogVisible = ref(false)
 const mergeTargetId = ref(null)
 const merging = ref(false)
+const exporting = ref(false)
 const filters = reactive({
   chief_complaint: '',
   patient_name: '',
@@ -279,6 +283,86 @@ async function resetFilters() {
   await load()
 }
 
+function buildExportFilename(count) {
+  const now = new Date()
+  const pad = (n) => String(n).padStart(2, '0')
+  const stamp = `${now.getFullYear()}${pad(now.getMonth() + 1)}${pad(now.getDate())}_${pad(now.getHours())}${pad(now.getMinutes())}`
+  return `医案导出_${stamp}_共${count}条_含原文.docx`
+}
+
+async function exportWord() {
+  const selectedCount = selectedRows.value.length
+  const exportCount = selectedCount || total.value
+  if (!exportCount) {
+    ElMessage.warning('当前没有可导出的医案')
+    return
+  }
+
+  if (exportCount > 50) {
+    try {
+      await ElMessageBox.confirm(
+        `将导出 ${exportCount} 条医案（含原文附件），文件可能较大，是否继续？`,
+        '导出确认',
+        { confirmButtonText: '继续导出', cancelButtonText: '取消', type: 'warning' }
+      )
+    } catch {
+      return
+    }
+  }
+
+  exporting.value = true
+  try {
+    const params = {
+      chief_complaint: filters.chief_complaint.trim() || undefined,
+      patient_name: filters.patient_name.trim() || undefined,
+      doctor: filters.doctor.trim() || undefined
+    }
+    if (selectedCount) {
+      params.session_ids = selectedRows.value.map((row) => row.id).join(',')
+    }
+    const blob = await consultApi.exportSessionsWord(params)
+    if (!(blob instanceof Blob) || blob.size < 64) {
+      let detail = '导出失败'
+      if (blob instanceof Blob) {
+        try {
+          const text = await blob.text()
+          const parsed = JSON.parse(text)
+          if (typeof parsed?.detail === 'string') detail = parsed.detail
+        } catch {
+          /* ignore */
+        }
+      }
+      ElMessage.error(detail)
+      return
+    }
+    const url = URL.createObjectURL(blob)
+    const link = document.createElement('a')
+    link.href = url
+    link.download = buildExportFilename(exportCount)
+    document.body.appendChild(link)
+    link.click()
+    link.remove()
+    URL.revokeObjectURL(url)
+    ElMessage.success(`已导出 ${exportCount} 条医案`)
+  } catch (err) {
+    if (err?.response?.data instanceof Blob) {
+      try {
+        const text = await err.response.data.text()
+        const detail = JSON.parse(text)?.detail
+        ElMessage.error(typeof detail === 'string' ? detail : '导出失败')
+      } catch {
+        ElMessage.error('导出失败')
+      }
+    } else if (err?.response?.status === 404) {
+      ElMessage.warning('当前没有可导出的医案')
+    } else {
+      ElMessage.error('导出失败')
+    }
+  } finally {
+    exporting.value = false
+  }
+}
+
 async function remove(id) {
   const ok = await confirmDeleteTwice('将删除该条医案及其全部对话内容，删除后无法恢复。')
   if (!ok) return
@@ -370,7 +454,7 @@ onMounted(load)
 
 .record-filters {
   display: grid;
-  grid-template-columns: repeat(3, minmax(180px, 1fr)) auto auto;
+  grid-template-columns: repeat(3, minmax(180px, 1fr)) auto auto auto;
   gap: 10px;
   margin-bottom: 12px;
   align-items: center;

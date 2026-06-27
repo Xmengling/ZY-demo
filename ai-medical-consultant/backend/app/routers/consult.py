@@ -7,7 +7,7 @@ import json
 from typing import Any, List
 
 from fastapi import APIRouter, Depends, File, HTTPException, Query, UploadFile, status
-from fastapi.responses import StreamingResponse
+from fastapi.responses import Response, StreamingResponse
 from sqlalchemy import exists, select
 from sqlalchemy.orm import Session
 
@@ -50,6 +50,11 @@ from ..services.consult_chat_prompt import (
     build_assistant_system_prompt,
     classify_assistant_question,
     should_skip_case_retrieval,
+)
+from ..services.consult_case_export import (
+    ConsultCaseExportError,
+    build_cases_word,
+    load_symptom_sections,
 )
 from ..services.session_merge import merge_case_text, merge_intake_data
 from ..services.consult_attachments import (
@@ -451,6 +456,92 @@ def list_sessions(
     if doctor_q:
         result = [s for s in result if doctor_q in s.doctor]
     return result
+
+
+def _filter_case_sessions(
+    db: Session,
+    user: User,
+    *,
+    chief_complaint: str | None = None,
+    patient_name: str | None = None,
+    doctor: str | None = None,
+    session_ids: list[int] | None = None,
+) -> list[ConsultSession]:
+    rows = (
+        db.query(ConsultSession)
+        .filter(ConsultSession.user_id == user.id)
+        .order_by(ConsultSession.created_at.desc())
+        .all()
+    )
+    result = [s for s in rows if _session_linked_case(s)]
+    if session_ids:
+        wanted = {int(item) for item in session_ids}
+        result = [s for s in result if s.id in wanted]
+    chief_q = (chief_complaint or "").strip()
+    patient_q = (patient_name or "").strip()
+    doctor_q = (doctor or "").strip()
+    if chief_q:
+        result = [
+            s
+            for s in result
+            if chief_q in (str(_loads(s.intake_data).get("chief_complaint") or s.title or ""))
+        ]
+    if patient_q:
+        result = [s for s in result if patient_q in (s.patient_name or "")]
+    if doctor_q:
+        result = [
+            s for s in result
+            if doctor_q in str(_loads(s.intake_data).get("doctor") or "")
+        ]
+    return result
+
+
+@router.get("/sessions/export/word")
+def export_sessions_word(
+    chief_complaint: str | None = None,
+    patient_name: str | None = None,
+    doctor: str | None = None,
+    session_ids: str | None = Query(None, description="逗号分隔的医案 ID，有值时仅导出所选"),
+    db: Session = Depends(get_db),
+    user: User = Depends(get_current_user),
+):
+    parsed_ids: list[int] | None = None
+    if session_ids:
+        try:
+            parsed_ids = [int(item.strip()) for item in session_ids.split(",") if item.strip()]
+        except ValueError as exc:
+            raise HTTPException(status.HTTP_400_BAD_REQUEST, "session_ids 格式不正确") from exc
+        if not parsed_ids:
+            raise HTTPException(status.HTTP_400_BAD_REQUEST, "请至少选择一条医案")
+
+    sessions = _filter_case_sessions(
+        db,
+        user,
+        chief_complaint=chief_complaint,
+        patient_name=patient_name,
+        doctor=doctor,
+        session_ids=parsed_ids,
+    )
+    if not sessions:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "当前没有可导出的医案")
+
+    sections = load_symptom_sections(db)
+    try:
+        payload = build_cases_word(
+            sessions,
+            sections,
+            chief_complaint=(chief_complaint or "").strip(),
+            patient_name=(patient_name or "").strip(),
+            doctor=(doctor or "").strip(),
+        )
+    except ConsultCaseExportError as exc:
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, str(exc)) from exc
+
+    return Response(
+        content=payload,
+        media_type="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+        headers={"Content-Disposition": 'attachment; filename="case_export.docx"'},
+    )
 
 
 def _hint_map(db: Session) -> dict[str, list[str]]:

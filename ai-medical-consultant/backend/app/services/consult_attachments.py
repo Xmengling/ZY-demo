@@ -143,6 +143,18 @@ def build_file_response(session_id: int, attachment_id: str, *, inline: bool = T
     )
 
 
+def read_attachment_path(session_id: int, attachment_id: str) -> Path | None:
+    return _resolve_stored_path(session_id, attachment_id)
+
+
+def read_attachment_bytes(session_id: int, attachment_id: str) -> tuple[bytes, str] | None:
+    path = _resolve_stored_path(session_id, attachment_id)
+    if not path or not path.is_file():
+        return None
+    filename = path.name.split("_", 1)[-1]
+    return path.read_bytes(), filename
+
+
 def remove_session_attachments(session_id: int) -> None:
     folder = _session_dir(session_id)
     if not folder.is_dir():

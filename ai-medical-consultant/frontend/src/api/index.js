@@ -96,7 +96,14 @@ export const consultApi = {
       silent: !download
     }),
   deleteAttachment: (sessionId, attachmentId) =>
-    api.delete(`/v1/consult/sessions/${sessionId}/attachments/${attachmentId}`)
+    api.delete(`/v1/consult/sessions/${sessionId}/attachments/${attachmentId}`),
+  exportSessionsWord: (params = {}) =>
+    api.get('/v1/consult/sessions/export/word', {
+      params,
+      responseType: 'blob',
+      timeout: 300000,
+      silent: true
+    })
 }
 
 export const knowledgeApi = {
