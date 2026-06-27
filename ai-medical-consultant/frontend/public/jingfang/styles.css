@@ -483,6 +483,29 @@ textarea:focus {
   box-shadow: 0 0 0 3px rgba(71, 124, 255, .14);
 }
 
+[data-edit-target] {
+  cursor: pointer;
+}
+
+[data-edit-target]:hover {
+  box-shadow: 0 0 0 2px rgba(79, 131, 255, .16);
+}
+
+.editor-target-highlight {
+  animation: editorTargetPulse 1.1s ease;
+}
+
+@keyframes editorTargetPulse {
+  0% {
+    box-shadow: 0 0 0 0 rgba(79, 131, 255, .45);
+    background: rgba(239, 246, 255, .95);
+  }
+  100% {
+    box-shadow: 0 0 0 12px rgba(79, 131, 255, 0);
+    background: transparent;
+  }
+}
+
 .category-tabs,
 .checkbox-grid {
   display: flex;
@@ -1241,20 +1264,21 @@ textarea:focus {
   line-height: 1.25;
 }
 
-.formula-row strong,
-.formula-row span {
+.formula-row > strong,
+.formula-row > span {
   border: 3px dotted var(--orange);
   border-radius: 4px;
   background: #fffefd;
 }
 
-.formula-row strong {
+.formula-row > strong {
   min-width: 74px;
   padding: 8px 13px;
   text-align: center;
+  color: #111827;
 }
 
-.formula-row span {
+.formula-row > span {
   padding: 8px 12px;
   overflow-wrap: anywhere;
   text-align: left;
@@ -1265,6 +1289,50 @@ textarea:focus {
   text-align: left;
   line-height: 1.55;
   overflow-wrap: anywhere;
+}
+
+.classic-dosage-row {
+  font-size: 19px;
+}
+
+.classic-dosage-row > strong {
+  min-width: 74px;
+}
+
+#card-classic-dosage strong,
+#card-composition strong {
+  border: 0;
+  padding: 0;
+  min-width: 0;
+  background: transparent;
+  color: inherit;
+  font-weight: 900;
+}
+
+#card-classic-dosage {
+  display: block;
+  text-align: left;
+  line-height: 1.5;
+  overflow-wrap: anywhere;
+}
+
+.preview-inline-editor {
+  min-height: 42px;
+  box-sizing: border-box;
+  border: 0;
+  border-radius: 0;
+  padding: 0;
+  background: transparent;
+  box-shadow: none;
+  color: inherit;
+  font: inherit;
+  line-height: inherit;
+  resize: none;
+  overflow: hidden;
+}
+
+.preview-inline-editor:focus {
+  box-shadow: none;
 }
 
 .text-block {

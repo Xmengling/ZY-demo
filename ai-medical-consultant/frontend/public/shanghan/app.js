@@ -204,6 +204,32 @@ function markupToHtml(text) {
     .join("<br>");
 }
 
+function originalMarkupText(text) {
+  const raw = String(text ?? "").trim();
+  const outerRules = [
+    /^\[\[\*\*([\s\S]*?)\*\*\]\]$/,
+    /^\*\*\[\[([\s\S]*?)\]\]\*\*$/,
+    /^\[\[([\s\S]*?)\]\]$/,
+  ];
+  for (const rule of outerRules) {
+    const match = raw.match(rule);
+    if (match) return match[1].trim();
+  }
+  return raw;
+}
+
+function normalizeOriginalSections(article = {}) {
+  if (!Array.isArray(article.originalSections) || !article.originalSections.length) {
+    return [];
+  }
+  return article.originalSections
+    .map((section) => ({
+      level: section.level || articleLevel(article),
+      text: String(section.text || "").trim(),
+    }))
+    .filter((section) => section.text);
+}
+
 function highlight(text) {
   return markupToHtml(text) || "未填写";
 }
@@ -217,7 +243,8 @@ function splitLines(text) {
 
 function normalizeArticleFromForm() {
   const termItems = getTermItemsFromForm();
-  return {
+  const existing = state.articles.find((article) => article.id === fields.id.value);
+  const article = {
     id: fields.id.value || `shanghan-${Date.now()}`,
     number: fields.number.value.trim(),
     level: getArticleLevelFromForm(),
@@ -228,6 +255,10 @@ function normalizeArticleFromForm() {
     liGuanjie: fields.li.value.trim(),
     summary: fields.summary.value.trim(),
   };
+  if (existing?.original === article.original && Array.isArray(existing.originalSections)) {
+    article.originalSections = existing.originalSections;
+  }
+  return article;
 }
 
 function articleSnapshot(article = normalizeArticleFromForm()) {
@@ -264,15 +295,62 @@ function articleLabel(article) {
   return `${no} ${articleLevel(article)}`;
 }
 
+function titleDensity(article) {
+  const sections = normalizeOriginalSections(article);
+  const text = sections.length
+    ? sections.map((section) => originalMarkupText(section.text)).join("")
+    : originalMarkupText(article.original || "");
+  const length = stripMarkup(text).length;
+  if (sections.length >= 4 || length > 120) return "tight";
+  if (sections.length >= 2 || length > 64) return "compact";
+  return "normal";
+}
+
+function titleTypography(article) {
+  const density = titleDensity(article);
+  if (density === "tight") {
+    return {
+      className: "title-density-tight",
+      font: "900 24px KaiTi, STKaiti, serif",
+      lineHeight: 34,
+    };
+  }
+  if (density === "compact") {
+    return {
+      className: "title-density-compact",
+      font: "900 27px KaiTi, STKaiti, serif",
+      lineHeight: 40,
+    };
+  }
+  return {
+    className: "",
+    font: "900 31px KaiTi, STKaiti, serif",
+    lineHeight: 43,
+  };
+}
+
 function renderCardTitle(article) {
   const el = $("#card-title");
   if (!el) return;
+  const typography = titleTypography(article);
+  el.classList.toggle("title-density-compact", typography.className === "title-density-compact");
+  el.classList.toggle("title-density-tight", typography.className === "title-density-tight");
+  const sections = normalizeOriginalSections(article);
+  if (sections.length) {
+    el.innerHTML = sections.map((section) => {
+      const levelMeta = LEVEL_BADGE[section.level] || LEVEL_BADGE["一级"];
+      return `<span class="card-title-line">
+        ${levelBadgeHtml(levelMeta, "level-badge--lg")}
+        <span class="card-title-text">${highlight(originalMarkupText(section.text))}</span>
+      </span>`;
+    }).join("");
+    return;
+  }
   const levelMeta = LEVEL_BADGE[articleLevel(article)] || LEVEL_BADGE["一级"];
-  const originalHtml = highlight(article.original || "未填写");
-  el.innerHTML = `
+  el.innerHTML = `<span class="card-title-line">
     ${levelBadgeHtml(levelMeta, "level-badge--lg")}
-    <span class="card-title-text">${originalHtml}</span>
-  `;
+    <span class="card-title-text">${highlight(originalMarkupText(article.original || "未填写"))}</span>
+  </span>`;
 }
 
 function renderEditorTitle(article) {
@@ -1007,6 +1085,11 @@ function measureCardHeadLayoutFromDom() {
     number: rectWithinCard(document.getElementById("card-number")),
     levelBadge: rectWithinCard(head.querySelector(".level-badge--lg")),
     titleText: rectWithinCard(head.querySelector(".card-title-text")),
+    titleLines: [...head.querySelectorAll(".card-title-line")].map((line) => ({
+      line: rectWithinCard(line),
+      levelBadge: rectWithinCard(line.querySelector(".level-badge--lg")),
+      titleText: rectWithinCard(line.querySelector(".card-title-text")),
+    })),
   };
 
   card.style.transform = savedTransform;
@@ -1139,6 +1222,7 @@ function drawCardHeadFromDom(ctx, coverImage, article, titleText, titleFont, tit
 
   const { head, cover, coverImg, number, levelBadge, titleText: titleTextRect } = layout;
   const levelMeta = LEVEL_BADGE[articleLevel(article)] || LEVEL_BADGE["一级"];
+  const sections = normalizeOriginalSections(article);
 
   drawPanel(ctx, head.left, head.top, head.width, head.height, { fill: "rgba(255,255,255,.9)" });
   drawCoverImageInRect(ctx, coverImage, coverImg || cover, CHAPTER_COVER.radius);
@@ -1148,6 +1232,36 @@ function drawCardHeadFromDom(ctx, coverImage, article, titleText, titleFont, tit
     ctx.font = "900 28px Microsoft YaHei, sans-serif";
     ctx.textBaseline = "top";
     ctx.fillText(article.number ? `第${article.number}条` : "未编号", number.left, number.top);
+  }
+
+  if (sections.length && layout.titleLines?.length) {
+    layout.titleLines.forEach((lineLayout, index) => {
+      const section = sections[index];
+      if (!section || !lineLayout.titleText) return;
+      const sectionMeta = LEVEL_BADGE[section.level] || LEVEL_BADGE["一级"];
+      if (lineLayout.levelBadge) {
+        drawLevelBadgeOnCanvas(
+          ctx,
+          lineLayout.levelBadge.centerX,
+          lineLayout.levelBadge.centerY,
+          lineLayout.levelBadge.width,
+          sectionMeta.className,
+          sectionMeta.digit,
+        );
+        ctx.textAlign = "left";
+        ctx.textBaseline = "top";
+      }
+      drawMarkupText(
+        ctx,
+        originalMarkupText(section.text),
+        lineLayout.titleText.left,
+        lineLayout.titleText.top,
+        lineLayout.titleText.width,
+        titleLineHeight,
+        { font: titleFont, color: "#172033" },
+      );
+    });
+    return head;
   }
 
   if (levelBadge) {
@@ -1191,9 +1305,13 @@ async function downloadCardPng() {
   const measureCtx = measureCanvas.getContext("2d");
   const leftX = 62;
   const fullWidth = 956;
-  const titleText = article.original || "未填写";
-  const titleFont = "900 31px KaiTi, STKaiti, serif";
-  const titleLineHeight = 43;
+  const originalSections = normalizeOriginalSections(article);
+  const titleText = originalSections.length
+    ? originalSections.map((section) => originalMarkupText(section.text)).join("\n")
+    : originalMarkupText(article.original || "未填写");
+  const titleType = titleTypography(article);
+  const titleFont = titleType.font;
+  const titleLineHeight = titleType.lineHeight;
   const titleMaxWidth = 620;
   const titleLines = wrapMarkupTextLines(measureCtx, titleText, titleMaxWidth, titleFont);
   const headLayout = measureCardHeadLayoutFromDom();

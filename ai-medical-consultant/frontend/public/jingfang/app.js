@@ -69,6 +69,7 @@ const $$ = (selector) => [...document.querySelectorAll(selector)];
 const fields = {
   id: $("#field-id"),
   name: $("#field-name"),
+  classicDosage: $("#field-classic-dosage"),
   composition: $("#field-composition"),
   pathology: $("#field-pathology"),
   pathologySymptoms: $("#field-pathology-symptoms"),
@@ -84,6 +85,24 @@ const fields = {
   caution: $("#field-caution"),
   compare: $("#field-compare"),
 };
+
+const PREVIEW_EDIT_TARGETS = {
+  name: () => fields.name,
+  classicDosage: () => fields.classicDosage,
+  composition: () => fields.composition,
+  pathology: () => fields.pathology,
+  pathologySymptoms: () => fields.pathologySymptoms,
+  caution: () => fields.caution,
+  compare: () => fields.compare,
+  points: () => fields.points,
+  classics: () => fields.classics,
+  cases: () => $("#field-cases .case-input") || fields.addCase || fields.cases,
+  hu: () => fields.hu,
+  li: () => fields.li,
+};
+
+const PREVIEW_INLINE_EDIT_TARGETS = new Set(["classicDosage", "composition"]);
+let previewClickTimer = null;
 
 const PATHOLOGY_OPTION_GROUPS = {
   表证: [["表虚"], ["表实"]],
@@ -286,6 +305,101 @@ function highlight(text) {
   return html || escapeHtml(text || "未填写");
 }
 
+function escapeRegExp(text) {
+  return String(text || "").replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
+function herbNamesForEmphasis() {
+  const names = (state.herbs || [])
+    .map((herb) => String(herb?.name || "").trim())
+    .filter(Boolean);
+  [
+    "葶苈子",
+    "薏苡仁",
+    "赤小豆",
+    "生梓白皮",
+    "生地黄",
+    "麦门冬",
+    "吴茱萸",
+    "款冬花",
+    "栝蒌实",
+    "括蒌根",
+    "五味子",
+    "大枣",
+    "甘草",
+    "桂枝",
+    "芍药",
+    "生姜",
+    "干姜",
+    "半夏",
+    "黄芩",
+    "黄连",
+    "葛根",
+    "麻黄",
+    "杏仁",
+    "石膏",
+    "知母",
+    "粳米",
+    "人参",
+    "厚朴",
+    "细辛",
+    "附子",
+    "柴胡",
+    "茯苓",
+    "白术",
+    "泽泻",
+    "猪苓",
+    "阿胶",
+    "滑石",
+    "大黄",
+    "芒硝",
+    "甘遂",
+    "射干",
+    "紫菀",
+    "当归",
+    "通草",
+    "龙骨",
+    "牡蛎",
+    "栀子",
+    "香豉",
+    "黄芪",
+    "防风",
+    "桔梗",
+    "橘皮",
+    "枳实",
+    "竹叶",
+    "茵陈蒿",
+    "葶苈",
+    "败酱",
+    "防己",
+    "连轺",
+    "乌梅",
+    "蜀椒",
+    "黄柏",
+    "桃仁",
+    "牡丹",
+    "芎藭",
+    "铅丹",
+    "小麦",
+  ].forEach((name) => names.push(name));
+  return [...new Set(names)].sort((a, b) => b.length - a.length);
+}
+
+function emphasizeHerbNames(text) {
+  const raw = String(text || "");
+  if (!raw) return raw;
+  const names = herbNamesForEmphasis();
+  if (!names.length) return raw;
+  const pattern = new RegExp(`(${names.map(escapeRegExp).join("|")})`, "g");
+  return raw
+    .split(/(\[\[\*\*.*?\*\*\]\]|\[\[.*?\]\]|\*\*.*?\*\*)/g)
+    .map((part) => {
+      if (!part || /^\[\[|\*\*/.test(part)) return part;
+      return part.replace(pattern, "**$1**");
+    })
+    .join("");
+}
+
 function parseCompareText(text) {
   const lines = String(text || "")
     .replace(/\r/g, "")
@@ -427,8 +541,17 @@ function splitList(text) {
 function splitCaseText(text) {
   return String(text || "")
     .split(/\n{2,}/)
-    .map((item) => item.trim())
+    .map((item) => normalizeCaseItemText(item))
     .filter(Boolean);
+}
+
+function normalizeCaseItemText(text) {
+  return String(text || "")
+    .replace(/\r\n?/g, "\n")
+    .replace(/[ \t]+\n/g, "\n")
+    .replace(/\n[ \t]+/g, "\n")
+    .replace(/\n{2,}/g, "\n")
+    .trim();
 }
 
 function listToText(list) {
@@ -512,6 +635,7 @@ function normalizeFormulaFromForm() {
     id: fields.id.value || slugify(fields.name.value),
     name: fields.name.value.trim() || "未命名方剂",
     categories: selectedCategories,
+    classicDosage: fields.classicDosage.value.trim(),
     composition,
     herbImages: autoHerbImagesFromComposition(composition),
     pathology: selectedPathologyFromForm(),
@@ -623,6 +747,7 @@ function fillForm(formula) {
   $("#editor-title").textContent = `编辑方剂：${formula.name}`;
   fields.id.value = formula.id || "";
   fields.name.value = formula.name || "";
+  fields.classicDosage.value = formula.classicDosage || formula.ancientDosage || "";
   fields.composition.value = formula.composition || "";
   fields.clinical.value = listToText(formula.clinicalSymptoms || []);
   fields.modern.value = listToText(formula.modernDiseases || []);
@@ -763,6 +888,7 @@ function clearValidationState() {
   [
     fields.name,
     $("#field-categories"),
+    fields.classicDosage,
     fields.composition,
     fields.pathology,
     fields.pathologySymptoms,
@@ -806,7 +932,7 @@ function validateFormulaForm(formula) {
   const selectedPathologyCount = formula.pathology.length;
   const checks = [
     { label: "方剂名", valid: Boolean(formula.name && formula.name !== "未命名方剂"), element: fields.name },
-    { label: "组成", valid: Boolean(formula.composition), element: fields.composition },
+    { label: "比例", valid: Boolean(formula.composition), element: fields.composition },
     { label: "相关条文", valid: formula.classicTexts.length > 0, element: fields.classics },
     { label: "归类", valid: formula.categories.length > 0, element: $("#field-categories") },
     { label: "病理", valid: formula.categories.length > 0 && selectedPathologyCount > 0, element: fields.pathology },
@@ -837,6 +963,7 @@ function formulaSearchText(formula) {
   const herbNames = resolveHerbImages(formula).map(herbStem).join(" ");
   return [
     formula.name,
+    formula.classicDosage,
     formula.composition,
     (formula.categories || []).join(" "),
     herbNames,
@@ -1113,7 +1240,16 @@ function renderPreview(formula) {
   const previewName = $("#preview-name");
   if (previewName) previewName.textContent = `预览方剂：${formula.name}`;
   $("#card-title").textContent = formula.name;
-  $("#card-composition").innerHTML = highlight(formula.composition || "未填写");
+  const classicDosageText = String(formula.classicDosage || formula.ancientDosage || "").trim();
+  const classicDosageRow = $("#card-classic-dosage-row");
+  if (classicDosageText) {
+    classicDosageRow.hidden = false;
+    $("#card-classic-dosage").innerHTML = highlight(emphasizeHerbNames(classicDosageText));
+  } else {
+    classicDosageRow.hidden = true;
+    $("#card-classic-dosage").textContent = "";
+  }
+  $("#card-composition").innerHTML = highlight(emphasizeHerbNames(formula.composition || "未填写"));
   const cautionText = String(formula.caution || "").trim();
   const cautionSection = $("#card-caution-section");
   if (cautionText) {
@@ -1134,7 +1270,7 @@ function renderPreview(formula) {
   }
   const previewCases = formula.caseItems?.length ? formula.caseItems : splitCaseText(formula.cases || "");
   $("#card-cases").innerHTML = previewCases.length
-    ? previewCases.map((item) => `<p>${highlight(item)}</p>`).join("")
+    ? previewCases.map((item) => `<p>${highlight(normalizeCaseItemText(item))}</p>`).join("")
     : "<p>未填写</p>";
   $("#card-hu").innerHTML = highlight(formula.huXishuAnalysis || "未填写");
   $("#card-li").innerHTML = highlight(formula.liGuanjieAnalysis || "未填写");
@@ -1171,6 +1307,129 @@ function renderPreview(formula) {
     fitFormulaCardPreview();
     requestAnimationFrame(layoutLogicMapLines);
   });
+}
+
+function editorFocusContainer(target) {
+  if (!target) return null;
+  return target.closest?.(".field, .field-name-row") || target;
+}
+
+function focusEditorTarget(target) {
+  if (!target) return;
+  const container = editorFocusContainer(target);
+  container.scrollIntoView({ behavior: "smooth", block: "center" });
+  container.classList.remove("editor-target-highlight");
+  void container.offsetWidth;
+  container.classList.add("editor-target-highlight");
+  window.setTimeout(() => container.classList.remove("editor-target-highlight"), 1100);
+
+  const focusable = target.matches?.("input, textarea, button, select")
+    ? target
+    : target.querySelector?.("input, textarea, button, select");
+  if (!focusable) return;
+
+  window.setTimeout(() => {
+    focusable.focus({ preventScroll: true });
+    if (focusable instanceof HTMLInputElement || focusable instanceof HTMLTextAreaElement) {
+      const length = focusable.value.length;
+      focusable.setSelectionRange(length, length);
+    }
+  }, 220);
+}
+
+function inlinePreviewEditElement(source, targetKey) {
+  if (targetKey === "classicDosage") return source.querySelector("#card-classic-dosage");
+  if (targetKey === "composition") return source.querySelector("#card-composition");
+  return null;
+}
+
+function inlinePreviewField(targetKey) {
+  if (targetKey === "classicDosage") return fields.classicDosage;
+  if (targetKey === "composition") return fields.composition;
+  return null;
+}
+
+function autosizeInlinePreviewEditor(editor) {
+  editor.style.height = "auto";
+  editor.style.height = `${Math.max(42, editor.scrollHeight)}px`;
+}
+
+function startPreviewInlineEdit(source, targetKey) {
+  if (!PREVIEW_INLINE_EDIT_TARGETS.has(targetKey)) return false;
+  const textElement = inlinePreviewEditElement(source, targetKey);
+  const field = inlinePreviewField(targetKey);
+  if (!textElement || !field || textElement.querySelector(".preview-inline-editor")) return false;
+
+  const beforeHtml = textElement.innerHTML;
+  const editWidth = Math.max(80, Math.round(textElement.getBoundingClientRect().width));
+  const editor = document.createElement("textarea");
+  editor.className = "preview-inline-editor";
+  editor.rows = 1;
+  editor.value = field.value;
+  editor.style.width = `${editWidth}px`;
+  editor.style.maxWidth = `${editWidth}px`;
+  textElement.replaceChildren(editor);
+
+  let committedOrCancelled = false;
+  const finish = (commit) => {
+    if (committedOrCancelled) return;
+    committedOrCancelled = true;
+    if (commit) {
+      field.value = normalizeCaseItemText(editor.value);
+      field.dispatchEvent(new Event("input", { bubbles: true }));
+    } else {
+      textElement.innerHTML = beforeHtml;
+    }
+  };
+
+  editor.addEventListener("input", () => autosizeInlinePreviewEditor(editor));
+  editor.addEventListener("blur", () => finish(true));
+  editor.addEventListener("keydown", (event) => {
+    if (event.key === "Escape") {
+      event.preventDefault();
+      finish(false);
+    }
+    if (event.key === "Enter" && (event.ctrlKey || event.metaKey)) {
+      event.preventDefault();
+      finish(true);
+    }
+  });
+
+  requestAnimationFrame(() => {
+    autosizeInlinePreviewEditor(editor);
+    editor.focus({ preventScroll: true });
+    editor.setSelectionRange(editor.value.length, editor.value.length);
+  });
+  return true;
+}
+
+function handlePreviewTargetClick(event) {
+  if (event.target.closest?.(".preview-inline-editor")) return;
+  const source = event.target.closest?.("[data-edit-target]");
+  if (!source || !$("#formula-card")?.contains(source)) return;
+  const targetKey = source.dataset.editTarget;
+  const target = PREVIEW_EDIT_TARGETS[targetKey]?.();
+  if (!target) return;
+  if (previewClickTimer) window.clearTimeout(previewClickTimer);
+  previewClickTimer = window.setTimeout(() => {
+    previewClickTimer = null;
+    focusEditorTarget(target);
+  }, 260);
+}
+
+function handlePreviewTargetDblClick(event) {
+  if (event.target.closest?.(".preview-inline-editor")) return;
+  const source = event.target.closest?.("[data-edit-target]");
+  if (!source || !$("#formula-card")?.contains(source)) return;
+  const targetKey = source.dataset.editTarget;
+  if (!PREVIEW_INLINE_EDIT_TARGETS.has(targetKey)) return;
+  event.preventDefault();
+  event.stopPropagation();
+  if (previewClickTimer) {
+    window.clearTimeout(previewClickTimer);
+    previewClickTimer = null;
+  }
+  startPreviewInlineEdit(source, targetKey);
 }
 
 async function loadData() {
@@ -1305,6 +1564,7 @@ function newFormula() {
     id: `formula-${Date.now()}`,
     name: "新方剂",
     categories: [state.categories[0]],
+    classicDosage: "",
     composition: "",
     herbImages: [],
     pathology: [],
@@ -2005,7 +2265,9 @@ async function downloadCardPng(mode = "partial") {
     const calloutTextWideW = 650;
     const classicsText = (formula.classicTexts || []).join("\n") || "未填写";
     const sourceCases = formula.caseItems?.length ? formula.caseItems : splitCaseText(formula.cases || "");
-    const exportCases = includeAnalysis ? sourceCases : sourceCases.slice(0, 1);
+    const exportCases = (includeAnalysis ? sourceCases : sourceCases.slice(0, 1))
+      .map((item) => normalizeCaseItemText(item))
+      .filter(Boolean);
     const caseSepGap = 10;
     const caseSepLineH = 1;
     const caseSepAfterGap = 8;
@@ -2098,11 +2360,34 @@ async function downloadCardPng(mode = "partial") {
       paddingX: 24,
     });
 
-    const compY = 190;
+    let compY = 190;
     const compBoxX = 486;
     const compLineH = 30;
     const compFont = "400 25px Microsoft YaHei, sans-serif";
-    const compText = formula.composition || "未填写";
+    const classicDosageText = emphasizeHerbNames(String(formula.classicDosage || formula.ancientDosage || "").trim());
+    if (classicDosageText) {
+      const classicY = 188;
+      const classicLineH = 27;
+      const classicFont = "400 21px Microsoft YaHei, sans-serif";
+      const classicBoxX = 540;
+      const classicBoxMaxW = 590;
+      ctx.font = classicFont;
+      const classicSingleLineWidth = Math.max(...wrapMarkupTextLines(ctx, classicDosageText, 9999, classicFont).map((line) => measureMarkupLine(ctx, line, classicFont)));
+      const classicBoxW = Math.max(260, Math.min(classicBoxMaxW, classicSingleLineWidth + 32));
+      const classicTextX = classicBoxX + 12;
+      const classicTextW = classicBoxW - 24;
+      const classicTextHeight = measureMarkupTextHeight(ctx, classicDosageText, classicTextW, classicLineH, { font: classicFont, paragraphGap: 3 });
+      const classicBoxH = Math.max(42, classicTextHeight + 16);
+      drawPill(ctx, "组成", 380, classicY, { minWidth: 86, height: 42, fill: "#ffffff", stroke: "#ff963d", color: "#111827" });
+      drawDashedBox(ctx, classicBoxX, classicY, classicBoxW, classicBoxH, 6);
+      drawMarkupText(ctx, classicDosageText, classicTextX, classicY + 8, classicTextW, classicLineH, {
+        font: classicFont,
+        paragraphGap: 3,
+        align: "left",
+      });
+      compY = classicY + classicBoxH + 14;
+    }
+    const compText = emphasizeHerbNames(formula.composition || "未填写");
     ctx.font = compFont;
     const compSingleLineWidth = Math.max(...wrapMarkupTextLines(ctx, compText, 9999, compFont).map((line) => measureMarkupLine(ctx, line, compFont)));
     const compBoxW = Math.max(220, Math.min(640, compSingleLineWidth + 36));
@@ -2114,24 +2399,13 @@ async function downloadCardPng(mode = "partial") {
       compTextHeight + 18,
     );
     const compTextY = compY + 9;
-    drawPill(ctx, "组成", 380, compY, { minWidth: 86, height: 44, fill: "#ffffff", stroke: "#ff963d", color: "#111827" });
+    drawPill(ctx, "比例", 380, compY, { minWidth: 86, height: 44, fill: "#ffffff", stroke: "#ff963d", color: "#111827" });
     drawDashedBox(ctx, compBoxX, compY, compBoxW, compBoxH, 6);
-    const isSingleLinePlain = !/\n|\[\[|\*\*/.test(compText) && compSingleLineWidth <= compTextW;
-    if (isSingleLinePlain) {
-      ctx.save();
-      ctx.font = compFont;
-      ctx.fillStyle = "#111827";
-      ctx.textAlign = "left";
-      ctx.textBaseline = "middle";
-      ctx.fillText(compText, compTextX, compY + compBoxH / 2 + 1);
-      ctx.restore();
-    } else {
-      drawMarkupText(ctx, compText, compTextX, compTextY, compTextW, compLineH, {
-        font: compFont,
-        paragraphGap: 4,
-        align: "left",
-      });
-    }
+    drawMarkupText(ctx, compText, compTextX, compTextY, compTextW, compLineH, {
+      font: compFont,
+      paragraphGap: 4,
+      align: "left",
+    });
 
     const leftBottom = drawCardSideSections(ctx, formula, 458);
 
@@ -2335,10 +2609,12 @@ $("#save-formula").addEventListener("click", saveCurrentFormula);
 $("#delete-formula").addEventListener("click", deleteCurrentFormula);
 $("#download-card-partial").addEventListener("click", () => downloadCardPng("partial"));
 $("#download-card-full").addEventListener("click", () => downloadCardPng("full"));
+$("#formula-card")?.addEventListener("click", handlePreviewTargetClick);
+$("#formula-card")?.addEventListener("dblclick", handlePreviewTargetDblClick);
 
 function getCaseItemsFromForm() {
   return $$("#field-cases .case-input")
-    .map((input) => input.value.trim())
+    .map((input) => normalizeCaseItemText(input.value))
     .filter(Boolean);
 }
 
@@ -2347,7 +2623,7 @@ function getCaseRowValuesFromForm() {
 }
 
 function renderCaseRows(items = []) {
-  const rows = (items && items.length ? items : [""]).map((item) => item || "");
+  const rows = (items && items.length ? items : [""]).map((item) => normalizeCaseItemText(item));
   fields.cases.innerHTML = rows.map((item, index) => `
     <div class="case-row" data-case-index="${index}">
       <button class="case-drag-handle" type="button" draggable="true" data-case-index="${index}" aria-label="拖拽调整医案${index + 1}顺序" title="拖拽调整顺序">

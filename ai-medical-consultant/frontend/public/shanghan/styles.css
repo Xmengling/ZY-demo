@@ -907,8 +907,8 @@ p {
 .card-head {
   position: relative;
   display: grid;
-  grid-template-columns: 260px 1fr;
-  gap: 20px;
+  grid-template-columns: 290px 1fr;
+  gap: 12px;
   align-items: center;
   padding: 24px 28px;
   border: 2px solid var(--line);
@@ -918,8 +918,8 @@ p {
 
 .chapter-badge {
   display: block;
-  width: 240px;
-  height: 160px;
+  width: 280px;
+  height: 190px;
   border: none;
   border-radius: 8px;
   overflow: hidden;
@@ -943,14 +943,20 @@ p {
 }
 
 .card-article-title {
-  display: flex;
-  align-items: flex-start;
-  gap: 12px;
+  display: grid;
+  gap: 8px;
   margin: 0;
   min-width: 0;
 }
 
-.card-article-title .level-badge--lg {
+.card-title-line {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  min-width: 0;
+}
+
+.card-title-line .level-badge--lg {
   margin-top: 1px;
 }
 
@@ -962,6 +968,24 @@ p {
   line-height: 1.55;
   font-weight: 800;
   color: #172033;
+}
+
+.card-article-title.title-density-compact {
+  gap: 7px;
+}
+
+.card-article-title.title-density-compact .card-title-text {
+  font-size: 27px;
+  line-height: 1.48;
+}
+
+.card-article-title.title-density-tight {
+  gap: 6px;
+}
+
+.card-article-title.title-density-tight .card-title-text {
+  font-size: 24px;
+  line-height: 1.42;
 }
 
 .callout h4,

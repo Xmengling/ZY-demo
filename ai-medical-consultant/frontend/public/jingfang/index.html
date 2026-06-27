@@ -4,7 +4,7 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>方剂梳理</title>
-  <link rel="stylesheet" href="styles.css?v=compare3" />
+  <link rel="stylesheet" href="styles.css?v=inlineEdit2" />
   <link rel="stylesheet" href="pathology-tone.css?v=1" />
 </head>
 <body>
@@ -63,6 +63,10 @@
           </label>
           <label class="field">
             <span>组成</span>
+            <input id="field-classic-dosage" placeholder="如：桂枝三两去皮芍药三两甘草二两炙生姜三两切大枣十二枚擘" />
+          </label>
+          <label class="field">
+            <span>比例</span>
             <input id="field-composition" />
           </label>
           <label class="field">
@@ -132,9 +136,13 @@
         <header class="card-head">
           <div id="herb-gallery" class="herb-gallery"></div>
           <div class="card-head-main">
-            <h3 id="card-title" class="title-box">真武汤</h3>
-            <div class="formula-row">
+            <h3 id="card-title" class="title-box" data-edit-target="name">真武汤</h3>
+            <div id="card-classic-dosage-row" class="formula-row classic-dosage-row" data-edit-target="classicDosage" hidden>
               <strong>组成</strong>
+              <span id="card-classic-dosage"></span>
+            </div>
+            <div class="formula-row" data-edit-target="composition">
+              <strong>比例</strong>
               <span id="card-composition"></span>
             </div>
           </div>
@@ -142,26 +150,26 @@
 
         <div class="card-body">
           <aside class="card-side">
-            <section class="card-side-block">
+            <section class="card-side-block" data-edit-target="pathology">
               <h4 class="ribbon">病理</h4>
               <div id="card-pathology-tags" class="pathology-tags"></div>
             </section>
-            <section class="card-side-block">
+            <section class="card-side-block" data-edit-target="pathologySymptoms">
               <h4 class="ribbon">病理症状</h4>
               <div id="card-pathology-list"></div>
             </section>
-            <section id="card-caution-section" class="card-side-block card-side-section" hidden>
+            <section id="card-caution-section" class="card-side-block card-side-section" data-edit-target="caution" hidden>
               <h4 class="ribbon">慎用人群</h4>
               <p id="card-caution" class="caution"></p>
             </section>
-            <section id="card-compare-section" class="card-side-block card-side-section" hidden>
+            <section id="card-compare-section" class="card-side-block card-side-section" data-edit-target="compare" hidden>
               <h4 class="ribbon">易混淆方</h4>
               <div id="card-compare" class="compare-text"></div>
             </section>
           </aside>
 
           <section class="card-main">
-            <div class="logic-map">
+            <div class="logic-map" data-edit-target="points">
               <div class="logic-title">辨证要点</div>
               <div class="logic-branch">
                 <svg class="logic-lines" aria-hidden="true"></svg>
@@ -169,22 +177,22 @@
               </div>
             </div>
 
-            <section class="callout">
+            <section class="callout" data-edit-target="classics">
               <h4>相关原文</h4>
               <div id="card-classics"></div>
             </section>
 
-            <section class="callout">
+            <section class="callout" data-edit-target="cases">
               <h4>医案</h4>
               <div id="card-cases"></div>
             </section>
 
-            <section class="callout analysis-callout">
+            <section class="callout analysis-callout" data-edit-target="hu">
               <h4>胡希恕解析</h4>
               <div id="card-hu"></div>
             </section>
 
-            <section class="callout analysis-callout">
+            <section class="callout analysis-callout" data-edit-target="li">
               <h4>李冠杰解析</h4>
               <div id="card-li"></div>
             </section>
@@ -202,6 +210,6 @@
   </main>
 
   <div id="toast" class="toast" role="status"></div>
-  <script src="app.js?v=auth1"></script>
+  <script src="app.js?v=inlineEdit2"></script>
 </body>
 </html>
