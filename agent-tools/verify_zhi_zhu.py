@@ -1,0 +1,11 @@
+import sqlite3, json
+c = sqlite3.connect(r"d:\AI\demo\ai-medical-consultant\backend\data\jingfang.sqlite3")
+row = c.execute("select payload from formulas where id='zhi-zhu-tang'").fetchone()
+p = json.loads(row[0])
+print("name:", p["name"])
+print("composition:", p["composition"])
+print("categories:", p["categories"])
+print("classicTexts:", len(p["classicTexts"]))
+print("caseItems:", len(p["caseItems"]))
+print("diagnosisPoints[0]:", p["diagnosisPoints"][0][:40])
+print("pathology labels:", [x["label"] for x in p["pathology"]])

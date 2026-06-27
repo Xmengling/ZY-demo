@@ -689,6 +689,24 @@ def render_card_pdfs(
                   word-break: break-word !important;
                   line-height: 1.45 !important;
                 }
+                .card-head-main {
+                  width: 100% !important;
+                }
+                .formula-row {
+                  width: 100% !important;
+                }
+                .formula-row > strong,
+                .classic-dosage-row > strong {
+                  flex: 0 0 74px !important;
+                  width: 74px !important;
+                  min-width: 74px !important;
+                  max-width: 74px !important;
+                  box-sizing: border-box !important;
+                }
+                .formula-row > span {
+                  flex: 1 1 auto !important;
+                  min-width: 0 !important;
+                }
                 @page { margin: 0; size: ${width}px ${height}px; }
               `;
               document.head.appendChild(style);

@@ -1440,6 +1440,22 @@
   border: none;
   padding: 0;
 }
+.attachments-section .section-content {
+  padding: 10px 12px 12px;
+}
+.section-count-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 20px;
+  height: 20px;
+  padding: 0 6px;
+  border-radius: 999px;
+  background: #ecf8f1;
+  color: #0f7c43;
+  font-size: 11px;
+  font-weight: 700;
+}
 @media (max-width: 1200px) {
   .consult-page {
     grid-template-columns: 1fr;

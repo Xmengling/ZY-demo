@@ -114,6 +114,15 @@ def merge_intake_data(base: dict[str, Any], other: dict[str, Any]) -> dict[str, 
             row_by_name[name] = rows[-1]
     prescription["rows"] = rows
 
+    attachments = list(merged.get("attachments") or [])
+    seen = {str(item.get("id")) for item in attachments if item.get("id")}
+    for item in other.get("attachments") or []:
+        attachment_id = str(item.get("id") or "").strip()
+        if attachment_id and attachment_id not in seen:
+            attachments.append(copy.deepcopy(item))
+            seen.add(attachment_id)
+    merged["attachments"] = attachments
+
     return merged
 
 

@@ -54,6 +54,7 @@ const state = {
   categories: [],
   formulas: [],
   herbs: [],
+  shanghanLevels: {},
   selectedId: null,
   accordionOpen: {},
   listCollapsed: false,
@@ -65,6 +66,34 @@ const state = {
 
 const $ = (selector) => document.querySelector(selector);
 const $$ = (selector) => [...document.querySelectorAll(selector)];
+
+const CLASSIC_LEVEL_BADGE = {
+  一级: { digit: "1", className: "level-1", label: "一级条文" },
+  二级: { digit: "2", className: "level-2", label: "二级条文" },
+  三级: { digit: "3", className: "level-3", label: "三级条文" },
+};
+
+const CLASSIC_LEVEL_ALIASES = {
+  顶格条文: "一级",
+  降一级条文: "二级",
+  降两级条文: "三级",
+};
+
+const PARTIAL_DOWNLOAD_FIELDS = [
+  { key: "classicDosage", label: "组成", defaultChecked: true },
+  { key: "composition", label: "比例", defaultChecked: true },
+  { key: "pathology", label: "病理", defaultChecked: true },
+  { key: "pathologySymptoms", label: "病理症状", defaultChecked: true },
+  { key: "caution", label: "慎用人群", defaultChecked: true },
+  { key: "compare", label: "易混淆方", defaultChecked: true },
+  { key: "points", label: "辨证要点", defaultChecked: true },
+  { key: "classics", label: "相关原文", defaultChecked: true },
+  { key: "cases", label: "医案", defaultChecked: true },
+  { key: "hu", label: "胡希恕解析", defaultChecked: false },
+  { key: "li", label: "李冠杰解析", defaultChecked: false },
+];
+
+const FULL_EXPORT_FIELD_SELECTION = Object.fromEntries(PARTIAL_DOWNLOAD_FIELDS.map((field) => [field.key, true]));
 
 const fields = {
   id: $("#field-id"),
@@ -409,6 +438,34 @@ function emphasizeHerbNames(text) {
       return part.replace(pattern, "**$1**");
     })
     .join("");
+}
+
+function extractShanghanArticleNumber(text) {
+  const raw = String(text || "");
+  const match = raw.match(/《伤寒论》\s*(?:第)?\s*(\d{1,3})\s*(?:条)?[：:]/);
+  return match?.[1] || "";
+}
+
+function classicTextLevel(text) {
+  const number = extractShanghanArticleNumber(text);
+  return number ? state.shanghanLevels[number] || "" : "";
+}
+
+function normalizeClassicLevel(level) {
+  return CLASSIC_LEVEL_ALIASES[level] || level || "";
+}
+
+function classicLevelBadgeHtml(level, size = "sm") {
+  const normalizedLevel = normalizeClassicLevel(level);
+  const meta = CLASSIC_LEVEL_BADGE[normalizedLevel];
+  if (!meta) return "";
+  return `<span class="classic-level-badge ${meta.className} classic-level-badge--${size}" aria-label="${escapeHtml(meta.label)}">${meta.digit}</span>`;
+}
+
+function renderClassicTextHtml(item) {
+  const level = classicTextLevel(item);
+  const badge = classicLevelBadgeHtml(level);
+  return `<p class="classic-text-item${badge ? "" : " no-level"}">${badge}<span class="classic-text-content">${highlight(item)}</span></p>`;
 }
 
 function parseCompareText(text) {
@@ -1308,9 +1365,7 @@ function renderPreview(formula) {
     return `<div class="logic-item${emphasized ? " purple" : ""}">${highlight(item)}</div>`;
   }).join("") || '<div class="logic-item">未填写</div>';
 
-  $("#card-classics").innerHTML = (formula.classicTexts || []).map((item) => (
-    `<p>${highlight(item)}</p>`
-  )).join("") || "<p>未填写</p>";
+  $("#card-classics").innerHTML = (formula.classicTexts || []).map(renderClassicTextHtml).join("") || "<p>未填写</p>";
 
   requestAnimationFrame(() => {
     syncPathologyTagWidths();
@@ -1471,6 +1526,21 @@ function handlePreviewTargetDblClick(event) {
   startPreviewInlineEdit(source, targetKey);
 }
 
+async function loadShanghanLevels() {
+  try {
+    const res = await fetch("/api/v1/shanghan", { headers: authHeaders() });
+    if (!res.ok) return;
+    const data = await res.json();
+    state.shanghanLevels = Object.fromEntries(
+      (data.articles || [])
+        .map((article) => [String(article.number || "").trim(), normalizeClassicLevel(article.level)])
+        .filter(([number, level]) => number && CLASSIC_LEVEL_BADGE[level]),
+    );
+  } catch {
+    state.shanghanLevels = {};
+  }
+}
+
 async function loadData() {
   const res = await fetch(API_BASE, { headers: authHeaders() });
   if (!res.ok) throw new Error("数据加载失败");
@@ -1478,6 +1548,7 @@ async function loadData() {
   state.categories = data.categories;
   state.formulas = data.formulas;
   state.herbs = data.herbs || [];
+  await loadShanghanLevels();
   renderEditorCategories();
   renderFormulaList();
   fillForm(state.formulas[0]);
@@ -1710,6 +1781,75 @@ function drawPill(ctx, text, x, y, options = {}) {
   }
   ctx.textAlign = prevAlign;
   return { width, height };
+}
+
+function classicCanvasBadgeStyle(level) {
+  const normalizedLevel = normalizeClassicLevel(level);
+  if (normalizedLevel === "二级") return { a: "#c3d9ff", b: "#5b8def", c: "#3d63b8", shadow: "rgba(61, 99, 184, .26)" };
+  if (normalizedLevel === "三级") return { a: "#dbe4f0", b: "#9aadc4", c: "#6f849f", shadow: "rgba(111, 132, 159, .24)" };
+  return { a: "#ffc9be", b: "#e04a3a", c: "#a82f24", shadow: "rgba(168, 47, 36, .28)" };
+}
+
+function drawClassicLevelBadgeOnCanvas(ctx, x, y, size, level) {
+  const meta = CLASSIC_LEVEL_BADGE[normalizeClassicLevel(level)];
+  if (!meta) return;
+  const style = classicCanvasBadgeStyle(level);
+  const cx = x + size / 2;
+  const cy = y + size / 2;
+  ctx.save();
+  ctx.shadowColor = style.shadow;
+  ctx.shadowBlur = 10;
+  ctx.shadowOffsetY = 3;
+  const gradient = ctx.createRadialGradient(x + size * 0.32, y + size * 0.28, 1, cx, cy, size * 0.55);
+  gradient.addColorStop(0, style.a);
+  gradient.addColorStop(0.45, style.b);
+  gradient.addColorStop(1, style.c);
+  ctx.fillStyle = gradient;
+  ctx.beginPath();
+  ctx.arc(cx, cy, size / 2, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.fillStyle = "#ffffff";
+  ctx.font = `900 ${Math.max(12, Math.round(size * 0.56))}px Microsoft YaHei, sans-serif`;
+  ctx.textAlign = "center";
+  ctx.textBaseline = "middle";
+  ctx.fillText(meta.digit, cx, cy + 1);
+  ctx.restore();
+}
+
+function measureClassicTextItemsHeight(ctx, items, maxWidth, lineHeight, options = {}) {
+  const font = options.font || "400 20px Microsoft YaHei, sans-serif";
+  const gap = options.gap ?? 8;
+  const badgeSize = options.badgeSize ?? 18;
+  const badgeGap = options.badgeGap ?? 4;
+  const list = items.length ? items : ["未填写"];
+  return list.reduce((sum, item, index) => {
+    const level = classicTextLevel(item);
+    const textWidth = level ? Math.max(80, maxWidth - badgeSize - badgeGap) : maxWidth;
+    const textHeight = measureMarkupTextHeight(ctx, item, textWidth, lineHeight, { font });
+    return sum + Math.max(level ? badgeSize : 0, textHeight) + (index > 0 ? gap : 0);
+  }, 0);
+}
+
+function drawClassicTextItems(ctx, items, x, y, maxWidth, lineHeight, options = {}) {
+  const font = options.font || "400 20px Microsoft YaHei, sans-serif";
+  const gap = options.gap ?? 8;
+  const badgeSize = options.badgeSize ?? 18;
+  const badgeGap = options.badgeGap ?? 4;
+  let cursorY = y;
+  (items.length ? items : ["未填写"]).forEach((item, index) => {
+    if (index > 0) cursorY += gap;
+    const level = classicTextLevel(item);
+    const textX = level ? x + badgeSize + badgeGap : x;
+    const textWidth = level ? Math.max(80, maxWidth - badgeSize - badgeGap) : maxWidth;
+    if (level) drawClassicLevelBadgeOnCanvas(ctx, x, cursorY + 2, badgeSize, level);
+    const startY = cursorY;
+    cursorY = drawMarkupText(ctx, item, textX, cursorY, textWidth, lineHeight, {
+      font,
+      align: "left",
+    });
+    if (level) cursorY = Math.max(cursorY, startY + badgeSize);
+  });
+  return cursorY;
 }
 
 function wrapCanvasLines(ctx, text, maxWidth) {
@@ -2066,7 +2206,7 @@ function drawPathologyTagsRow(ctx, items, x, y, maxX) {
   return tagY + tagHeight;
 }
 
-function drawCardSideSections(ctx, formula, startY = 410) {
+function drawCardSideSections(ctx, formula, startY = 410, selection = FULL_EXPORT_FIELD_SELECTION) {
   const x = CARD_SIDE_X;
   const maxX = x + CARD_SIDE_CONTENT_WIDTH;
   const items = getCardPathologyItems(formula);
@@ -2084,48 +2224,52 @@ function drawCardSideSections(ctx, formula, startY = 410) {
     ctx.restore();
   };
 
-  const block1Top = y;
-  drawSectionTitle(ctx, "病理", x, y);
-  y += 54;
-  if (!items.length) {
-    drawPill(ctx, "未填写", x, y, { height: 36, minWidth: 78, fill: "#eaf1ff", font: "700 21px Microsoft YaHei, sans-serif" });
-    y += 36;
-  } else {
-    y = drawPathologyTagsRow(ctx, items, x, y, maxX);
+  if (selection.pathology) {
+    const block1Top = y;
+    drawSectionTitle(ctx, "病理", x, y);
+    y += 54;
+    if (!items.length) {
+      drawPill(ctx, "未填写", x, y, { height: 36, minWidth: 78, fill: "#eaf1ff", font: "700 21px Microsoft YaHei, sans-serif" });
+      y += 36;
+    } else {
+      y = drawPathologyTagsRow(ctx, items, x, y, maxX);
+    }
+    drawSideBlock(block1Top, y);
+    y += sectionGap;
   }
-  drawSideBlock(block1Top, y);
-  y += sectionGap;
 
-  const block2Top = y;
-  drawSectionTitle(ctx, "病理症状", x, y);
-  y += 54;
-  const tagWidth = items.length
-    ? Math.max(...items.map((item) => measurePathologyTagWidth(ctx, item.label)))
-    : 72;
-  const textX = x + tagWidth + 12;
-  const textWidth = Math.max(120, maxX - textX);
+  if (selection.pathologySymptoms) {
+    const block2Top = y;
+    drawSectionTitle(ctx, "病理症状", x, y);
+    y += 54;
+    const tagWidth = items.length
+      ? Math.max(...items.map((item) => measurePathologyTagWidth(ctx, item.label)))
+      : 72;
+    const textX = x + tagWidth + 12;
+    const textWidth = Math.max(120, maxX - textX);
 
-  if (!items.length) {
-    drawPill(ctx, "未填写", x, y, { height: 36, minWidth: tagWidth, fill: "#eaf1ff", font: "700 21px Microsoft YaHei, sans-serif" });
-    y = drawMarkupText(ctx, "未填写", textX, y + 4, textWidth, 26, {
-      font: "700 17px Microsoft YaHei, sans-serif",
-      paragraphGap: 2,
-    });
-  } else {
-    items.forEach((item) => {
-      drawPill(ctx, item.label, x, y, { height: 36, minWidth: tagWidth, fill: "#eaf1ff", font: "700 21px Microsoft YaHei, sans-serif" });
-      y = drawMarkupText(ctx, item.text || "未填写", textX, y + 3, textWidth, 24, {
+    if (!items.length) {
+      drawPill(ctx, "未填写", x, y, { height: 36, minWidth: tagWidth, fill: "#eaf1ff", font: "700 21px Microsoft YaHei, sans-serif" });
+      y = drawMarkupText(ctx, "未填写", textX, y + 4, textWidth, 26, {
         font: "700 17px Microsoft YaHei, sans-serif",
         paragraphGap: 2,
       });
-      y += 6;
-    });
+    } else {
+      items.forEach((item) => {
+        drawPill(ctx, item.label, x, y, { height: 36, minWidth: tagWidth, fill: "#eaf1ff", font: "700 21px Microsoft YaHei, sans-serif" });
+        y = drawMarkupText(ctx, item.text || "未填写", textX, y + 3, textWidth, 24, {
+          font: "700 17px Microsoft YaHei, sans-serif",
+          paragraphGap: 2,
+        });
+        y += 6;
+      });
+    }
+    drawSideBlock(block2Top, y);
+    y += sectionGap;
   }
-  drawSideBlock(block2Top, y);
-  y += sectionGap;
 
   const cautionText = String(formula.caution || "").trim();
-  if (cautionText) {
+  if (selection.caution && cautionText) {
     const block3Top = y;
     drawSectionTitle(ctx, "慎用人群", x, y);
     y += 54;
@@ -2138,7 +2282,7 @@ function drawCardSideSections(ctx, formula, startY = 410) {
   }
 
   const compareText = String(formula.compare || formula.comparison || "").trim();
-  if (compareText) {
+  if (selection.compare && compareText) {
     const block4Top = y;
     drawSectionTitle(ctx, "易混淆方", x, y);
     y += 54;
@@ -2290,10 +2434,59 @@ async function downloadAllPdf() {
   }
 }
 
-async function downloadCardPng(mode = "partial") {
+function defaultPartialDownloadSelection() {
+  return Object.fromEntries(PARTIAL_DOWNLOAD_FIELDS.map((field) => [field.key, field.defaultChecked]));
+}
+
+function normalizeDownloadSelection(mode, selectedFields = null) {
+  if (mode === "full") return { ...FULL_EXPORT_FIELD_SELECTION };
+  return { ...defaultPartialDownloadSelection(), ...(selectedFields || {}) };
+}
+
+function renderPartialDownloadFields() {
+  const container = $("#partial-download-fields");
+  if (!container) return;
+  container.innerHTML = PARTIAL_DOWNLOAD_FIELDS.map((field) => `
+    <label class="download-field-option">
+      <input type="checkbox" value="${escapeHtml(field.key)}" ${field.defaultChecked ? "checked" : ""} />
+      <span>${escapeHtml(field.label)}</span>
+    </label>
+  `).join("");
+}
+
+function closePartialDownloadModal() {
+  $("#partial-download-modal")?.setAttribute("hidden", "");
+}
+
+function openPartialDownloadModal() {
+  renderPartialDownloadFields();
+  const modal = $("#partial-download-modal");
+  modal?.removeAttribute("hidden");
+  modal?.querySelector("input")?.focus();
+}
+
+function selectedPartialDownloadFields() {
+  const selected = {};
+  $$("#partial-download-fields input[type='checkbox']").forEach((input) => {
+    selected[input.value] = input.checked;
+  });
+  return selected;
+}
+
+async function confirmPartialDownload() {
+  const selected = selectedPartialDownloadFields();
+  if (!Object.values(selected).some(Boolean)) {
+    toast("请至少选择一个下载字段");
+    return;
+  }
+  closePartialDownloadModal();
+  await downloadCardPng("partial", selected);
+}
+
+async function downloadCardPng(mode = "partial", selectedFields = null) {
   try {
     const formula = normalizeFormulaFromForm();
-    const includeAnalysis = mode === "full";
+    const selection = normalizeDownloadSelection(mode, selectedFields);
     const width = CARD_LAYOUT_WIDTH;
     const rightSectionGap = 77;
     const calloutTextTopOffset = 36;
@@ -2302,11 +2495,13 @@ async function downloadCardPng(mode = "partial") {
     const calloutBoxW = 710;
     const calloutTextW = 640;
     const calloutTextWideW = 650;
-    const classicsText = (formula.classicTexts || []).join("\n") || "未填写";
+    const classicsItems = selection.classics ? (formula.classicTexts || []).filter(Boolean) : [];
     const sourceCases = formula.caseItems?.length ? formula.caseItems : splitCaseText(formula.cases || "");
-    const exportCases = (includeAnalysis ? sourceCases : sourceCases.slice(0, 1))
-      .map((item) => normalizeCaseItemText(item))
-      .filter(Boolean);
+    const exportCases = selection.cases
+      ? ((mode === "full" ? sourceCases : sourceCases.slice(0, 1))
+        .map((item) => normalizeCaseItemText(item))
+        .filter(Boolean))
+      : [];
     const caseSepGap = 10;
     const caseSepLineH = 1;
     const caseSepAfterGap = 8;
@@ -2323,35 +2518,37 @@ async function downloadCardPng(mode = "partial") {
     measureCanvas.width = width;
     measureCanvas.height = CARD_LAYOUT_HEIGHT * 4;
     const measureCtx = measureCanvas.getContext("2d");
-    const measuredLeftBottom = drawCardSideSections(measureCtx, formula, 458);
-    const measuredMindMapBottom = drawDiagnosisMindMap(measureCtx, formula.diagnosisPoints || [], 420, 416);
-    const classicsBoxH = Math.max(
+    const measuredLeftBottom = drawCardSideSections(measureCtx, formula, 458, selection);
+    const measuredMindMapBottom = selection.points ? drawDiagnosisMindMap(measureCtx, formula.diagnosisPoints || [], 420, 416) : 416;
+    const classicsBoxH = selection.classics ? Math.max(
       145,
-      measureMarkupTextHeight(measureCtx, classicsText, calloutTextWideW, classicsLineH, { font: classicsFont }) + calloutTextTopOffset + 20,
-    );
+      measureClassicTextItemsHeight(measureCtx, classicsItems, calloutTextWideW, classicsLineH, {
+        font: classicsFont,
+        gap: 8,
+        badgeSize: 18,
+        badgeGap: 4,
+      }) + calloutTextTopOffset + 20,
+    ) : 0;
     const singleCaseHs = exportCases.map((c) =>
       measureMarkupTextHeight(measureCtx, c, calloutTextW, caseLineH, { font: caseFont })
     );
     const caseTextH = singleCaseHs.reduce((sum, h, i) => sum + h + (i > 0 ? caseSepGap + caseSepLineH + caseSepAfterGap : 0), 0);
-    const caseBoxH = Math.max(
+    const caseBoxH = selection.cases ? Math.max(
       180,
       caseTextH + calloutTextTopOffset + 20,
-    );
-    const huBoxH = includeAnalysis ? Math.max(
+    ) : 0;
+    const huBoxH = selection.hu ? Math.max(
       180,
       measureMarkupTextHeight(measureCtx, huText, calloutTextW, analysisLineH, { font: analysisFont }) + calloutTextTopOffset + 20,
     ) : 0;
-    const liBoxH = includeAnalysis ? Math.max(
+    const liBoxH = selection.li ? Math.max(
       180,
       measureMarkupTextHeight(measureCtx, liText, calloutTextW, analysisLineH, { font: analysisFont }) + calloutTextTopOffset + 20,
     ) : 0;
-    let measuredY = measuredMindMapBottom + rightSectionGap;
-    measuredY += classicsBoxH + rightSectionGap;
-    measuredY += caseBoxH;
-    if (includeAnalysis) {
-      measuredY += rightSectionGap + huBoxH;
-      measuredY += rightSectionGap + liBoxH;
-    }
+    let measuredY = measuredMindMapBottom;
+    [classicsBoxH, caseBoxH, huBoxH, liBoxH].forEach((sectionHeight) => {
+      if (sectionHeight > 0) measuredY += rightSectionGap + sectionHeight;
+    });
     const measuredContentBottom = Math.max(measuredLeftBottom, measuredMindMapBottom, measuredY);
     const height = Math.max(CARD_LAYOUT_HEIGHT, Math.ceil(measuredContentBottom + 170));
     const exportHeight = Math.ceil(CARD_EXPORT_HEIGHT * (height / CARD_LAYOUT_HEIGHT));
@@ -2365,7 +2562,7 @@ async function downloadCardPng(mode = "partial") {
       pixelRatio * exportHeight / height,
     );
 
-    ctx.fillStyle = "#f8fbff";
+    ctx.fillStyle = "#ffffff";
     ctx.fillRect(0, 0, width, height);
     ctx.strokeStyle = "#4f7cff";
     ctx.lineWidth = 6;
@@ -2401,24 +2598,23 @@ async function downloadCardPng(mode = "partial") {
 
     let compY = 190;
     const compBoxX = 486;
+    const compBoxMaxW = 640;
     const compLineH = 30;
     const compFont = "400 25px Microsoft YaHei, sans-serif";
     const classicDosageText = emphasizeHerbNames(String(formula.classicDosage || formula.ancientDosage || "").trim());
-    if (classicDosageText) {
+    if (selection.classicDosage && classicDosageText) {
       const classicY = 188;
       const classicLineH = 27;
       const classicFont = "400 21px Microsoft YaHei, sans-serif";
-      const classicBoxX = 540;
-      const classicBoxMaxW = 590;
       ctx.font = classicFont;
       const classicSingleLineWidth = Math.max(...wrapMarkupTextLines(ctx, classicDosageText, 9999, classicFont).map((line) => measureMarkupLine(ctx, line, classicFont)));
-      const classicBoxW = Math.max(260, Math.min(classicBoxMaxW, classicSingleLineWidth + 32));
-      const classicTextX = classicBoxX + 12;
+      const classicBoxW = Math.max(260, Math.min(compBoxMaxW, classicSingleLineWidth + 32));
+      const classicTextX = compBoxX + 12;
       const classicTextW = classicBoxW - 24;
       const classicTextHeight = measureMarkupTextHeight(ctx, classicDosageText, classicTextW, classicLineH, { font: classicFont, paragraphGap: 3 });
       const classicBoxH = Math.max(42, classicTextHeight + 16);
       drawPill(ctx, "组成", 380, classicY, { minWidth: 86, height: 42, fill: "#ffffff", stroke: "#ff963d", color: "#111827" });
-      drawDashedBox(ctx, classicBoxX, classicY, classicBoxW, classicBoxH, 6);
+      drawDashedBox(ctx, compBoxX, classicY, classicBoxW, classicBoxH, 6);
       drawMarkupText(ctx, classicDosageText, classicTextX, classicY + 8, classicTextW, classicLineH, {
         font: classicFont,
         paragraphGap: 3,
@@ -2426,85 +2622,38 @@ async function downloadCardPng(mode = "partial") {
       });
       compY = classicY + classicBoxH + 14;
     }
-    const compText = emphasizeHerbNames(formula.composition || "未填写");
-    ctx.font = compFont;
-    const compSingleLineWidth = Math.max(...wrapMarkupTextLines(ctx, compText, 9999, compFont).map((line) => measureMarkupLine(ctx, line, compFont)));
-    const compBoxW = Math.max(220, Math.min(640, compSingleLineWidth + 36));
-    const compTextX = compBoxX + 12;
-    const compTextW = compBoxW - 24;
-    const compTextHeight = measureMarkupTextHeight(ctx, compText, compTextW, compLineH, { font: compFont, paragraphGap: 4 });
-    const compBoxH = Math.max(
-      44,
-      compTextHeight + 18,
-    );
-    const compTextY = compY + 9;
-    drawPill(ctx, "比例", 380, compY, { minWidth: 86, height: 44, fill: "#ffffff", stroke: "#ff963d", color: "#111827" });
-    drawDashedBox(ctx, compBoxX, compY, compBoxW, compBoxH, 6);
-    drawMarkupText(ctx, compText, compTextX, compTextY, compTextW, compLineH, {
-      font: compFont,
-      paragraphGap: 4,
-      align: "left",
-    });
-
-    const leftBottom = drawCardSideSections(ctx, formula, 458);
-
-    const mindMapBottom = drawDiagnosisMindMap(ctx, formula.diagnosisPoints || [], 420, 416);
-
-    let y = mindMapBottom + rightSectionGap;
-    drawBlueDashedBox(ctx, calloutBoxX, y, calloutBoxW, classicsBoxH, 8);
-    drawPill(ctx, "相关原文", 454, y - 24, {
-      minWidth: 150,
-      height: 48,
-      fill: "#dfeaff",
-      stroke: "#4f83ff",
-      lineWidth: 2,
-      font: "500 24px Microsoft YaHei, sans-serif",
-      textAlign: "center",
-    });
-    drawMarkupText(ctx, classicsText, calloutTextX, y + calloutTextTopOffset, calloutTextWideW, classicsLineH, {
-      font: classicsFont,
-      align: "left",
-    });
-
-    y += classicsBoxH + rightSectionGap;
-    drawBlueDashedBox(ctx, calloutBoxX, y, calloutBoxW, caseBoxH, 8);
-    drawPill(ctx, "医案", 454, y - 24, {
-      minWidth: 130,
-      height: 48,
-      fill: "#dfeaff",
-      stroke: "#4f83ff",
-      lineWidth: 2,
-      font: "500 24px Microsoft YaHei, sans-serif",
-      textAlign: "center",
-    });
-    let caseY = y + calloutTextTopOffset;
-    exportCases.forEach((caseItem, i) => {
-      if (i > 0) {
-        caseY += caseSepGap;
-        ctx.save();
-        ctx.strokeStyle = "#94a3b8";
-        ctx.lineWidth = 1;
-        ctx.setLineDash([4, 4]);
-        ctx.beginPath();
-        ctx.moveTo(calloutTextX + 20, caseY);
-        ctx.lineTo(calloutTextX + calloutTextW - 20, caseY);
-        ctx.stroke();
-        ctx.setLineDash([]);
-        ctx.restore();
-        caseY += caseSepLineH + caseSepAfterGap;
-      }
-      caseY = drawMarkupText(ctx, caseItem, calloutTextX, caseY, calloutTextW, caseLineH, {
-        font: caseFont,
+    if (selection.composition) {
+      const compText = emphasizeHerbNames(formula.composition || "未填写");
+      ctx.font = compFont;
+      const compSingleLineWidth = Math.max(...wrapMarkupTextLines(ctx, compText, 9999, compFont).map((line) => measureMarkupLine(ctx, line, compFont)));
+      const compBoxW = Math.max(220, Math.min(compBoxMaxW, compSingleLineWidth + 36));
+      const compTextX = compBoxX + 12;
+      const compTextW = compBoxW - 24;
+      const compTextHeight = measureMarkupTextHeight(ctx, compText, compTextW, compLineH, { font: compFont, paragraphGap: 4 });
+      const compBoxH = Math.max(
+        44,
+        compTextHeight + 18,
+      );
+      const compTextY = compY + 9;
+      drawPill(ctx, "比例", 380, compY, { minWidth: 86, height: 44, fill: "#ffffff", stroke: "#ff963d", color: "#111827" });
+      drawDashedBox(ctx, compBoxX, compY, compBoxW, compBoxH, 6);
+      drawMarkupText(ctx, compText, compTextX, compTextY, compTextW, compLineH, {
+        font: compFont,
+        paragraphGap: 4,
         align: "left",
       });
-    });
+    }
 
-    y += caseBoxH;
-    if (includeAnalysis) {
+    const leftBottom = drawCardSideSections(ctx, formula, 458, selection);
+
+    const mindMapBottom = selection.points ? drawDiagnosisMindMap(ctx, formula.diagnosisPoints || [], 420, 416) : 416;
+
+    let y = mindMapBottom;
+    const drawCalloutShell = (title, boxHeight, titleWidth = 150) => {
       y += rightSectionGap;
-      drawBlueDashedBox(ctx, calloutBoxX, y, calloutBoxW, huBoxH, 8);
-      drawPill(ctx, "胡希恕解析", 454, y - 24, {
-        minWidth: 170,
+      drawBlueDashedBox(ctx, calloutBoxX, y, calloutBoxW, boxHeight, 8);
+      drawPill(ctx, title, 454, y - 24, {
+        minWidth: titleWidth,
         height: 48,
         fill: "#dfeaff",
         stroke: "#4f83ff",
@@ -2512,27 +2661,60 @@ async function downloadCardPng(mode = "partial") {
         font: "500 24px Microsoft YaHei, sans-serif",
         textAlign: "center",
       });
-      drawMarkupText(ctx, huText, calloutTextX, y + calloutTextTopOffset, calloutTextW, analysisLineH, {
+      return y + calloutTextTopOffset;
+    };
+
+    if (selection.classics) {
+      const textY = drawCalloutShell("相关原文", classicsBoxH, 150);
+      drawClassicTextItems(ctx, classicsItems, calloutTextX, textY, calloutTextWideW, classicsLineH, {
+        font: classicsFont,
+        gap: 8,
+        badgeSize: 18,
+        badgeGap: 4,
+      });
+      y += classicsBoxH;
+    }
+
+    if (selection.cases) {
+      let caseY = drawCalloutShell("医案", caseBoxH, 130);
+      exportCases.forEach((caseItem, i) => {
+        if (i > 0) {
+          caseY += caseSepGap;
+          ctx.save();
+          ctx.strokeStyle = "#94a3b8";
+          ctx.lineWidth = 1;
+          ctx.setLineDash([4, 4]);
+          ctx.beginPath();
+          ctx.moveTo(calloutTextX + 20, caseY);
+          ctx.lineTo(calloutTextX + calloutTextW - 20, caseY);
+          ctx.stroke();
+          ctx.setLineDash([]);
+          ctx.restore();
+          caseY += caseSepLineH + caseSepAfterGap;
+        }
+        caseY = drawMarkupText(ctx, caseItem || "未填写", calloutTextX, caseY, calloutTextW, caseLineH, {
+          font: caseFont,
+          align: "left",
+        });
+      });
+      y += caseBoxH;
+    }
+
+    if (selection.hu) {
+      const textY = drawCalloutShell("胡希恕解析", huBoxH, 170);
+      drawMarkupText(ctx, huText, calloutTextX, textY, calloutTextW, analysisLineH, {
         font: analysisFont,
         align: "left",
       });
+      y += huBoxH;
+    }
 
-      y += huBoxH + rightSectionGap;
-      drawBlueDashedBox(ctx, calloutBoxX, y, calloutBoxW, liBoxH, 8);
-      drawPill(ctx, "李冠杰解析", 454, y - 24, {
-        minWidth: 170,
-        height: 48,
-        fill: "#dfeaff",
-        stroke: "#4f83ff",
-        lineWidth: 2,
-        font: "500 24px Microsoft YaHei, sans-serif",
-        textAlign: "center",
-      });
-      drawMarkupText(ctx, liText, calloutTextX, y + calloutTextTopOffset, calloutTextW, analysisLineH, {
+    if (selection.li) {
+      const textY = drawCalloutShell("李冠杰解析", liBoxH, 170);
+      drawMarkupText(ctx, liText, calloutTextX, textY, calloutTextW, analysisLineH, {
         font: analysisFont,
         align: "left",
       });
-
       y += liBoxH;
     }
 
@@ -2558,13 +2740,13 @@ async function downloadCardPng(mode = "partial") {
     });
     const link = document.createElement("a");
     link.href = URL.createObjectURL(blob);
-    const suffix = includeAnalysis ? "完整" : "部分";
+    const suffix = mode === "full" ? "完整" : "部分";
     link.download = `${fields.name.value.trim() || "方剂卡片"}-${suffix}.png`;
     document.body.appendChild(link);
     link.click();
     link.remove();
     setTimeout(() => URL.revokeObjectURL(link.href), 500);
-    toast(`${includeAnalysis ? "完整" : "部分"}PNG 已生成`);
+    toast(`${mode === "full" ? "完整" : "部分"}PNG 已生成`);
   } catch (error) {
     toast(error.message || "PNG 下载失败");
   }
@@ -2646,8 +2828,19 @@ $("#new-formula").addEventListener("click", newFormula);
 $("#toggle-list-panel")?.addEventListener("click", () => setListPanelCollapsed(!state.listCollapsed));
 $("#save-formula").addEventListener("click", saveCurrentFormula);
 $("#delete-formula").addEventListener("click", deleteCurrentFormula);
-$("#download-card-partial").addEventListener("click", () => downloadCardPng("partial"));
+$("#download-card-partial").addEventListener("click", openPartialDownloadModal);
 $("#download-card-full").addEventListener("click", () => downloadCardPng("full"));
+$("#partial-download-close")?.addEventListener("click", closePartialDownloadModal);
+$("#partial-download-cancel")?.addEventListener("click", closePartialDownloadModal);
+$("#partial-download-confirm")?.addEventListener("click", confirmPartialDownload);
+$("#partial-download-modal")?.addEventListener("click", (event) => {
+  if (event.target === event.currentTarget) closePartialDownloadModal();
+});
+document.addEventListener("keydown", (event) => {
+  if (event.key === "Escape" && !$("#partial-download-modal")?.hasAttribute("hidden")) {
+    closePartialDownloadModal();
+  }
+});
 $("#formula-card")?.addEventListener("click", handlePreviewTargetClick);
 $("#formula-card")?.addEventListener("dblclick", handlePreviewTargetDblClick);
 

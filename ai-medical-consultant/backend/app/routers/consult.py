@@ -6,7 +6,7 @@ from __future__ import annotations
 import json
 from typing import Any, List
 
-from fastapi import APIRouter, Depends, HTTPException, Query, status
+from fastapi import APIRouter, Depends, File, HTTPException, Query, UploadFile, status
 from fastapi.responses import StreamingResponse
 from sqlalchemy import exists, select
 from sqlalchemy.orm import Session
@@ -22,6 +22,7 @@ from ..schemas import (
     ConsultAutoFillRequest,
     ConsultAutoFillResponse,
     ConsultAutoFillExampleOut,
+    ConsultAttachmentOut,
     MessageOut,
     ModuleHintOut,
     SymptomPresetBlockOut,
@@ -51,6 +52,13 @@ from ..services.consult_chat_prompt import (
     should_skip_case_retrieval,
 )
 from ..services.session_merge import merge_case_text, merge_intake_data
+from ..services.consult_attachments import (
+    ConsultAttachmentError,
+    build_file_response,
+    delete_attachment,
+    remove_session_attachments,
+    save_attachment,
+)
 from ..services.user_rules import append_user_rule, build_rule_suggestion
 from ..services.consult_knowledge import (
     build_prescription_authority_block,
@@ -667,11 +675,55 @@ def update_session_intake(
     return _session_detail(s)
 
 
+@router.post("/sessions/{session_id}/attachments", response_model=ConsultAttachmentOut)
+async def upload_session_attachment(
+    session_id: int,
+    file: UploadFile = File(...),
+    db: Session = Depends(get_db),
+    user: User = Depends(get_current_user),
+):
+    _get_owned_session(db, session_id, user)
+    raw = await file.read()
+    try:
+        return save_attachment(session_id, file, raw)
+    except ConsultAttachmentError as exc:
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, str(exc)) from exc
+
+
+@router.get("/sessions/{session_id}/attachments/{attachment_id}/file")
+def get_session_attachment_file(
+    session_id: int,
+    attachment_id: str,
+    download: bool = Query(False),
+    db: Session = Depends(get_db),
+    user: User = Depends(get_current_user),
+):
+    _get_owned_session(db, session_id, user)
+    try:
+        return build_file_response(session_id, attachment_id, inline=not download)
+    except ConsultAttachmentError as exc:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, str(exc)) from exc
+
+
+@router.delete("/sessions/{session_id}/attachments/{attachment_id}")
+def delete_session_attachment(
+    session_id: int,
+    attachment_id: str,
+    db: Session = Depends(get_db),
+    user: User = Depends(get_current_user),
+):
+    _get_owned_session(db, session_id, user)
+    if not delete_attachment(session_id, attachment_id):
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "附件不存在或已被删除")
+    return {"ok": True}
+
+
 @router.delete("/sessions/{session_id}")
 def delete_session(
     session_id: int, db: Session = Depends(get_db), user: User = Depends(get_current_user)
 ):
     s = _get_owned_session(db, session_id, user)
+    remove_session_attachments(session_id)
     db.delete(s)
     db.commit()
     return {"ok": True}
@@ -687,6 +739,7 @@ def bulk_delete_sessions(
     deleted = 0
     for session_id in ids:
         s = _get_owned_session(db, session_id, user)
+        remove_session_attachments(session_id)
         db.delete(s)
         deleted += 1
     db.commit()

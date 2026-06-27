@@ -1240,11 +1240,14 @@ textarea:focus {
 .card-head-main {
   display: flex;
   flex-direction: column;
-  align-items: flex-start;
+  align-items: stretch;
   gap: 18px;
+  width: 100%;
+  min-width: 0;
 }
 
 .title-box {
+  align-self: flex-start;
   margin: 0;
   padding: 10px 24px;
   border: 3px solid var(--orange);
@@ -1259,6 +1262,7 @@ textarea:focus {
   display: flex;
   align-items: stretch;
   gap: 12px;
+  width: 100%;
   max-width: 100%;
   font-size: 22px;
   line-height: 1.25;
@@ -1272,13 +1276,17 @@ textarea:focus {
 }
 
 .formula-row > strong {
+  flex: 0 0 74px;
   min-width: 74px;
   padding: 8px 13px;
   text-align: center;
   color: #111827;
+  box-sizing: border-box;
 }
 
 .formula-row > span {
+  flex: 1 1 auto;
+  min-width: 0;
   padding: 8px 12px;
   overflow-wrap: anywhere;
   text-align: left;
@@ -1673,6 +1681,55 @@ textarea:focus {
   padding-top: 2px;
 }
 
+.classic-text-item {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 4px;
+  align-items: start;
+}
+
+.classic-text-item.no-level {
+  display: block;
+}
+
+.classic-level-badge {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  border-radius: 50%;
+  color: #fff;
+  font-weight: 900;
+  line-height: 1;
+  letter-spacing: 0;
+  box-shadow:
+    0 3px 8px rgba(16, 24, 40, .13),
+    inset 0 1px 0 rgba(255, 255, 255, .34);
+}
+
+.classic-level-badge.level-1 {
+  background: radial-gradient(circle at 32% 28%, #ffbeb2 0%, #e84b3e 48%, #b83228 100%);
+  box-shadow:
+    0 3px 9px rgba(168, 47, 36, .24),
+    inset 0 1px 0 rgba(255, 255, 255, .36);
+}
+
+.classic-level-badge.level-2 {
+  background: radial-gradient(circle at 32% 28%, #bdd6ff 0%, #5b8def 48%, #3e66bd 100%);
+}
+
+.classic-level-badge.level-3 {
+  background: radial-gradient(circle at 32% 28%, #dce6f2 0%, #97abc2 48%, #70849e 100%);
+}
+
+.classic-level-badge--sm {
+  width: 18px;
+  height: 18px;
+  margin-top: 7px;
+  font-size: 11px;
+}
+
 #card-cases p {
   margin: 0;
   line-height: 1.45;
@@ -1688,6 +1745,96 @@ textarea:focus {
 .red-text {
   color: var(--red);
   font-weight: 900;
+}
+
+.modal-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 80;
+  display: grid;
+  place-items: center;
+  padding: 24px;
+  background: rgba(15, 23, 42, .34);
+  backdrop-filter: blur(2px);
+}
+
+.modal-backdrop[hidden] {
+  display: none;
+}
+
+.download-field-modal {
+  width: min(520px, 100%);
+  border: 1px solid #bcd2ff;
+  border-radius: 12px;
+  background: #ffffff;
+  box-shadow: 0 18px 45px rgba(30, 64, 175, .18);
+  padding: 18px;
+}
+
+.download-field-modal__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  padding-bottom: 14px;
+  border-bottom: 1px solid #e5edff;
+}
+
+.download-field-modal__head h3 {
+  margin: 0;
+  color: #12213a;
+  font-size: 20px;
+  line-height: 1.2;
+}
+
+.modal-icon-btn {
+  width: 34px;
+  height: 34px;
+  border: 1px solid #c9dbff;
+  border-radius: 8px;
+  background: #f8fbff;
+  color: #375a9e;
+  font-size: 24px;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.download-field-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+  padding: 16px 0 18px;
+}
+
+.download-field-option {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  min-height: 42px;
+  border: 1px solid #d7e4ff;
+  border-radius: 8px;
+  padding: 8px 10px;
+  background: #fbfdff;
+  color: #12213a;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.download-field-option input {
+  width: 16px;
+  height: 16px;
+  accent-color: #4f7cff;
+}
+
+.download-field-modal__actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+}
+
+.download-field-modal__actions .ghost,
+.download-field-modal__actions .primary {
+  min-width: 96px;
 }
 
 .toast {
@@ -1794,6 +1941,10 @@ textarea:focus {
     font-size: 12px;
     writing-mode: horizontal-tb;
     letter-spacing: 0;
+  }
+
+  .download-field-grid {
+    grid-template-columns: 1fr;
   }
 
   .card-head,

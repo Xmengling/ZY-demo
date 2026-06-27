@@ -37,6 +37,7 @@ class Settings(BaseSettings):
     # 知识库种子文件：默认中医方证知识库（由 ingest_tcm.py 生成）
     knowledge_file: str = str(BASE_DIR / "data" / "tcm_knowledge.json")
     knowledge_upload_dir: str = str(BASE_DIR / "data" / "knowledge_uploads")
+    consult_attachment_dir: str = str(BASE_DIR / "data" / "consult_attachments")
 
     # 方剂梳理（SQLite + 中药图片）
     jingfang_db_path: str = str(BASE_DIR / "data" / "jingfang.sqlite3")

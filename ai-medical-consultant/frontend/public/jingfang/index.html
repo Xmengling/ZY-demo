@@ -4,7 +4,7 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>方剂梳理</title>
-  <link rel="stylesheet" href="styles.css?v=inlineEdit3" />
+  <link rel="stylesheet" href="styles.css?v=classicLevel4" />
   <link rel="stylesheet" href="pathology-tone.css?v=1" />
 </head>
 <body>
@@ -209,7 +209,21 @@
     </div>
   </main>
 
+  <div id="partial-download-modal" class="modal-backdrop" hidden>
+    <section class="download-field-modal" role="dialog" aria-modal="true" aria-labelledby="partial-download-title">
+      <div class="download-field-modal__head">
+        <h3 id="partial-download-title">选择下载字段</h3>
+        <button id="partial-download-close" class="modal-icon-btn" type="button" aria-label="关闭">×</button>
+      </div>
+      <div id="partial-download-fields" class="download-field-grid"></div>
+      <div class="download-field-modal__actions">
+        <button id="partial-download-cancel" class="ghost" type="button">取消</button>
+        <button id="partial-download-confirm" class="primary" type="button">确认下载</button>
+      </div>
+    </section>
+  </div>
+
   <div id="toast" class="toast" role="status"></div>
-  <script src="app.js?v=inlineEdit3"></script>
+  <script src="app.js?v=classicLevel4"></script>
 </body>
 </html>

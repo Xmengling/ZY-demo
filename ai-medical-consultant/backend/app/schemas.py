@@ -111,6 +111,15 @@ class SessionIntakeUpdate(BaseModel):
     case_text: str = ""
 
 
+class ConsultAttachmentOut(BaseModel):
+    id: str
+    name: str
+    size: int
+    mimeType: str = ""
+    isImage: bool = False
+    uploadedAt: str = ""
+
+
 class ConsultAutoFillRequest(BaseModel):
     raw_text: str = Field("", max_length=12000)
 

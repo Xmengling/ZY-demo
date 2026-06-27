@@ -32,6 +32,7 @@
     <div class="formula-table-wrap">
       <table class="formula-table">
         <colgroup>
+          <col class="col-action" />
           <col class="col-name" />
           <col class="col-pathology" />
           <col class="col-main-symptoms" />
@@ -39,10 +40,11 @@
           <col class="col-unit" />
           <col class="col-portions" />
           <col class="col-final" />
-          <col class="col-action" />
+          <col class="col-drag" />
         </colgroup>
         <thead>
           <tr>
+            <th class="col-action" aria-label="删除" />
             <th class="col-name">方剂名</th>
             <th class="col-pathology">病理</th>
             <th class="col-main-symptoms">主要症状</th>
@@ -50,7 +52,7 @@
             <th class="num">单方量</th>
             <th class="num">份数</th>
             <th class="num">最终用量</th>
-            <th class="col-action" aria-label="操作" />
+            <th class="col-drag" aria-label="排序" />
           </tr>
         </thead>
         <tbody>
@@ -69,30 +71,24 @@
             @dragover.prevent="onRowDragOver(index)"
             @drop.prevent="onRowDrop(index)"
           >
+            <td class="col-action">
+              <button type="button" class="formula-remove-btn" aria-label="删除方剂" @click="removeRow(index)">
+                <svg class="formula-remove-icon" viewBox="0 0 12 12" aria-hidden="true">
+                  <path d="M2.5 2.5l7 7M9.5 2.5l-7 7" />
+                </svg>
+              </button>
+            </td>
             <td class="col-name">
-              <div class="formula-name-cell">
-                <button
-                  type="button"
-                  class="formula-drag-handle"
-                  draggable="true"
-                  aria-label="拖拽调整方剂顺序"
-                  title="拖拽换行"
-                  @dragstart="onRowDragStart(index, $event)"
-                  @dragend="onRowDragEnd"
-                >
-                  ⋮⋮
-                </button>
-                <el-autocomplete
-                  v-model="row.name"
-                  :fetch-suggestions="queryFormula"
-                  placeholder="方剂名"
-                  :trigger-on-focus="true"
-                  clearable
-                  class="name-input"
-                  @select="() => emitUpdate()"
-                  @blur="emitUpdate"
-                />
-              </div>
+              <el-autocomplete
+                v-model="row.name"
+                :fetch-suggestions="queryFormula"
+                placeholder="方剂名"
+                :trigger-on-focus="true"
+                clearable
+                class="name-input"
+                @select="() => emitUpdate()"
+                @blur="emitUpdate"
+              />
             </td>
             <td class="col-pathology">
               <span class="formula-pathology-cell">
@@ -138,12 +134,42 @@
             <td class="num">
               <strong class="formula-final-dose">{{ rowMeta(row).finalDose }}</strong>
             </td>
-            <td class="col-action">
-              <button type="button" class="formula-remove-btn" aria-label="删除方剂" @click="removeRow(index)">×</button>
+            <td class="col-drag">
+              <button
+                type="button"
+                class="formula-drag-handle"
+                draggable="true"
+                aria-label="拖拽调整方剂顺序"
+                title="拖拽调整顺序"
+                @dragstart="onRowDragStart(index, $event)"
+                @dragend="onRowDragEnd"
+              >
+                <span class="formula-drag-grip" aria-hidden="true">
+                  <i /><i /><i /><i /><i /><i />
+                </span>
+              </button>
             </td>
           </tr>
         </tbody>
       </table>
+    </div>
+
+    <div v-if="herbDoseItems.length" class="herb-dose-panel">
+      <div class="herb-dose-title">中药用量（g）</div>
+      <div class="herb-dose-list">
+        <label v-for="item in herbDoseItems" :key="item.herb" class="herb-dose-chip">
+          <span class="herb-name">{{ item.herb }}</span>
+          <el-input-number
+            :model-value="item.doseValue"
+            :min="0"
+            :step="0.1"
+            :precision="1"
+            :controls="false"
+            class="herb-dose-input"
+            @change="(value) => updateHerbDose(item.herb, value)"
+          />
+        </label>
+      </div>
     </div>
 
     <div class="prescription-note-field">
@@ -162,7 +188,12 @@
 <script setup>
 import { computed, nextTick, onMounted, ref, watch } from 'vue'
 import PathologyTag from './PathologyTag.vue'
-import { formatMainSymptomsText, lookupFormulaPowder, runDoseCalc } from '../../utils/formulaPowder'
+import {
+  formatDoseNumber,
+  formatMainSymptomsText,
+  lookupFormulaPowder,
+  runDoseCalc
+} from '../../utils/formulaPowder'
 
 const props = defineProps({
   modelValue: {
@@ -170,6 +201,7 @@ const props = defineProps({
     default: () => ({
       targetDose: 200,
       note: '',
+      herbDoses: {},
       rows: []
     })
   },
@@ -209,6 +241,32 @@ const finalMap = computed(() => {
   const map = new Map()
   calc.value.rows.forEach((r) => map.set(r.id, r))
   return map
+})
+
+const herbDoseItems = computed(() => {
+  const coefficient = calc.value.coefficient
+  if (!Number.isFinite(coefficient)) return []
+
+  const doseMap = new Map()
+  for (const row of props.modelValue.rows || []) {
+    const hit = lookupFormulaPowder(props.formulaIndex, row.name)
+    const portions = Number(row.portions) || 0
+    if (!hit?.items?.length || portions <= 0) continue
+
+    for (const item of hit.items) {
+      const dose = item.amount * portions * coefficient
+      doseMap.set(item.herb, (doseMap.get(item.herb) || 0) + dose)
+    }
+  }
+
+  const manualDoses = props.modelValue.herbDoses || {}
+  return Array.from(doseMap.entries()).map(([herb, dose]) => ({
+    herb,
+    dose: formatDoseNumber(dose),
+    doseValue: Number.isFinite(Number(manualDoses[herb]))
+      ? Number(manualDoses[herb])
+      : Number(formatDoseNumber(dose))
+  }))
 })
 
 function rowMeta(row) {
@@ -278,9 +336,15 @@ function onRowDragEnd() {
 }
 
 function buildPayload(rows) {
+  const herbDoses = Object.fromEntries(
+    Object.entries(props.modelValue.herbDoses || {}).filter(
+      ([, value]) => Number.isFinite(Number(value)) && Number(value) >= 0
+    )
+  )
   return {
     targetDose: localTarget.value,
     note: localNote.value,
+    herbDoses,
     rows: rows.map((r) => ({
       id: r.id,
       name: r.name,
@@ -292,6 +356,20 @@ function buildPayload(rows) {
 
 function emitUpdate() {
   emit('update:modelValue', buildPayload(props.modelValue.rows || []))
+}
+
+function updateHerbDose(herb, value) {
+  const herbDoses = { ...(props.modelValue.herbDoses || {}) }
+  const dose = Number(value)
+  if (!herb || !Number.isFinite(dose)) {
+    delete herbDoses[herb]
+  } else {
+    herbDoses[herb] = dose
+  }
+  emit('update:modelValue', {
+    ...buildPayload(props.modelValue.rows || []),
+    herbDoses
+  })
 }
 
 function resizeBasisTextareas() {
@@ -400,7 +478,7 @@ onMounted(() => {
 }
 .formula-table {
   width: 100%;
-  min-width: 980px;
+  min-width: 900px;
   border-collapse: collapse;
   table-layout: fixed;
   font-size: 12px;
@@ -412,10 +490,10 @@ onMounted(() => {
   width: 14%;
 }
 .formula-table .col-main-symptoms {
-  width: 20%;
+  width: 24%;
 }
 .formula-table .col-basis {
-  width: 28%;
+  width: 18%;
 }
 .formula-table .col-unit {
   width: 78px;
@@ -432,6 +510,13 @@ onMounted(() => {
   padding: 8px 10px;
   vertical-align: middle;
   background: #fff;
+}
+.formula-table th.col-action,
+.formula-table td.col-action,
+.formula-table th.col-drag,
+.formula-table td.col-drag {
+  padding-left: 6px;
+  padding-right: 6px;
 }
 .formula-table th {
   background: #f8fafc;
@@ -455,13 +540,16 @@ onMounted(() => {
 .formula-table td.num,
 .formula-table th.num,
 .formula-table td.col-action,
-.formula-table th.col-action {
+.formula-table th.col-action,
+.formula-table td.col-drag,
+.formula-table th.col-drag {
   text-align: center;
   vertical-align: middle;
   font-variant-numeric: tabular-nums;
 }
-.formula-table .col-action {
-  width: 44px;
+.formula-table .col-action,
+.formula-table .col-drag {
+  width: 36px;
 }
 .formula-table tbody tr:hover td {
   background: #fbfcfd;
@@ -488,33 +576,49 @@ onMounted(() => {
   font-size: 12px;
   background: #fafbfc;
 }
-.formula-name-cell {
-  display: grid;
-  grid-template-columns: 22px minmax(0, 1fr);
-  align-items: center;
-  gap: 6px;
-}
 .formula-drag-handle {
-  width: 22px;
-  height: 32px;
-  border: 1px solid transparent;
-  border-radius: 6px;
-  background: transparent;
+  display: grid;
+  place-items: center;
+  margin: 0 auto;
+  width: 20px;
+  height: 26px;
+  padding: 0;
+  border: 1px solid #e4e9ef;
+  border-radius: 5px;
+  background: #f8fafc;
   color: #98a2b3;
   cursor: grab;
-  font-size: 14px;
-  font-weight: 900;
-  line-height: 1;
-  letter-spacing: -3px;
-  writing-mode: vertical-rl;
+  transition: background 0.15s ease, border-color 0.15s ease, color 0.15s ease, box-shadow 0.15s ease;
+}
+.formula-drag-grip {
+  display: grid;
+  grid-template-columns: repeat(2, 2px);
+  gap: 2px 3px;
+}
+.formula-drag-grip i {
+  display: block;
+  width: 2px;
+  height: 2px;
+  border-radius: 50%;
+  background: currentColor;
+}
+.formula-table-row:hover .formula-drag-handle {
+  border-color: #d7e8de;
+  background: #f4fbf7;
+  color: #6b8f7a;
 }
 .formula-drag-handle:hover {
-  border-color: #c7d7fe;
-  background: #eff6ff;
-  color: #3b82f6;
+  border-color: #b9d8c7;
+  background: #ecf8f1;
+  color: #0f7c43;
+  box-shadow: 0 1px 2px rgba(15, 124, 67, 0.08);
 }
-.formula-drag-handle:active {
+.formula-drag-handle:active,
+.formula-table-row.is-dragging .formula-drag-handle {
   cursor: grabbing;
+  border-color: #9fd4b6;
+  background: #dff5e9;
+  color: #0a6b39;
 }
 .name-input {
   width: 100%;
@@ -523,7 +627,7 @@ onMounted(() => {
   text-align: left;
 }
 .basis-input {
-  width: min(100%, 320px);
+  width: min(100%, 200px);
 }
 .basis-input :deep(.el-input__wrapper) {
   min-height: 34px;
@@ -572,20 +676,86 @@ onMounted(() => {
   color: #0f7c43;
   font-weight: 700;
 }
+.herb-dose-panel {
+  margin-top: 10px;
+  padding: 10px 12px;
+  border: 1px solid #e1ecdf;
+  border-radius: 7px;
+  background: #fbfefb;
+}
+.herb-dose-title {
+  margin-bottom: 8px;
+  color: #344054;
+  font-size: 12px;
+  font-weight: 700;
+}
+.herb-dose-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 16px;
+}
+.herb-dose-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  min-height: 28px;
+  color: #344054;
+  font-size: 12px;
+  line-height: 1.2;
+}
+.herb-dose-input {
+  width: 58px;
+}
+.herb-dose-input :deep(.el-input__wrapper) {
+  min-height: 24px;
+  padding: 0 5px;
+  border-radius: 5px;
+  box-shadow: none;
+  background: #f8fcf9;
+}
+.herb-dose-input :deep(.el-input__inner) {
+  color: #0f7c43;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+  text-align: center;
+}
+.herb-name {
+  font-weight: 600;
+}
 .formula-remove-btn {
-  width: 28px;
-  height: 28px;
-  border: 1px solid transparent;
-  border-radius: 6px;
-  background: transparent;
-  color: #98a2b3;
-  font-size: 15px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  padding: 0;
+  border: 1px solid #f5cfc5;
+  border-radius: 50%;
+  background: #fff3ef;
+  color: #d85a45;
   cursor: pointer;
+  transition: background 0.15s ease, border-color 0.15s ease, color 0.15s ease, transform 0.15s ease;
+}
+.formula-remove-icon {
+  display: block;
+  width: 11px;
+  height: 11px;
+  flex-shrink: 0;
+}
+.formula-remove-icon path {
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.8;
+  stroke-linecap: round;
 }
 .formula-remove-btn:hover {
-  color: #c2410c;
-  border-color: #f3d8cf;
-  background: #fff7f4;
+  color: #b42318;
+  border-color: #e8a99a;
+  background: #fde4dc;
+  transform: scale(1.04);
+}
+.formula-remove-btn:active {
+  transform: scale(0.96);
 }
 .muted {
   color: #98a2b3;

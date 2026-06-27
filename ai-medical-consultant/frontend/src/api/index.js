@@ -80,7 +80,23 @@ export const consultApi = {
   assistantChat: (data) => api.post('/v1/consult/assistant', data, { timeout: 180000 }),
   assistantChatStream: (data, handlers, signal) =>
     import('../utils/assistantChatStream').then((m) => m.assistantChatStream(data, handlers, signal)),
-  saveAssistantRule: (data) => api.post('/v1/consult/assistant/rules', data, { silent: true })
+  saveAssistantRule: (data) => api.post('/v1/consult/assistant/rules', data, { silent: true }),
+  uploadAttachment: (sessionId, file) => {
+    const form = new FormData()
+    form.append('file', file)
+    return api.post(`/v1/consult/sessions/${sessionId}/attachments`, form, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+      timeout: 120000
+    })
+  },
+  getAttachmentBlob: (sessionId, attachmentId, download = false) =>
+    api.get(`/v1/consult/sessions/${sessionId}/attachments/${attachmentId}/file`, {
+      params: download ? { download: true } : undefined,
+      responseType: 'blob',
+      silent: !download
+    }),
+  deleteAttachment: (sessionId, attachmentId) =>
+    api.delete(`/v1/consult/sessions/${sessionId}/attachments/${attachmentId}`)
 }
 
 export const knowledgeApi = {

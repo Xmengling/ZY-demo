@@ -1,18 +1,24 @@
-/** 从方剂组成文本解析散剂单方总量（g） */
-export function parseCompositionTotal(composition) {
-  if (!composition) return 0
-  const cleaned = String(composition)
-    .replace(/\[\[[^\]]+\]\]/g, '')
-    .replace(/[半斤两钱]/g, '')
+/** 从方剂组成文本解析每味药和散剂单方总量（g）。 */
+export function parseCompositionItems(composition) {
+  if (!composition) return []
+  const cleaned = stripFormulaMarkup(composition)
+    .replace(/[；;。]/g, ' ')
+    .replace(/[，、,+＋]/g, ' ')
+    .replace(/\s+/g, ' ')
     .trim()
-  const normalized = cleaned.replace(/(\D)(\d)/g, '$1 $2')
-  const parts = normalized.split(/[+＋、，,\s]+/).filter(Boolean)
-  let total = 0
-  for (const part of parts) {
-    const m = part.match(/(\d+(?:\.\d+)?)\s*(?:g|克|枚)?$/)
-    if (m) total += parseFloat(m[1])
+  const items = []
+  const pattern = /([\u4e00-\u9fa5A-Za-z][\u4e00-\u9fa5A-Za-z·（）()]*?)\s*(\d+(?:\.\d+)?)\s*(?:g|克|枚|个)?(?=\s|$|[，、,+＋；;。]|[\u4e00-\u9fa5A-Za-z])/g
+  let match
+  while ((match = pattern.exec(cleaned))) {
+    const herb = match[1].trim()
+    const amount = Number(match[2])
+    if (herb && Number.isFinite(amount)) items.push({ herb, amount })
   }
-  return total
+  return items
+}
+
+export function parseCompositionTotal(composition) {
+  return parseCompositionItems(composition).reduce((sum, item) => sum + item.amount, 0)
 }
 
 export function extractPathologyLabels(pathology) {
@@ -56,6 +62,7 @@ export function buildFormulaPowderIndex(formulas = []) {
     index.set(name, {
       name: f.name,
       total: parseCompositionTotal(f.composition),
+      items: parseCompositionItems(f.composition),
       pathology: extractPathologyLabels(f.pathology),
       herbs: f.composition || '',
       mainSymptoms: Array.isArray(f.mainSymptoms) ? f.mainSymptoms : [],

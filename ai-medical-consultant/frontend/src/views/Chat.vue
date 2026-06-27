@@ -374,6 +374,40 @@
             />
           </div>
         </section>
+
+        <!-- 附件 -->
+        <section
+          v-show="isSectionVisible('attachments')"
+          class="form-section collect-section attachments-section"
+          :class="{ 'is-collapsed': collapsed.attachments }"
+        >
+          <div
+            class="section-head"
+            role="button"
+            tabindex="0"
+            @click="toggleSection('attachments')"
+            @keydown.enter="toggleSection('attachments')"
+          >
+            <div class="section-head-main">
+              <div class="section-name">
+                <span class="num">11</span>
+                <span class="section-title-text">附件</span>
+              </div>
+            </div>
+            <div class="section-head-meta">
+              <span v-if="form.attachments.length" class="section-count-badge">{{ form.attachments.length }}</span>
+              <span class="section-chevron" aria-hidden="true" />
+            </div>
+          </div>
+          <div v-show="!collapsed.attachments" class="section-content">
+            <IntakeAttachments
+              v-model="form.attachments"
+              :session-id="sessionId"
+              :ensure-session="ensureSessionForAttachments"
+              @changed="autoSaveIntake"
+            />
+          </div>
+        </section>
       </div>
 
       <div v-else ref="formScrollRef" class="form-scroll followup-scroll">
@@ -648,11 +682,12 @@ import { ArrowLeft, ArrowRight, DocumentCopy, Download } from '@element-plus/ico
 import { consultApi, formulasApi } from '../api'
 import SymptomChips from '../components/consult/SymptomChips.vue'
 import PrescriptionBlock from '../components/consult/PrescriptionBlock.vue'
+import IntakeAttachments from '../components/consult/IntakeAttachments.vue'
 import ConsultAiChat from '../components/consult/ConsultAiChat.vue'
 import PathologyTag from '../components/consult/PathologyTag.vue'
 import PathologyStarRating from '../components/consult/PathologyStarRating.vue'
 import InquiryHints from '../components/consult/InquiryHints.vue'
-import { buildFormulaPowderIndex, lookupFormulaPowder, runDoseCalc } from '../utils/formulaPowder'
+import { buildFormulaPowderIndex, formatDoseNumber, lookupFormulaPowder, runDoseCalc } from '../utils/formulaPowder'
 import { getPathologyToneClass } from '../utils/pathologyTone'
 import { parseCaseText, FIELD_LABELS } from '../utils/caseTextParser'
 import {
@@ -691,7 +726,8 @@ const sessionNavList = ref([])
 const collapsed = reactive({
   base: false,
   tongue: false,
-  prescription: false
+  prescription: false,
+  attachments: false
 })
 const blockCollapsed = reactive({})
 const blockCollapseManual = reactive({})
@@ -785,6 +821,7 @@ function defaultPrescription() {
   return {
     targetDose: 200,
     note: '',
+    herbDoses: {},
     rows: []
   }
 }
@@ -834,6 +871,7 @@ const emptyForm = () => ({
   scores: {},
   chipLists: {},
   prescription: defaultPrescription(),
+  attachments: [],
   followups: []
 })
 
@@ -848,12 +886,13 @@ const moduleNav = computed(() => [
   { key: 'base', label: '基础信息' },
   ...sections.value.map((s) => ({ key: s.key, label: sectionDisplayTitle(s.title) })),
   { key: 'tongue', label: '舌脉腹诊' },
-  { key: 'prescription', label: '处方' }
+  { key: 'prescription', label: '处方' },
+  { key: 'attachments', label: '附件' }
 ])
 
 const visibleSectionKeys = computed(() => {
   if (activeModule.value === 'all') {
-    return ['base', ...sections.value.map((s) => s.key), 'tongue', 'prescription']
+    return ['base', ...sections.value.map((s) => s.key), 'tongue', 'prescription', 'attachments']
   }
   return [activeModule.value]
 })
@@ -979,6 +1018,7 @@ async function loadSessionNavList() {
 function goAdjacentSession(direction) {
   const targetId = direction === 'prev' ? prevSessionId.value : nextSessionId.value
   if (!targetId) return
+  form.attachments = []
   const query = { ...route.query }
   delete query.module
   router.push({ path: `/consult/${targetId}`, query })
@@ -997,6 +1037,7 @@ const hasCaseContent = computed(() => {
       form.pulse ||
       form.abdominal ||
       (form.prescription?.rows || []).some((row) => row.name) ||
+      (form.attachments || []).length ||
       hasFollowupContent
   )
 })
@@ -1023,10 +1064,36 @@ function normalizeIntakeTongue(data) {
   }
 }
 
+function normalizeIntakeAttachments(data) {
+  if (!data) return
+  if (!Array.isArray(data.attachments)) data.attachments = []
+  data.attachments = data.attachments
+    .filter((item) => item && item.id && item.name)
+    .map((item) => ({
+      id: String(item.id),
+      name: String(item.name),
+      size: Number(item.size) || 0,
+      mimeType: String(item.mimeType || ''),
+      isImage: Boolean(item.isImage),
+      uploadedAt: String(item.uploadedAt || '')
+    }))
+}
+
 function normalizeIntakeFollowups(data) {
   if (!data) return
+  normalizeIntakeAttachments(data)
+  data.prescription = normalizePrescription(data.prescription)
   if (!Array.isArray(data.followups)) data.followups = []
   data.followups.forEach((visit, index) => normalizeFollowup(visit, index))
+}
+
+function normalizePrescription(prescription) {
+  const normalized = { ...defaultPrescription(), ...(prescription || {}) }
+  if (!Array.isArray(normalized.rows)) normalized.rows = []
+  if (!normalized.herbDoses || typeof normalized.herbDoses !== 'object' || Array.isArray(normalized.herbDoses)) {
+    normalized.herbDoses = {}
+  }
+  return normalized
 }
 
 function chipsForBlock(block) {
@@ -1061,10 +1128,7 @@ function normalizeFollowup(visit, index = 0) {
   if (!visit.selected || typeof visit.selected !== 'object') visit.selected = {}
   if (!visit.notes || typeof visit.notes !== 'object') visit.notes = {}
   if (!visit.chipLists || typeof visit.chipLists !== 'object') visit.chipLists = {}
-  if (!visit.prescription || !Array.isArray(visit.prescription.rows)) {
-    visit.prescription = { ...defaultPrescription(), ...(visit.prescription || {}) }
-    if (!Array.isArray(visit.prescription.rows)) visit.prescription.rows = []
-  }
+  visit.prescription = normalizePrescription(visit.prescription)
   if (!String(visit.previous_formula || '').trim()) {
     visit.previous_formula = buildPrescriptionSummaryTextForForm(form.prescription)
   }
@@ -1474,6 +1538,45 @@ function sanitizeFilePart(value) {
     .replace(/\s+/g, '')
 }
 
+function buildHerbDoseExportLine(prescription) {
+  const rows = (prescription?.rows || []).filter((row) => row.name?.trim())
+  if (!rows.length) return ''
+
+  const calc = runDoseCalc(
+    rows.map((row) => {
+      const hit = lookupFormulaPowder(formulaIndex.value, row.name)
+      return {
+        id: row.id,
+        name: row.name,
+        unitTotal: hit?.total || 0,
+        portions: Number(row.portions) || 0
+      }
+    }),
+    prescription?.targetDose || 200
+  )
+  if (!Number.isFinite(calc.coefficient)) return ''
+
+  const doseMap = new Map()
+  for (const row of rows) {
+    const hit = lookupFormulaPowder(formulaIndex.value, row.name)
+    const portions = Number(row.portions) || 0
+    if (!hit?.items?.length || portions <= 0) continue
+    for (const item of hit.items) {
+      const dose = item.amount * portions * calc.coefficient
+      doseMap.set(item.herb, (doseMap.get(item.herb) || 0) + dose)
+    }
+  }
+
+  const manualDoses = prescription?.herbDoses || {}
+  const parts = Array.from(doseMap.entries()).map(([herb, dose]) => {
+    const finalDose = Number.isFinite(Number(manualDoses[herb]))
+      ? Number(manualDoses[herb])
+      : dose
+    return `${herb}${formatDoseNumber(finalDose)}g`
+  })
+  return parts.length ? `- 中药用量：${parts.join('、')}` : ''
+}
+
 function buildFormulaExportRows() {
   const rows = (form.prescription?.rows || []).filter((row) => row.name?.trim())
   if (!rows.length) return ['- 未录入']
@@ -1492,13 +1595,15 @@ function buildFormulaExportRows() {
   )
   const finalMap = new Map(calc.rows.map((row) => [row.id, row]))
 
-  return rows.map((row) => {
+  const formulaRows = rows.map((row) => {
     const finalDose = finalMap.get(row.id)?.finalDose ?? '—'
     const chunks = [`${row.name} × ${Number(row.portions) || 1}份`]
     if (finalDose !== '—') chunks.push(`最终用量 ${finalDose}g`)
     if (String(row.basis || '').trim()) chunks.push(`用方依据：${String(row.basis).trim()}`)
     return `- ${chunks.join('；')}；`
   })
+  const herbLine = buildHerbDoseExportLine(form.prescription)
+  return herbLine ? [...formulaRows, herbLine] : formulaRows
 }
 
 function buildPrescriptionExportRows(prescription) {
@@ -1519,13 +1624,15 @@ function buildPrescriptionExportRows(prescription) {
   )
   const finalMap = new Map(calc.rows.map((row) => [row.id, row]))
 
-  return rows.map((row) => {
+  const formulaRows = rows.map((row) => {
     const finalDose = finalMap.get(row.id)?.finalDose ?? '—'
     const chunks = [`${row.name} × ${Number(row.portions) || 1}份`]
     if (finalDose !== '—') chunks.push(`最终用量 ${finalDose}g`)
     if (String(row.basis || '').trim()) chunks.push(`用方依据：${String(row.basis).trim()}`)
     return `- ${chunks.join('；')}；`
   })
+  const herbLine = buildHerbDoseExportLine(prescription)
+  return herbLine ? [...formulaRows, herbLine] : formulaRows
 }
 
 function buildPathologyExportLines() {
@@ -1827,6 +1934,18 @@ function handleCollectFocusout(event) {
   autoSaveIntake()
 }
 
+async function ensureSessionForAttachments() {
+  if (sessionId.value) return sessionId.value
+  const created = await consultApi.createSession({
+    title: form.chief_complaint || form.patient_name || '新的问诊'
+  })
+  sessionId.value = created.id
+  localStorage.removeItem('consult-draft-new')
+  router.replace(`/consult/${created.id}`)
+  await loadSessionNavList()
+  return created.id
+}
+
 async function autoSaveIntake() {
   if (autoSaving.value || saving.value) {
     autoSavePending.value = true
@@ -1883,6 +2002,7 @@ async function saveIntake() {
 
 async function loadSession(id) {
   try {
+    form.attachments = []
     const detail = await consultApi.getSession(id)
     const data = detail.intake_data || {}
     Object.assign(form, emptyForm(), data)
@@ -1952,16 +2072,19 @@ watch(
   () => [route.params.id, route.query.from],
   async ([routeId]) => {
     const id = routeId ? Number(routeId) : null
-    sessionId.value = id
-    if (sessionId.value) {
-      await loadSession(sessionId.value)
-    } else if (!loadDraft()) {
-      Object.assign(form, emptyForm())
-      resetBlockCollapseState()
-      rememberAutoSaveSnapshot()
+    if (id) {
+      await loadSession(id)
+      sessionId.value = id
     } else {
-      resetBlockCollapseState()
-      rememberAutoSaveSnapshot()
+      sessionId.value = null
+      if (!loadDraft()) {
+        Object.assign(form, emptyForm())
+        resetBlockCollapseState()
+        rememberAutoSaveSnapshot()
+      } else {
+        resetBlockCollapseState()
+        rememberAutoSaveSnapshot()
+      }
     }
   }
 )

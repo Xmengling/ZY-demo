@@ -46,3 +46,5 @@
   - `%LocalAppData%\Google\Chrome\Application\chrome.exe`
 - 打开本地 HTML 时使用文件的绝对路径，例如 `D:\AI\ZY-Study\note\example.html`。
 - 如果由于权限限制需要用户批准启动 Chrome，应直接发起权限请求。
+
+- 后续修改「方剂解读」里的方剂数据时，`ai-medical-consultant/backend/data/jingfang.sqlite3` 的 `formulas.payload` 是唯一维护数据源；不要再同步改写 `ai-medical-consultant/backend/data/formula_cards/*.json`，也不要用 JSON 文件反写数据库，避免覆盖用户在页面里已经编辑过的内容。JSON 文件只作为历史/种子参考，除非用户明确要求处理 JSON 文件本身。
