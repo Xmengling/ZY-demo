@@ -101,7 +101,18 @@ const PREVIEW_EDIT_TARGETS = {
   li: () => fields.li,
 };
 
-const PREVIEW_INLINE_EDIT_TARGETS = new Set(["classicDosage", "composition"]);
+const PREVIEW_INLINE_EDIT_TARGETS = new Set([
+  "name",
+  "classicDosage",
+  "composition",
+  "caution",
+  "compare",
+  "points",
+  "classics",
+  "cases",
+  "hu",
+  "li",
+]);
 let previewClickTimer = null;
 
 const PATHOLOGY_OPTION_GROUPS = {
@@ -1338,15 +1349,48 @@ function focusEditorTarget(target) {
 }
 
 function inlinePreviewEditElement(source, targetKey) {
+  if (targetKey === "name") return source;
   if (targetKey === "classicDosage") return source.querySelector("#card-classic-dosage");
   if (targetKey === "composition") return source.querySelector("#card-composition");
+  if (targetKey === "caution") return source.querySelector("#card-caution");
+  if (targetKey === "compare") return source.querySelector("#card-compare");
+  if (targetKey === "points") return source.querySelector("#card-points");
+  if (targetKey === "classics") return source.querySelector("#card-classics");
+  if (targetKey === "cases") return source.querySelector("#card-cases");
+  if (targetKey === "hu") return source.querySelector("#card-hu");
+  if (targetKey === "li") return source.querySelector("#card-li");
   return null;
 }
 
 function inlinePreviewField(targetKey) {
+  if (targetKey === "name") return fields.name;
   if (targetKey === "classicDosage") return fields.classicDosage;
   if (targetKey === "composition") return fields.composition;
+  if (targetKey === "caution") return fields.caution;
+  if (targetKey === "compare") return fields.compare;
+  if (targetKey === "points") return fields.points;
+  if (targetKey === "classics") return fields.classics;
+  if (targetKey === "hu") return fields.hu;
+  if (targetKey === "li") return fields.li;
   return null;
+}
+
+function inlinePreviewValue(targetKey) {
+  if (targetKey === "cases") return getCaseItemsFromForm().join("\n\n");
+  const field = inlinePreviewField(targetKey);
+  return field?.value || "";
+}
+
+function commitInlinePreviewValue(targetKey, value) {
+  if (targetKey === "cases") {
+    renderCaseRows(splitCaseText(value));
+    renderPreview(normalizeFormulaFromForm());
+    return;
+  }
+  const field = inlinePreviewField(targetKey);
+  if (!field) return;
+  field.value = targetKey === "name" ? String(value || "").trim() : String(value || "").trim();
+  field.dispatchEvent(new Event("input", { bubbles: true }));
 }
 
 function autosizeInlinePreviewEditor(editor) {
@@ -1357,17 +1401,13 @@ function autosizeInlinePreviewEditor(editor) {
 function startPreviewInlineEdit(source, targetKey) {
   if (!PREVIEW_INLINE_EDIT_TARGETS.has(targetKey)) return false;
   const textElement = inlinePreviewEditElement(source, targetKey);
-  const field = inlinePreviewField(targetKey);
-  if (!textElement || !field || textElement.querySelector(".preview-inline-editor")) return false;
+  if (!textElement || textElement.querySelector(".preview-inline-editor")) return false;
 
   const beforeHtml = textElement.innerHTML;
-  const editWidth = Math.max(80, Math.round(textElement.getBoundingClientRect().width));
   const editor = document.createElement("textarea");
   editor.className = "preview-inline-editor";
   editor.rows = 1;
-  editor.value = field.value;
-  editor.style.width = `${editWidth}px`;
-  editor.style.maxWidth = `${editWidth}px`;
+  editor.value = inlinePreviewValue(targetKey);
   textElement.replaceChildren(editor);
 
   let committedOrCancelled = false;
@@ -1375,8 +1415,7 @@ function startPreviewInlineEdit(source, targetKey) {
     if (committedOrCancelled) return;
     committedOrCancelled = true;
     if (commit) {
-      field.value = normalizeCaseItemText(editor.value);
-      field.dispatchEvent(new Event("input", { bubbles: true }));
+      commitInlinePreviewValue(targetKey, editor.value);
     } else {
       textElement.innerHTML = beforeHtml;
     }

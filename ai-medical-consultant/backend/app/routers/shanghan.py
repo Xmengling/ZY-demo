@@ -3,18 +3,20 @@
 
 from __future__ import annotations
 
+import json
 import re
 from difflib import SequenceMatcher
 from urllib.parse import unquote
 
 from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi.responses import StreamingResponse
 
 from ..deps import get_current_user
 from ..models import User
-from ..services import shanghan_store
+from ..services import shanghan_prompt_config, shanghan_store
 from ..services.consult_knowledge import consult_knowledge
 from ..services.llm_service import llm_service
-from ..services.shanghan_teacher_prompt import build_system_prompt, build_user_prompt
+from ..services.shanghan_teacher_prompt import build_system_prompt, build_user_prompt, hard_rules_text
 
 router = APIRouter(prefix="/api/v1/shanghan", tags=["shanghan"])
 
@@ -132,9 +134,31 @@ def _avoid_repeated_question(reply: str, recent_questions: list[str], article: d
     return f"{reply[:index].rstrip()}\n\n### 换一个角度追问\n{replacement}"
 
 
+def _is_quiz_answer(question: str) -> bool:
+    text = question.strip()
+    if not text:
+        return False
+    patterns = (
+        r"^我选\s*[A-D]",
+        r"^我判断[：:]\s*(对|错)",
+        r"^[A-D]\s*[\(（]",
+        r"^[A-D][\.、：:\s]",
+        r"^[A-D]\s*$",
+        r"^(对|错)\s*$",
+    )
+    return any(re.match(pattern, text, re.I) for pattern in patterns)
+
+
+def _last_assistant_has_quiz(last_assistant: str) -> bool:
+    markers = ("<!--QUIZ:", "QUIZ:{", "小测题", "选择题", "判断题", "请选择最准确")
+    return any(marker in last_assistant for marker in markers)
+
+
 def _is_answer_to_previous_prompt(question: str, last_assistant: str) -> bool:
     if not last_assistant:
         return False
+    if _last_assistant_has_quiz(last_assistant) and _is_quiz_answer(question):
+        return True
     ask_markers = ("先答", "请你先", "你先", "小问题", "问题：", "请回答", "回答这个问题")
     if not any(marker in last_assistant for marker in ask_markers):
         return False
@@ -142,6 +166,69 @@ def _is_answer_to_previous_prompt(question: str, last_assistant: str) -> bool:
     if any(marker in question for marker in new_lesson_markers):
         return False
     return bool(re.search(r"[\u4e00-\u9fffA-Za-z0-9]", question))
+
+
+def _prepare_study_chat(payload: dict, user: User) -> dict:
+    question = str(payload.get("message") or "").strip()
+    if not question:
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, "消息不能为空")
+    if not llm_service.available:
+        raise HTTPException(status.HTTP_503_SERVICE_UNAVAILABLE, "AI 未配置，请检查 DeepSeek / OPENAI_API_KEY")
+
+    progress = shanghan_store.get_progress(user.id)
+    requested_no = payload.get("articleNo")
+    article_no = requested_no if requested_no is not None else progress.get("nextArticleNo")
+    article = shanghan_store.get_article_for_study(article_no)
+    resolved_no = shanghan_store.resolve_study_article_no(
+        article.get("number") or article.get("articleNo") or article_no,
+        progress,
+    )
+    state = str(payload.get("state") or "normal")
+    requested_mode = payload.get("mode")
+    mode = shanghan_store.mode_for_state(
+        state,
+        str(requested_mode).strip() if requested_mode else None,
+    )
+    history = shanghan_store.get_chat_history(user.id, resolved_no)[-10:]
+    last_assistant = _last_assistant_prompt(history)
+    recent_questions = _recent_assistant_questions(history)
+    interaction_mode = (
+        "answer_feedback"
+        if _is_answer_to_previous_prompt(question, last_assistant)
+        else "ask"
+    )
+
+    llm_messages: list[dict] = [{"role": "system", "content": build_system_prompt()}]
+    for item in history:
+        role = item.get("role")
+        content = str(item.get("content") or "").strip()
+        if role in {"user", "assistant"} and content:
+            llm_messages.append({"role": role, "content": content})
+    llm_messages.append(
+        {
+            "role": "user",
+            "content": build_user_prompt(
+                question=question,
+                article=article,
+                progress=progress,
+                mode=mode,
+                state=state,
+                interaction_mode=interaction_mode,
+                last_assistant=last_assistant,
+                recent_questions=recent_questions,
+                user_id=user.id,
+            ),
+        }
+    )
+
+    return {
+        "question": question,
+        "resolved_no": resolved_no,
+        "article": article,
+        "progress": progress,
+        "llm_messages": llm_messages,
+        "recent_questions": recent_questions,
+    }
 
 
 @router.get("")
@@ -199,80 +286,128 @@ def list_study_reviews(user: User = Depends(get_current_user)):
     return {"reviews": shanghan_store.list_reviews(user.id)}
 
 
+@router.get("/study/prompt-config")
+def get_study_prompt_config(user: User = Depends(get_current_user)):
+    config = shanghan_prompt_config.get_prompt_config(user.id)
+    config["hardRulesText"] = hard_rules_text()
+    return {"config": config}
+
+
+@router.put("/study/prompt-config")
+def save_study_prompt_config(payload: dict, user: User = Depends(get_current_user)):
+    try:
+        config = shanghan_prompt_config.save_prompt_config(user.id, payload)
+    except ValueError as exc:
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, str(exc)) from exc
+    config["hardRulesText"] = hard_rules_text()
+    return {"config": config}
+
+
+@router.post("/study/prompt-config/reset")
+def reset_study_prompt_config(user: User = Depends(get_current_user)):
+    config = shanghan_prompt_config.reset_prompt_config(user.id)
+    config["hardRulesText"] = hard_rules_text()
+    return {"config": config}
+
+
 @router.get("/study/chat")
-def get_study_chat(user: User = Depends(get_current_user)):
+def get_study_chat(articleNo: int | None = None, user: User = Depends(get_current_user)):
     progress = shanghan_store.get_progress(user.id)
-    article = shanghan_store.get_article_for_study(progress.get("nextArticleNo"))
+    article_no = articleNo if articleNo is not None else progress.get("nextArticleNo")
+    article = shanghan_store.get_article_for_study(article_no)
+    resolved_no = shanghan_store.resolve_study_article_no(
+        article.get("number") or article.get("articleNo") or article_no,
+        progress,
+    )
     return {
-        "messages": shanghan_store.get_chat_history(user.id),
+        "messages": shanghan_store.get_chat_history(user.id, resolved_no),
         "progress": progress,
         "article": article,
+        "articleNo": resolved_no,
         "llmEnabled": llm_service.available,
     }
 
 
 @router.post("/study/chat")
 def study_chat(payload: dict, user: User = Depends(get_current_user)):
-    question = str(payload.get("message") or "").strip()
-    if not question:
-        raise HTTPException(status.HTTP_400_BAD_REQUEST, "消息不能为空")
-    if not llm_service.available:
-        raise HTTPException(status.HTTP_503_SERVICE_UNAVAILABLE, "AI 未配置，请检查 DeepSeek / OPENAI_API_KEY")
-
-    progress = shanghan_store.get_progress(user.id)
-    article_no = payload.get("articleNo") or progress.get("nextArticleNo")
-    article = shanghan_store.get_article_for_study(article_no)
-    mode = str(payload.get("mode") or progress.get("defaultMode") or "standard")
-    state = str(payload.get("state") or "normal")
-    history = shanghan_store.get_chat_history(user.id)[-10:]
-    last_assistant = _last_assistant_prompt(history)
-    recent_questions = _recent_assistant_questions(history)
-    interaction_mode = (
-        "answer_feedback"
-        if _is_answer_to_previous_prompt(question, last_assistant)
-        else "ask"
-    )
-
-    llm_messages: list[dict] = [{"role": "system", "content": build_system_prompt()}]
-    for item in history:
-        role = item.get("role")
-        content = str(item.get("content") or "").strip()
-        if role in {"user", "assistant"} and content:
-            llm_messages.append({"role": role, "content": content})
-    llm_messages.append(
-        {
-            "role": "user",
-            "content": build_user_prompt(
-                question=question,
-                article=article,
-                progress=progress,
-                mode=mode,
-                state=state,
-                interaction_mode=interaction_mode,
-                last_assistant=last_assistant,
-                recent_questions=recent_questions,
-            ),
-        }
-    )
+    ctx = _prepare_study_chat(payload, user)
 
     try:
-        reply = llm_service.chat(llm_messages, temperature=0.08)
+        reply = llm_service.chat(ctx["llm_messages"], temperature=0.08)
     except Exception as exc:
         raise HTTPException(status.HTTP_502_BAD_GATEWAY, "AI 回复失败，请稍后重试") from exc
 
-    reply = _avoid_repeated_question(reply, recent_questions, article)
+    reply = _avoid_repeated_question(reply, ctx["recent_questions"], ctx["article"])
     messages = shanghan_store.append_chat_exchange(
         user.id,
-        question=question,
+        question=ctx["question"],
         reply=reply,
-        article_no=article.get("number") or article_no,
+        article_no=ctx["resolved_no"],
     )
     return {
         "reply": reply,
         "messages": messages,
-        "progress": progress,
-        "article": article,
+        "progress": ctx["progress"],
+        "article": ctx["article"],
     }
+
+
+@router.post("/study/chat/stream")
+def study_chat_stream(payload: dict, user: User = Depends(get_current_user)):
+    ctx = _prepare_study_chat(payload, user)
+
+    def event_stream():
+        parts: list[str] = []
+        yield (
+            "data: "
+            + json.dumps(
+                {
+                    "type": "start",
+                    "articleNo": ctx["resolved_no"],
+                },
+                ensure_ascii=False,
+            )
+            + "\n\n"
+        )
+        try:
+            for token in llm_service.stream(ctx["llm_messages"], temperature=0.08):
+                parts.append(token)
+                yield f"data: {json.dumps({'type': 'token', 'content': token}, ensure_ascii=False)}\n\n"
+            raw_reply = "".join(parts).strip()
+            reply = _avoid_repeated_question(raw_reply, ctx["recent_questions"], ctx["article"])
+            messages = shanghan_store.append_chat_exchange(
+                user.id,
+                question=ctx["question"],
+                reply=reply,
+                article_no=ctx["resolved_no"],
+            )
+            yield (
+                "data: "
+                + json.dumps(
+                    {
+                        "type": "done",
+                        "reply": reply,
+                        "messages": messages,
+                        "progress": ctx["progress"],
+                        "article": ctx["article"],
+                        "articleNo": ctx["resolved_no"],
+                    },
+                    ensure_ascii=False,
+                )
+                + "\n\n"
+            )
+        except Exception:
+            yield f"data: {json.dumps({'type': 'error', 'message': 'AI 回复失败，请稍后重试'}, ensure_ascii=False)}\n\n"
+
+    return StreamingResponse(
+        event_stream(),
+        media_type="text/event-stream; charset=utf-8",
+        headers={
+            "Cache-Control": "no-cache",
+            "Connection": "keep-alive",
+            "X-Accel-Buffering": "no",
+        },
+    )
 
 
 @router.post("", status_code=status.HTTP_201_CREATED)

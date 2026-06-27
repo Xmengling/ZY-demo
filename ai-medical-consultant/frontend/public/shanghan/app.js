@@ -81,6 +81,79 @@ const fields = {
   summary: $("#field-summary"),
 };
 
+const PREVIEW_EDIT_TARGETS = {
+  number: () => fields.number,
+  original: () => fields.original,
+  terms: (source) => resolveTermEditTarget(source),
+  summary: () => fields.summary,
+  hu: () => fields.hu,
+  li: () => fields.li,
+};
+
+let previewClickTimer = null;
+
+function resolveTermEditTarget(source) {
+  const index = source?.dataset?.termIndex;
+  if (index !== undefined && index !== "") {
+    const row = fields.terms?.querySelectorAll(".term-entry")[Number(index)];
+    const input = row?.querySelector(".term-label-input, .term-text-input");
+    if (input) return input;
+  }
+  return fields.terms?.querySelector(".term-label-input, .term-text-input");
+}
+
+function editorFocusContainer(target) {
+  if (!target) return null;
+  return target.closest?.(".field, .field-row, .field-terms, .term-entry") || target;
+}
+
+function focusEditorTarget(target) {
+  if (!target) return;
+  const container = editorFocusContainer(target);
+  const scrollRoot = $("#article-form");
+  if (scrollRoot && container) {
+    const rootRect = scrollRoot.getBoundingClientRect();
+    const containerRect = container.getBoundingClientRect();
+    if (containerRect.top < rootRect.top) {
+      scrollRoot.scrollTop -= rootRect.top - containerRect.top + 12;
+    } else if (containerRect.bottom > rootRect.bottom) {
+      scrollRoot.scrollTop += containerRect.bottom - rootRect.bottom + 12;
+    }
+  } else {
+    container?.scrollIntoView({ behavior: "smooth", block: "center" });
+  }
+  container.classList.remove("editor-target-highlight");
+  void container.offsetWidth;
+  container.classList.add("editor-target-highlight");
+  window.setTimeout(() => container.classList.remove("editor-target-highlight"), 1100);
+
+  const focusable = target.matches?.("input, textarea, button, select")
+    ? target
+    : target.querySelector?.("input, textarea, button, select");
+  if (!focusable) return;
+
+  window.setTimeout(() => {
+    focusable.focus({ preventScroll: true });
+    if (focusable instanceof HTMLInputElement || focusable instanceof HTMLTextAreaElement) {
+      const length = focusable.value.length;
+      focusable.setSelectionRange(length, length);
+    }
+  }, 220);
+}
+
+function handlePreviewTargetClick(event) {
+  const source = event.target.closest?.("[data-edit-target]");
+  if (!source || !$("#article-card")?.contains(source)) return;
+  const targetKey = source.dataset.editTarget;
+  const target = PREVIEW_EDIT_TARGETS[targetKey]?.(source);
+  if (!target) return;
+  if (previewClickTimer) window.clearTimeout(previewClickTimer);
+  previewClickTimer = window.setTimeout(() => {
+    previewClickTimer = null;
+    focusEditorTarget(target);
+  }, 260);
+}
+
 function termsTextFromItems(items = []) {
   return items
     .filter((item) => item.label || item.text)
@@ -448,10 +521,10 @@ function renderPreview(article) {
 
   const termItems = normalized.termItems;
   $("#card-terms").innerHTML = termItems.length
-    ? termItems.map((item) => (
-      `<div class="term-item">${item.label ? `<span class="term-label">${escapeHtml(item.label)}：</span>` : ""}${highlight(item.text || "未填写")}</div>`
+    ? termItems.map((item, index) => (
+      `<div class="term-item" data-edit-target="terms" data-term-index="${index}">${item.label ? `<span class="term-label">${escapeHtml(item.label)}：</span>` : ""}${highlight(item.text || "未填写")}</div>`
     )).join("")
-    : '<div class="term-item">未填写</div>';
+    : '<div class="term-item" data-edit-target="terms">未填写</div>';
 
   const summary = splitLines(article.summary);
   $("#card-summary").innerHTML = summary.length
@@ -1503,6 +1576,7 @@ $("#save-article").addEventListener("click", saveCurrentArticle);
 $("#delete-article").addEventListener("click", deleteCurrentArticle);
 $("#download-card").addEventListener("click", downloadCardPng);
 $("#toggle-list-panel").addEventListener("click", () => setListPanelCollapsed(!state.listCollapsed));
+$("#article-card")?.addEventListener("click", handlePreviewTargetClick);
 window.addEventListener("resize", () => {
   requestAnimationFrame(() => {
     layoutSummaryMindMapLines();

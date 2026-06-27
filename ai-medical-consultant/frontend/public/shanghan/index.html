@@ -4,7 +4,7 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>伤寒论条文解读</title>
-  <link rel="stylesheet" href="styles.css?v=level-badge-sm" />
+  <link rel="stylesheet" href="styles.css?v=preview-locate" />
 </head>
 <body>
   <main class="app-shell app-shell-embedded">
@@ -111,8 +111,8 @@
                   <img src="shanghan-cover.png" alt="伤寒论封面" />
                 </div>
                 <div>
-                  <p id="card-number" class="card-number">第1条</p>
-                  <h3 id="card-title" class="card-article-title">
+                  <p id="card-number" class="card-number" data-edit-target="number">第1条</p>
+                  <h3 id="card-title" class="card-article-title" data-edit-target="original">
                     <span class="level-badge level-1 level-badge--lg" aria-label="一级条文"><span class="level-badge-digit">1</span></span>
                     <span class="card-title-text">太阳之为病，脉浮，头项强痛而恶寒。</span>
                   </h3>
@@ -121,11 +121,11 @@
 
               <div class="card-body">
                 <div class="card-overview">
-                  <section class="side-block terms-block">
+                  <section class="side-block terms-block" data-edit-target="terms">
                     <h4 class="ribbon">词语解析</h4>
                     <div id="card-terms" class="term-list"></div>
                   </section>
-                  <section class="logic-map summary-map">
+                  <section class="logic-map summary-map" data-edit-target="summary">
                     <div class="logic-title">要点总结</div>
                     <div class="logic-branch">
                       <svg class="logic-lines" aria-hidden="true"></svg>
@@ -135,11 +135,11 @@
                 </div>
 
                 <section class="card-main">
-                  <section class="callout">
+                  <section class="callout" data-edit-target="hu">
                     <h4>胡希恕讲解</h4>
                     <div id="card-hu"></div>
                   </section>
-                  <section class="callout">
+                  <section class="callout" data-edit-target="li">
                     <h4>李冠杰讲解</h4>
                     <div id="card-li"></div>
                   </section>
@@ -158,6 +158,6 @@
   </main>
 
   <div id="toast" class="toast" role="status"></div>
-  <script src="app.js?v=level-badge-sm"></script>
+  <script src="app.js?v=preview-locate"></script>
 </body>
 </html>

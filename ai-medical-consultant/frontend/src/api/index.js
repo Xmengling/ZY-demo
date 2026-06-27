@@ -12,6 +12,9 @@ api.interceptors.request.use((config) => {
 api.interceptors.response.use(
   (res) => res.data,
   (err) => {
+    if (err?.code === 'ERR_CANCELED' || err?.name === 'CanceledError') {
+      return Promise.reject(err)
+    }
     const msg = err?.response?.data?.detail || err.message || '请求失败'
     if (err?.response?.status === 401) {
       localStorage.removeItem('token')
@@ -35,9 +38,22 @@ export const formulasApi = {
 }
 
 export const shanghanStudyApi = {
+  articles: () => api.get('/v1/shanghan'),
   progress: () => api.get('/v1/shanghan/study/progress'),
-  chatHistory: () => api.get('/v1/shanghan/study/chat'),
-  chat: (data) => api.post('/v1/shanghan/study/chat', data, { timeout: 180000 }),
+  chatHistory: (articleNo) =>
+    api.get('/v1/shanghan/study/chat', {
+      params: { articleNo: Number(articleNo) },
+      silent: true
+    }),
+  chat: (data, config = {}) =>
+    api.post('/v1/shanghan/study/chat', data, { timeout: 180000, ...config }),
+  chatStream: (data, handlers, signal) =>
+    import('../utils/shanghanStudyChatStream').then((m) =>
+      m.shanghanStudyChatStream(data, handlers, signal)
+    ),
+  promptConfig: () => api.get('/v1/shanghan/study/prompt-config', { silent: true }),
+  savePromptConfig: (data) => api.put('/v1/shanghan/study/prompt-config', data),
+  resetPromptConfig: () => api.post('/v1/shanghan/study/prompt-config/reset'),
   startSession: (data) => api.post('/v1/shanghan/study/session/start', data),
   answer: (sessionId, data) => api.post(`/v1/shanghan/study/session/${sessionId}/answer`, data),
   completeArticle: (sessionId, data) =>

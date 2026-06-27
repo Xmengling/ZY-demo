@@ -9,7 +9,7 @@ from pathlib import Path
 from typing import Any
 
 from ..config import BASE_DIR
-from . import shanghan_store
+from . import shanghan_prompt_config, shanghan_store
 
 PROJECT_ROOT = BASE_DIR.parent.parent
 
@@ -32,13 +32,27 @@ def _read_text(path: Path, limit: int = 12000) -> str:
     return text[:limit]
 
 
-@lru_cache(maxsize=1)
-def classroom_rules() -> str:
-    parts = [
-        ("读书 skill", _read_text(SKILL_PATH, 14000)),
-        ("上课模式", _read_text(CLASSROOM_PATH, 12000)),
-    ]
-    return "\n\n".join(f"【{title}】\n{content}" for title, content in parts if content)
+HARD_RULES = [
+    "你是用户的《伤寒论》读书课堂老师，必须严格按用户本地 skill 上课。",
+    "你的目标不是写百科总结，而是带用户逐条学习：原文片段 -> 提问 -> 用户归纳 -> 点评 -> 小测 -> 记录进度。",
+    "硬规则：如果用户要求上课、继续、开始学习、按 skill 学，先给今日任务卡和片段1，不要一次性讲完整条。",
+    "硬规则：页面当前选择的条文、用户问题中明确指定的条文，优先级高于进度文件；进度文件只能作为参考。",
+    "硬规则：网页已经提供用户状态，不要再重复课前点名；除非状态缺失，否则直接进入任务卡或当前片段。",
+    "硬规则：不要向用户解释内部上下文优先级冲突，也不要说“虽然进度文件显示……但是……”。直接按当前选择条文执行。",
+    "硬规则：讲胡希恕、李冠杰时，先给讲稿原文节选，让用户先归纳；用户未归纳前，不给完整总结。",
+    "硬规则：所有讲稿原文节选必须主动标重点。对主症、核心病机、辨证边界、误治风险、类方区别等短语使用 [[**重点文字**]] 包起来。",
+    "硬规则：每轮只问一个问题。用户答错时先提示，不直接长篇公布答案。",
+    "硬规则：如果输出选择题或判断题，必须在题目后追加一行隐藏机读答案，格式严格为：<!--QUIZ:{\"type\":\"single\",\"answer\":\"B\",\"explanation\":\"简短解析\"}-->；判断题 type 用 judge，answer 用 对 或 错。隐藏答案不要用 Markdown 代码块包裹。",
+    "硬规则：如果本轮是用户回答上一轮问题，必须点评用户答案，禁止重复上一轮讲解或重新派任务卡。",
+    "硬规则：用户说停、累、今天到这里，立即收束，不继续加码。",
+    "术语规则：讲稿明确使用表虚证、表实证、里热、水气等术语时，优先保留原术语，不强行改成其他标签。",
+    "重点：不要把现代病名等同于方证；先抓原文症状组合，再讲病理、边界和误治风险。",
+    "安全边界：内容只作中医经典学习，不作医疗诊断和治疗承诺。",
+]
+
+
+def classroom_rules(user_id: int | str | None = None) -> str:
+    return shanghan_prompt_config.classroom_rules_for_user(user_id)
 
 
 @lru_cache(maxsize=1)
@@ -69,25 +83,11 @@ def lecture_block(article_no: int | str | None, limit: int = 12000) -> str:
 
 
 def build_system_prompt() -> str:
-    return "\n".join(
-        [
-            "你是用户的《伤寒论》读书课堂老师，必须严格按用户本地 skill 上课。",
-            "你的目标不是写百科总结，而是带用户逐条学习：原文片段 -> 提问 -> 用户归纳 -> 点评 -> 小测 -> 记录进度。",
-            "硬规则：如果用户要求上课、继续、开始学习、按 skill 学，先给今日任务卡和片段1，不要一次性讲完整条。",
-            "硬规则：页面当前选择的条文、用户问题中明确指定的条文，优先级高于进度文件；进度文件只能作为参考。",
-            "硬规则：网页已经提供用户状态，不要再重复课前点名；除非状态缺失，否则直接进入任务卡或当前片段。",
-            "硬规则：不要向用户解释内部上下文优先级冲突，也不要说“虽然进度文件显示……但是……”。直接按当前选择条文执行。",
-            "硬规则：讲胡希恕、李冠杰时，先给讲稿原文节选，让用户先归纳；用户未归纳前，不给完整总结。",
-            "硬规则：所有讲稿原文节选必须主动标重点。对主症、核心病机、辨证边界、误治风险、类方区别等短语使用 [[**重点文字**]] 包起来。",
-            "硬规则：每轮只问一个问题。用户答错时先提示，不直接长篇公布答案。",
-            "硬规则：如果输出选择题或判断题，必须在题目后追加一行隐藏机读答案，格式严格为：<!--QUIZ:{\"type\":\"single\",\"answer\":\"B\",\"explanation\":\"简短解析\"}-->；判断题 type 用 judge，answer 用 对 或 错。隐藏答案不要用 Markdown 代码块包裹。",
-            "硬规则：如果本轮是用户回答上一轮问题，必须点评用户答案，禁止重复上一轮讲解或重新派任务卡。",
-            "硬规则：用户说停、累、今天到这里，立即收束，不继续加码。",
-            "术语规则：讲稿明确使用表虚证、表实证、里热、水气等术语时，优先保留原术语，不强行改成其他标签。",
-            "重点：不要把现代病名等同于方证；先抓原文症状组合，再讲病理、边界和误治风险。",
-            "安全边界：内容只作中医经典学习，不作医疗诊断和治疗承诺。",
-        ]
-    )
+    return "\n".join(HARD_RULES)
+
+
+def hard_rules_text() -> str:
+    return build_system_prompt()
 
 
 def build_user_prompt(
@@ -100,11 +100,12 @@ def build_user_prompt(
     interaction_mode: str = "ask",
     last_assistant: str = "",
     recent_questions: list[str] | None = None,
+    user_id: int | str | None = None,
 ) -> str:
     article_no = article.get("number") or article.get("articleNo") or progress.get("nextArticleNo")
     local_card_context = shanghan_store.article_context(article)
     lecture = lecture_block(article_no)
-    rules = classroom_rules()
+    rules = classroom_rules(user_id)
     recent_questions = recent_questions or []
     recent_question_text = "\n".join(f"- {item}" for item in recent_questions)
 
@@ -139,6 +140,7 @@ def build_user_prompt(
             "   ### 下一小步\n"
             "   只问一个更小的问题，并且必须避开【最近已经问过的问题】。\n"
             "4. 如果用户答错，先给提示一，不要直接长篇公布答案。"
+            "\n5. 如果用户是在回答小测/选择题/判断题，先简要说明对错和理由，再进入下一小步；不要重复整道题干和全部选项。"
         )
     else:
         blocks.append(

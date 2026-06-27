@@ -153,10 +153,10 @@ p {
 }
 
 .list-panel {
-  display: grid;
-  gap: 14px;
-  align-content: start;
-  overflow: auto;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  overflow: hidden;
   scrollbar-width: thin;
   scrollbar-color: #b8cff5 transparent;
 }
@@ -187,6 +187,10 @@ p {
 .filter-card {
   padding: 16px 14px 14px;
   background: linear-gradient(180deg, #ffffff 0%, #f8fbff 100%);
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
 }
 
 .filter-card .section-title {
@@ -197,6 +201,7 @@ p {
   margin-bottom: 14px;
   padding-bottom: 0;
   border-bottom: 0;
+  flex-shrink: 0;
 }
 
 .filter-card h1 {
@@ -207,6 +212,7 @@ p {
 
 .search-field {
   margin-bottom: 8px;
+  flex-shrink: 0;
 }
 
 .search-input-wrap {
@@ -240,6 +246,7 @@ p {
   font-size: 12px;
   font-weight: 700;
   letter-spacing: 0.02em;
+  flex-shrink: 0;
 }
 
 .empty-hint {
@@ -253,6 +260,8 @@ p {
   width: 100%;
   display: flex;
   flex-direction: column;
+  flex: 1;
+  min-height: 0;
   padding: 14px;
   overflow: hidden;
 }
@@ -480,6 +489,29 @@ p {
   box-shadow: 0 0 0 3px rgba(71, 124, 255, .12);
 }
 
+[data-edit-target] {
+  cursor: pointer;
+}
+
+[data-edit-target]:hover {
+  box-shadow: 0 0 0 2px rgba(79, 131, 255, .16);
+}
+
+.editor-target-highlight {
+  animation: editorTargetPulse 1.1s ease;
+}
+
+@keyframes editorTargetPulse {
+  0% {
+    box-shadow: 0 0 0 0 rgba(79, 131, 255, .45);
+    background: rgba(239, 246, 255, .95);
+  }
+  100% {
+    box-shadow: 0 0 0 12px rgba(79, 131, 255, 0);
+    background: transparent;
+  }
+}
+
 .field-label-row {
   display: flex;
   align-items: center;
@@ -701,7 +733,7 @@ p {
 .article-list {
   display: grid;
   gap: 4px;
-  max-height: min(520px, calc(100vh - 220px));
+  flex: 1;
   min-height: 0;
   overflow: auto;
   padding: 2px;

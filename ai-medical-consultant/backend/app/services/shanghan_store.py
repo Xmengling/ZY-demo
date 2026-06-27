@@ -195,6 +195,14 @@ STATE_LABELS = {
 }
 
 
+def mode_for_state(state: str, requested_mode: str | None = None) -> str:
+    if requested_mode in MODE_LABELS:
+        return requested_mode
+    if str(state or "normal").strip() == "scattered":
+        return "light"
+    return "standard"
+
+
 def _user_key(user_id: int | str) -> str:
     return str(user_id)
 
@@ -372,8 +380,7 @@ def _make_segments(article: dict, mode: str) -> list[dict]:
 
 def start_session(user_id: int | str, mode: str = "standard", state: str = "normal") -> dict:
     progress = get_progress(user_id)
-    if state == "scattered" and mode != "light":
-        mode = "light"
+    mode = mode_for_state(state, mode)
     article = _find_article(progress.get("nextArticleNo"))
     article_no = _article_number(article) or 1
     session = {
@@ -435,6 +442,15 @@ def save_session(user_id: int | str, session: dict) -> dict:
         )
         conn.commit()
     return session
+
+
+def delete_session(user_id: int | str, session_id: str) -> None:
+    with db() as conn:
+        conn.execute(
+            "delete from shanghan_study_sessions where id = ? and user_id = ?",
+            (session_id, _user_key(user_id)),
+        )
+        conn.commit()
 
 
 def answer_session(user_id: int | str, session_id: str, payload: dict) -> dict:
@@ -657,6 +673,10 @@ def list_reviews(user_id: int | str) -> list[dict]:
     return reviews
 
 
+def resolve_study_article_no(article_no: int | str | None, progress: dict | None = None) -> int:
+    return _chat_article_no(article_no, progress)
+
+
 def get_article_for_study(article_no: int | str | None = None) -> dict:
     return _find_article(article_no)
 
@@ -677,22 +697,74 @@ def article_context(article: dict) -> str:
     return "\n\n".join(parts)
 
 
-def _chat_session_id(user_id: int | str) -> str:
+def _chat_article_no(article_no: int | str | None, progress: dict | None = None) -> int:
+    try:
+        return int(str(article_no or "").strip())
+    except (TypeError, ValueError):
+        pass
+    if progress:
+        try:
+            return int(progress.get("nextArticleNo") or 1)
+        except (TypeError, ValueError):
+            return 1
+    return 1
+
+
+def _chat_session_id(user_id: int | str, article_no: int | str | None = None) -> str:
+    no = _chat_article_no(article_no)
+    return f"shanghan-study-chat-{_user_key(user_id)}-art-{no}"
+
+
+def _legacy_chat_session_id(user_id: int | str) -> str:
     return f"shanghan-study-chat-{_user_key(user_id)}"
 
 
-def get_chat_history(user_id: int | str) -> list[dict]:
-    session = get_session(user_id, _chat_session_id(user_id))
+def _migrate_legacy_chat_if_needed(user_id: int | str) -> None:
+    legacy_id = _legacy_chat_session_id(user_id)
+    legacy = get_session(user_id, legacy_id)
+    if not legacy or legacy.get("migratedToArticleSessions"):
+        return
+    messages = legacy.get("messages")
+    if not isinstance(messages, list) or not messages:
+        legacy["migratedToArticleSessions"] = True
+        save_session(user_id, legacy)
+        return
+
+    grouped: dict[int, list[dict]] = {}
+    fallback_no = 1
+    for msg in messages:
+        try:
+            no = int(msg.get("articleNo") or fallback_no)
+        except (TypeError, ValueError):
+            no = fallback_no
+        grouped.setdefault(no, []).append(msg)
+
+    for no, items in grouped.items():
+        if get_session(user_id, _chat_session_id(user_id, no)):
+            continue
+        save_chat_history(user_id, no, items)
+
+    legacy["migratedToArticleSessions"] = True
+    legacy["messages"] = []
+    save_session(user_id, legacy)
+
+
+def get_chat_history(user_id: int | str, article_no: int | str | None = None) -> list[dict]:
+    _migrate_legacy_chat_if_needed(user_id)
+    no = _chat_article_no(article_no)
+    session = get_session(user_id, _chat_session_id(user_id, no))
     if not session:
         return []
     messages = session.get("messages")
     return messages if isinstance(messages, list) else []
 
 
-def save_chat_history(user_id: int | str, messages: list[dict]) -> dict:
+def save_chat_history(user_id: int | str, article_no: int | str | None, messages: list[dict]) -> dict:
+    no = _chat_article_no(article_no)
     session = {
-        "id": _chat_session_id(user_id),
+        "id": _chat_session_id(user_id, no),
         "type": "ai_chat",
+        "articleNo": no,
         "messages": messages[-40:],
         "updatedAt": int(time.time()),
     }
@@ -700,13 +772,14 @@ def save_chat_history(user_id: int | str, messages: list[dict]) -> dict:
 
 
 def append_chat_exchange(user_id: int | str, question: str, reply: str, article_no: int | str | None) -> list[dict]:
-    messages = get_chat_history(user_id)
+    no = _chat_article_no(article_no)
+    messages = get_chat_history(user_id, no)
     now = int(time.time())
     messages.append(
         {
             "role": "user",
             "content": question,
-            "articleNo": article_no,
+            "articleNo": no,
             "createdAt": now,
         }
     )
@@ -714,9 +787,9 @@ def append_chat_exchange(user_id: int | str, question: str, reply: str, article_
         {
             "role": "assistant",
             "content": reply,
-            "articleNo": article_no,
+            "articleNo": no,
             "createdAt": int(time.time()),
         }
     )
-    save_chat_history(user_id, messages)
+    save_chat_history(user_id, no, messages)
     return messages

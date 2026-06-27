@@ -1317,6 +1317,9 @@ textarea:focus {
 }
 
 .preview-inline-editor {
+  display: block;
+  width: 100%;
+  max-width: 100%;
   min-height: 42px;
   box-sizing: border-box;
   border: 0;
@@ -1329,6 +1332,7 @@ textarea:focus {
   line-height: inherit;
   resize: none;
   overflow: hidden;
+  overflow-wrap: anywhere;
 }
 
 .preview-inline-editor:focus {
