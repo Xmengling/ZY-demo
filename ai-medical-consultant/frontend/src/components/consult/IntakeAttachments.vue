@@ -13,13 +13,18 @@
       <div class="upload-inner">
         <el-icon class="upload-icon"><UploadFilled /></el-icon>
         <p class="upload-title">拖拽文件到此处，或点击上传</p>
-        <p class="upload-hint">支持图片、PDF、Word、Excel 等常见格式 · 单个文件 ≤20MB</p>
+        <p class="upload-hint">支持图片、PDF、Word、Excel 等常见格式 · 单个文件 ≤20MB · 亦可从微信复制图片后 Ctrl+V 粘贴上传</p>
       </div>
     </el-upload>
 
     <div v-if="uploading" class="attachment-uploading">
       <el-icon class="is-loading"><Loading /></el-icon>
       <span>正在上传「{{ uploadingName }}」…</span>
+    </div>
+
+    <div v-if="pasteNotice" class="attachment-paste-notice">
+      <el-icon><UploadFilled /></el-icon>
+      <span>检测到粘贴图片，正在上传…</span>
     </div>
 
     <div v-if="modelValue.length" class="attachment-grid">
@@ -89,7 +94,7 @@
 </template>
 
 <script setup>
-import { onBeforeUnmount, ref, watch } from 'vue'
+import { onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { ElMessage } from 'element-plus'
 import { Document, Loading, UploadFilled } from '@element-plus/icons-vue'
 import { consultApi } from '../../api'
@@ -104,6 +109,7 @@ const emit = defineEmits(['update:modelValue', 'changed'])
 
 const uploading = ref(false)
 const uploadingName = ref('')
+const pasteNotice = ref(false)
 const previewUrls = ref({})
 const previewVisible = ref(false)
 const previewList = ref([])
@@ -131,6 +137,35 @@ function beforeUpload(file) {
     return false
   }
   return true
+}
+
+async function handlePaste(event) {
+  const items = event.clipboardData?.items
+  if (!items) return
+
+  const files = []
+  for (const item of items) {
+    if (item.kind === 'file') {
+      const file = item.getAsFile()
+      if (file) files.push(file)
+    }
+  }
+
+  if (!files.length) return
+
+  event.preventDefault()
+  pasteNotice.value = true
+
+  for (const file of files) {
+    if (!beforeUpload(file)) continue
+    try {
+      await handleUpload({ file, onSuccess: () => {}, onError: () => {} })
+    } catch {
+      // 单文件上传失败已在 handleUpload 内提示
+    }
+  }
+
+  pasteNotice.value = false
 }
 
 async function resolveSessionId() {
@@ -292,7 +327,12 @@ watch(
   { immediate: true, deep: true }
 )
 
+onMounted(() => {
+  document.addEventListener('paste', handlePaste)
+})
+
 onBeforeUnmount(() => {
+  document.removeEventListener('paste', handlePaste)
   revokePreviewUrls()
 })
 </script>
@@ -343,6 +383,17 @@ onBeforeUnmount(() => {
   gap: 6px;
   color: #667085;
   font-size: 12px;
+}
+.attachment-paste-notice {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  border-radius: 6px;
+  background: #ecf8f1;
+  color: #0f7c43;
+  font-size: 12px;
+  font-weight: 600;
 }
 .attachment-grid {
   display: grid;

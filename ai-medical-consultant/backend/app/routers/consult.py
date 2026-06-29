@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 import json
+import logging
 from typing import Any, List
 
 from fastapi import APIRouter, Depends, File, HTTPException, Query, UploadFile, status
@@ -1077,9 +1078,11 @@ def assistant_chat_stream(
                 )
                 + "\n\n"
             )
-        except Exception:
+        except Exception as exc:
             db.rollback()
-            yield f"data: {json.dumps({'type': 'error', 'message': 'AI 回复失败，请稍后重试'}, ensure_ascii=False)}\n\n"
+            logging.exception("AI assistant stream failed: %s", exc)
+            detail = str(exc) if str(exc) else "AI 回复失败，请稍后重试"
+            yield f"data: {json.dumps({'type': 'error', 'message': detail}, ensure_ascii=False)}\n\n"
 
     return StreamingResponse(
         event_stream(),

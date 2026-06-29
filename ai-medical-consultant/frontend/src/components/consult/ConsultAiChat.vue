@@ -599,7 +599,8 @@ async function send(messageText) {
     const status = err?.response?.status
     if (status === 503) aiReady.value = false
     const detail = err?.response?.data?.detail
-    ElMessage.error(typeof detail === 'string' ? detail : 'AI 回复失败')
+    const message = err?.message
+    ElMessage.error(typeof detail === 'string' ? detail : (typeof message === 'string' && message ? message : 'AI 回复失败'))
   } finally {
     sending.value = false
   }
