@@ -183,122 +183,87 @@
           </div>
         </section>
 
-        <!-- 证候采集 -->
+        <!-- 病理采集 -->
         <section
-          v-for="section in sections"
-          :key="section.key"
-          v-show="isSectionVisible(section.key)"
-          class="form-section collect-section"
-          :class="{ 'is-collapsed': collapsed[section.key] }"
+          v-show="isSectionVisible('pathology')"
+          class="form-section collect-section pathology-table-section"
+          :class="{ 'is-collapsed': collapsed.pathology }"
         >
           <div
             class="section-head"
             role="button"
             tabindex="0"
-            @click="toggleSection(section.key)"
-            @keydown.enter="toggleSection(section.key)"
+            @click="toggleSection('pathology')"
+            @keydown.enter="toggleSection('pathology')"
           >
             <div class="section-head-main">
               <div class="section-name">
-                <span class="num">{{ section.order }}</span>
-                <span class="section-title-text">{{ sectionDisplayTitle(section.title) }}</span>
-                <InquiryHints
-                  :module-key="section.key"
-                  :hints="section.inquiry_hints || []"
-                  @updated="(list) => updateSectionHints(section.key, list)"
-                />
+                <span class="num">2</span>
+                <span class="section-title-text">病理症状采集</span>
               </div>
             </div>
             <div class="section-head-meta">
-              <div v-if="scoredBlocks(section).length" class="section-score-summary">
-                <PathologyTag
-                  v-for="block in scoredBlocks(section)"
-                  :key="block.label"
-                  :label="block.label"
-                  :score="form.scores[block.label]"
-                />
-              </div>
+              <span v-if="pathologyProgressText" class="section-progress-pill">{{ pathologyProgressText }}</span>
               <span class="section-chevron" aria-hidden="true" />
             </div>
           </div>
-          <div v-show="!collapsed[section.key]" class="section-content">
-            <div class="biao-list">
+          <div v-show="!collapsed.pathology" class="section-content">
+            <div class="pathology-table">
+              <div class="pathology-table-head">
+                <div>病理分类（需要问诊的症状提示）</div>
+                <div>问诊症状记录</div>
+                <div>病理打分</div>
+              </div>
               <div
-                v-for="block in section.blocks"
-                :key="block.label"
-                class="biao-block"
-                :class="[
-                  pathologyToneClass(block.label),
-                  { 'is-block-collapsed': isBlockCollapsed(block.label) }
-                ]"
+                v-for="row in pathologyRows"
+                :key="row.label"
+                class="pathology-table-row"
+                :class="pathologyToneClass(row.label)"
               >
-                <div
-                  class="biao-label"
-                  role="button"
-                  tabindex="0"
-                  @click="toggleBlock(block.label)"
-                  @keydown.enter="toggleBlock(block.label)"
-                >
-                  {{ block.label }}
-                </div>
-                <div
-                  v-if="isBlockCollapsed(block.label)"
-                  class="biao-collapsed-bar"
-                  role="button"
-                  tabindex="0"
-                  @click="toggleBlock(block.label)"
-                  @keydown.enter="toggleBlock(block.label)"
-                >
-                  <span class="biao-block-preview">{{ blockPreview(block) || '暂无症状，点击展开' }}</span>
-                </div>
-                <div v-else class="biao-body">
-                  <div class="biao-row">
-                    <div class="biao-input">
+                <div class="pathology-reference-cell">
+                  <template v-if="editingHintKey === row.key">
+                    <div class="pathology-reference-edit">
+                      <strong>{{ row.label }}：</strong>
                       <el-input
-                        v-model="form.notes[block.label]"
+                        v-model="hintDraft"
                         type="textarea"
-                        :rows="1"
-                        :autosize="{ minRows: 1, maxRows: 6 }"
-                        class="consult-textarea biao-note-textarea"
-                        placeholder="记录本例所见、程度、时间、诱因"
+                        :autosize="{ minRows: 3, maxRows: 8 }"
+                        class="pathology-hint-textarea"
+                        placeholder="输入需要问诊的症状提示"
                       />
-                      <div class="biao-input-symptoms">
-                        <SymptomChips
-                          :block-label="block.label"
-                          :chips="chipsForBlock(block)"
-                          :selected="form.selected"
-                          :note="form.notes[block.label] || ''"
-                          @update:chips="(list) => setChipList(block.label, list)"
-                          @persisted="(list) => onBlockSymptomsPersisted(block.label, list)"
-                          @update:note="(val) => (form.notes[block.label] = val)"
-                          @toggle-selected="onToggleSelected"
-                        />
+                      <div class="pathology-reference-actions">
+                        <el-button size="small" :disabled="savingHintKey === row.key" @click="cancelEditPathologyHint">取消</el-button>
+                        <el-button size="small" type="primary" :loading="savingHintKey === row.key" @click="savePathologyHint(row)">保存</el-button>
                       </div>
                     </div>
-                    <div class="biao-aside">
-                      <button
-                        type="button"
-                        class="biao-block-chevron"
-                        :aria-label="isBlockCollapsed(block.label) ? '展开' : '折叠'"
-                        @click.stop="toggleBlock(block.label)"
-                      />
-                      <div class="biao-score">
-                        <PathologyStarRating
-                          :model-value="Number(form.scores[block.label]) || 0"
-                          :tone-class="pathologyToneClass(block.label)"
-                          @update:model-value="(value) => setPathologyScore(block.label, value)"
-                        />
+                  </template>
+                  <template v-else>
+                    <div class="pathology-reference-display">
+                      <div class="pathology-reference-text">
+                        <strong>{{ row.label }}：</strong>
+                        <span>{{ row.hintText }}</span>
                       </div>
+                      <button type="button" class="pathology-reference-edit-btn" @click="startEditPathologyHint(row)">编辑</button>
                     </div>
-                  </div>
+                  </template>
                 </div>
-                <button
-                  v-if="isBlockCollapsed(block.label)"
-                  type="button"
-                  class="biao-block-chevron is-collapsed"
-                  aria-label="展开"
-                  @click.stop="toggleBlock(block.label)"
-                />
+                <div class="pathology-symptom-cell">
+                  <el-input
+                    v-model="form.notes[row.label]"
+                    type="textarea"
+                    :autosize="{ minRows: 2, maxRows: 8 }"
+                    class="consult-textarea pathology-table-textarea"
+                    placeholder="记录本例所见症状、程度、时间、诱因"
+                  />
+                </div>
+                <div class="pathology-score-cell">
+                  <el-input
+                    v-model="form.scores[row.label]"
+                    class="pathology-score-input"
+                    placeholder="如：半热 / 3分"
+                    clearable
+                  />
+                </div>
               </div>
             </div>
           </div>
@@ -582,7 +547,7 @@
 
     <el-dialog v-model="fillDialogVisible" title="粘贴医案自动填充" width="640px" :close-on-click-modal="false">
       <p class="autofill-tip">
-        粘贴医案或病历文字，AI 会识别姓名、性别、年龄、主诉、病程、舌脉腹诊、现代诊断，并从预设症状中勾选命中项。复诊内容不参与解析。
+        粘贴医案或病历文字，AI 会识别姓名、性别、年龄、主诉、病程、舌脉腹诊、现代诊断，并按病理表格整理症状记录。复诊内容不参与解析。
       </p>
       <el-input
         v-model="fillText"
@@ -603,7 +568,7 @@
       :close-on-click-modal="false"
     >
       <p class="autofill-tip">
-        这些词来自原文，但 AI 没有直接勾选。请确认是否填入本次医案，或加入对应症状目录，方便以后自动识别。
+        这些词来自原文，但 AI 没有直接归入病理表格。请确认是否填入本次医案。
       </p>
       <div class="autofill-candidates">
         <div
@@ -680,13 +645,9 @@ import { useRoute, useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import { ArrowLeft, ArrowRight, DocumentCopy, Download } from '@element-plus/icons-vue'
 import { consultApi, formulasApi } from '../api'
-import SymptomChips from '../components/consult/SymptomChips.vue'
 import PrescriptionBlock from '../components/consult/PrescriptionBlock.vue'
 import IntakeAttachments from '../components/consult/IntakeAttachments.vue'
 import ConsultAiChat from '../components/consult/ConsultAiChat.vue'
-import PathologyTag from '../components/consult/PathologyTag.vue'
-import PathologyStarRating from '../components/consult/PathologyStarRating.vue'
-import InquiryHints from '../components/consult/InquiryHints.vue'
 import { buildFormulaPowderIndex, formatDoseNumber, lookupFormulaPowder, runDoseCalc } from '../utils/formulaPowder'
 import { getPathologyToneClass } from '../utils/pathologyTone'
 import { parseCaseText, FIELD_LABELS } from '../utils/caseTextParser'
@@ -723,8 +684,12 @@ const candidateDialogVisible = ref(false)
 const pendingSymptomCandidates = ref([])
 const candidateApplying = ref(false)
 const sessionNavList = ref([])
+const editingHintKey = ref('')
+const hintDraft = ref('')
+const savingHintKey = ref('')
 const collapsed = reactive({
   base: false,
+  pathology: false,
   tongue: false,
   prescription: false,
   attachments: false
@@ -815,7 +780,124 @@ const fallbackSections = [
   }
 ]
 
-const sections = ref(fallbackSections)
+const pathologyReferenceRows = [
+  {
+    key: 'extreme-yin',
+    label: '极阴证',
+    hints: ['下利清谷', '四肢厥逆', '脉细欲绝', '精神萎靡']
+  },
+  {
+    key: 'extreme-yang',
+    label: '极阳证',
+    hints: ['急腹证', '身大热', '手足戢然汗出']
+  },
+  {
+    key: 'interior',
+    label: '里证',
+    hints: ['饮食', '胃痛', '肠鸣', '食冷', '反酸', '烧心', '呕吐', '便秘', '腹泻', '便粘']
+  },
+  {
+    key: 'half',
+    label: '半证',
+    hints: ['睡眠', '多梦', '情志', '口干哭', '食道', '咳喘', '孔窍', '两胁', '心慌', '心悸', '心烦', '咽炎']
+  },
+  {
+    key: 'surface',
+    label: '表证',
+    hints: ['寒热', '汗出', '恶风', '头痛头晕', '皮肤', '身痒', '肢凉怕冷', '疼痛']
+  },
+  {
+    key: 'water',
+    label: '水证',
+    hints: ['口渴', '喝水', '小便', '下肢肿', '心下悸', '面肿', '眼肿', '齿痕舌', '帕金森异动']
+  },
+  {
+    key: 'blood',
+    label: '血证',
+    hints: ['狂躁', '呆傻', '结节', '麻木', '抽筋', '眼睑', '斑疹', '健忘', '黄疸']
+  },
+  {
+    key: 'qi',
+    label: '气证',
+    hints: ['腹胀', '嗳气', '打嗝', '放屁', '乏力', '欲寐', '胸闷气短']
+  },
+  {
+    key: 'female',
+    label: '妇科',
+    hints: ['痛经', '月经周期量色', '乳房', '腰酸', '带下阴痒']
+  },
+  {
+    key: 'inspection',
+    label: '望闻切',
+    hints: ['脉', '舌质舌苔', '脸', '唇', '神', '色', '肿']
+  },
+  {
+    key: 'abdomen',
+    label: '腹诊及补充',
+    hints: ['心下', '剑突', '脐旁', '下腹乳', '胫腓']
+  }
+]
+
+const sectionKeyToPathologyLabel = {
+  surface: '表证',
+  interior: '里证',
+  half: '半证',
+  water: '水证',
+  blood: '血证',
+  qi: '气证',
+  yin: '极阴证'
+}
+
+function uniqueList(list) {
+  return Array.from(new Set((list || []).map((item) => String(item || '').trim()).filter(Boolean)))
+}
+
+function sectionPathologyLabel(section) {
+  const byKey = sectionKeyToPathologyLabel[section?.key]
+  if (byKey) return byKey
+  const title = sectionDisplayTitle(section?.title || '')
+  if (title === '阴性') return '极阴证'
+  return title || ''
+}
+
+function normalizePathologySections(rows = []) {
+  const byLabel = new Map(
+    pathologyReferenceRows.map((row, index) => [
+      row.label,
+      {
+        key: row.key,
+        order: index + 2,
+        title: row.label,
+        inquiry_hints: [...row.hints],
+        legacyLabels: [],
+        blocks: [{ label: row.label, symptoms: [...row.hints] }]
+      }
+    ])
+  )
+
+  ;(rows || []).forEach((section) => {
+    const label = sectionPathologyLabel(section)
+    if (!label) return
+    const target = byLabel.get(label) || {
+      key: section.key || `pathology-${label}`,
+      order: byLabel.size + 2,
+      title: label,
+      inquiry_hints: [],
+      legacyLabels: [],
+      blocks: [{ label, symptoms: [] }]
+    }
+    const blockSymptoms = (section.blocks || []).flatMap((block) => block.symptoms || [])
+    const blockLabels = (section.blocks || []).map((block) => block.label).filter((item) => item && item !== label)
+    target.inquiry_hints = uniqueList([...(target.inquiry_hints || []), ...(section.inquiry_hints || []), ...blockSymptoms])
+    target.legacyLabels = uniqueList([...(target.legacyLabels || []), ...blockLabels])
+    target.blocks = [{ label, symptoms: uniqueList([...(target.blocks?.[0]?.symptoms || []), ...target.inquiry_hints]) }]
+    byLabel.set(label, target)
+  })
+
+  return Array.from(byLabel.values())
+}
+
+const sections = ref(normalizePathologySections(fallbackSections))
 
 function defaultPrescription() {
   return {
@@ -877,6 +959,34 @@ const emptyForm = () => ({
 
 const form = reactive(emptyForm())
 
+function mergeLegacyPathologyData() {
+  for (const section of sections.value || []) {
+    const target = section.blocks?.[0]?.label
+    const legacyLabels = section.legacyLabels || []
+    if (!target || !legacyLabels.length) continue
+
+    if (!String(form.notes?.[target] || '').trim()) {
+      const noteParts = legacyLabels
+        .map((label) => {
+          const text = String(form.notes?.[label] || '').trim()
+          return text ? `${label}：${text}` : ''
+        })
+        .filter(Boolean)
+      if (noteParts.length) form.notes[target] = noteParts.join('；')
+    }
+
+    if (!String(form.scores?.[target] || '').trim()) {
+      const scoreParts = legacyLabels
+        .map((label) => {
+          const text = String(form.scores?.[label] || '').trim()
+          return text ? `${label}：${text}` : ''
+        })
+        .filter(Boolean)
+      if (scoreParts.length) form.scores[target] = scoreParts.join('；')
+    }
+  }
+}
+
 sections.value.forEach((s) => {
   collapsed[s.key] = false
 })
@@ -884,7 +994,7 @@ sections.value.forEach((s) => {
 const moduleNav = computed(() => [
   { key: 'all', label: '全部' },
   { key: 'base', label: '基础信息' },
-  ...sections.value.map((s) => ({ key: s.key, label: sectionDisplayTitle(s.title) })),
+  { key: 'pathology', label: '病理采集' },
   { key: 'tongue', label: '舌脉腹诊' },
   { key: 'prescription', label: '处方' },
   { key: 'attachments', label: '附件' }
@@ -892,8 +1002,9 @@ const moduleNav = computed(() => [
 
 const visibleSectionKeys = computed(() => {
   if (activeModule.value === 'all') {
-    return ['base', ...sections.value.map((s) => s.key), 'tongue', 'prescription', 'attachments']
+    return ['base', 'pathology', 'tongue', 'prescription', 'attachments']
   }
+  if (sections.value.some((section) => section.key === activeModule.value)) return ['pathology']
   return [activeModule.value]
 })
 
@@ -923,11 +1034,28 @@ const pathologyBlockOptions = computed(() => {
   return blocks
 })
 
+const pathologyRows = computed(() =>
+  (sections.value || []).map((section) => {
+    const block = section.blocks?.[0] || { label: section.title, symptoms: [] }
+    return {
+      key: section.key,
+      label: block.label || section.title,
+      hintText: uniqueList([...(section.inquiry_hints || []), ...(block.symptoms || [])]).join('，')
+    }
+  })
+)
+
+const pathologyProgressText = computed(() => {
+  const filled = pathologyRows.value.filter((row) => rowHasContent(row.label)).length
+  if (!filled) return ''
+  return `${filled}/${pathologyRows.value.length} 已记录`
+})
+
 const pathologyScores = computed(() => {
+  const labels = new Set(pathologyRows.value.map((row) => row.label))
   const items = Object.entries(form.scores)
-    .map(([label, score]) => ({ label, score: Number(score || 0) }))
-    .filter((i) => i.score > 0)
-    .sort((a, b) => b.score - a.score)
+    .map(([label, score]) => ({ label, score: String(score || '').trim() }))
+    .filter((i) => labels.has(i.label) && i.score)
     .slice(0, 8)
   return items
 })
@@ -964,6 +1092,52 @@ const prescriptionSectionTags = computed(() =>
 )
 
 const caseSummaryText = computed(() => formatConsultSummaryGroups(consultSummaryGroups.value))
+
+function hintsToEditText(text) {
+  return String(text || '')
+    .split(/[，、,;；\n]+/)
+    .map((item) => item.trim())
+    .filter(Boolean)
+    .join('，')
+}
+
+function editTextToHints(text) {
+  return String(text || '')
+    .split(/[，、,;；\n]+/)
+    .map((item) => item.trim())
+    .filter(Boolean)
+}
+
+function startEditPathologyHint(row) {
+  editingHintKey.value = row.key
+  hintDraft.value = hintsToEditText(row.hintText)
+}
+
+function cancelEditPathologyHint() {
+  editingHintKey.value = ''
+  hintDraft.value = ''
+}
+
+function updatePathologyHintRow(key, hints) {
+  const section = sections.value.find((item) => item.key === key)
+  if (!section) return
+  section.inquiry_hints = [...hints]
+  section.blocks = [{ label: section.blocks?.[0]?.label || section.title, symptoms: [...hints] }]
+}
+
+async function savePathologyHint(row) {
+  const hints = editTextToHints(hintDraft.value)
+  savingHintKey.value = row.key
+  try {
+    const data = await consultApi.updateModuleHints(row.key, { hints })
+    updatePathologyHintRow(row.key, data?.hints || hints)
+    editingHintKey.value = ''
+    hintDraft.value = ''
+    ElMessage.success('症状提示已保存')
+  } finally {
+    savingHintKey.value = ''
+  }
+}
 
 function sessionNavLabel(row) {
   if (!row) return ''
@@ -1359,38 +1533,21 @@ function onToggleSelected({ symptom, active }) {
 }
 
 function normalizePathologyScore(value) {
-  const num = Number(value)
-  if (Number.isNaN(num) || num <= 0) return 0
-  if (num <= 5) return Math.round(num)
-  return Math.min(5, Math.max(1, Math.round(num / 20)))
-}
-
-function setPathologyScore(label, value) {
-  const score = normalizePathologyScore(value)
-  if (score > 0) form.scores[label] = score
-  else delete form.scores[label]
-  syncCollapseState()
+  return String(value ?? '').trim()
 }
 
 function hasPathologyScore(label) {
-  return normalizePathologyScore(form.scores[label]) > 0
-}
-
-function formatPathologyScoreStars(label) {
-  const count = normalizePathologyScore(form.scores[label])
-  if (!count) return ''
-  return `${'★'.repeat(count)}${'☆'.repeat(5 - count)}`
-}
-
-function scoredBlocks(section) {
-  return (section.blocks || []).filter((block) => hasPathologyScore(block.label))
+  return Boolean(normalizePathologyScore(form.scores[label]))
 }
 
 function blockHasContent(block) {
-  const note = String(form.notes[block.label] || '').trim()
+  return rowHasContent(block.label)
+}
+
+function rowHasContent(label) {
+  const note = String(form.notes[label] || '').trim()
   if (note) return true
-  if (hasPathologyScore(block.label)) return true
-  return (block.symptoms || []).some((symptom) => form.selected[symptom])
+  return hasPathologyScore(label)
 }
 
 function isBlockCollapsed(label) {
@@ -1400,9 +1557,7 @@ function isBlockCollapsed(label) {
 function blockPreview(block) {
   const note = String(form.notes[block.label] || '').trim()
   if (note) return note.length > 48 ? `${note.slice(0, 48)}…` : note
-  const selected = (block.symptoms || []).filter((symptom) => form.selected[symptom])
-  if (selected.length) return selected.join('、')
-  if (hasPathologyScore(block.label)) return formatPathologyScoreStars(block.label)
+  if (hasPathologyScore(block.label)) return normalizePathologyScore(form.scores[block.label])
   return ''
 }
 
@@ -1425,6 +1580,9 @@ function syncBlockCollapseState() {
 }
 
 function syncSectionCollapseState() {
+  if (!sectionCollapseManual.pathology) {
+    collapsed.pathology = shouldAutoCollapseEmptyBlocks() ? !pathologyRows.value.some((row) => rowHasContent(row.label)) : false
+  }
   sections.value.forEach((section) => {
     const key = section.key
     if (sectionCollapseManual[key]) return
@@ -1509,6 +1667,7 @@ function loadDraft() {
     const data = JSON.parse(raw)
     Object.assign(form, emptyForm(), data)
     normalizeIntakeFollowups(form)
+    mergeLegacyPathologyData()
     return true
   } catch {
     return false
@@ -1637,17 +1796,14 @@ function buildPrescriptionExportRows(prescription) {
 
 function buildPathologyExportLines() {
   const lines = []
-  for (const section of sections.value || []) {
-    for (const block of section.blocks || []) {
-      const label = block.label
-      const note = String(form.notes?.[label] || '').trim()
-      const symptoms = chipsForBlock(block).filter((s) => form.selected?.[s] && !note.includes(s))
-      const parts = []
-      if (note) parts.push(note)
-      if (symptoms.length) parts.push(`症状：${symptoms.join('、')}`)
-      if (hasPathologyScore(label)) parts.push(`打分：${Number(form.scores[label])}`)
-      if (parts.length) lines.push(`- ${label}：${parts.join('；')}`)
-    }
+  for (const row of pathologyRows.value || []) {
+    const label = row.label
+    const note = String(form.notes?.[label] || '').trim()
+    const score = String(form.scores?.[label] || '').trim()
+    const parts = []
+    if (note) parts.push(note)
+    if (score) parts.push(`病理：${score}`)
+    if (parts.length) lines.push(`- ${label}：${parts.join('；')}`)
   }
   return lines.length ? lines : ['- 未记录']
 }
@@ -1805,7 +1961,7 @@ function applyFillResult(result, source = 'local') {
   }
   const parts = []
   if (filled.length) parts.push(`已填充：${filled.join('、')}`)
-  if (symptoms.length) parts.push(`自动勾选 ${symptoms.length} 个症状`)
+  if (symptoms.length) parts.push(`识别 ${symptoms.length} 个症状`)
   if (noteLabels.length) parts.push(`整理 ${noteLabels.length} 个病理项`)
   if (candidates.length) parts.push(`${candidates.length} 个症状待确认`)
   const prefix = source === 'ai' ? 'AI 解析完成' : '已使用本地规则解析'
@@ -1883,6 +2039,7 @@ function resetBlockCollapseState() {
   Object.keys(blockCollapseManual).forEach((key) => delete blockCollapseManual[key])
   Object.keys(sectionCollapseManual).forEach((key) => delete sectionCollapseManual[key])
   initBlockCollapseState()
+  collapsed.pathology = shouldAutoCollapseEmptyBlocks() ? !pathologyRows.value.some((row) => rowHasContent(row.label)) : false
   sections.value.forEach((section) => {
     collapsed[section.key] = shouldAutoCollapseEmptyBlocks() ? !sectionHasContent(section) : false
   })
@@ -2009,11 +2166,12 @@ async function loadSession(id) {
     normalizeIntakeFollowups(form)
     if (form.scores && typeof form.scores === 'object') {
       for (const [key, value] of Object.entries(form.scores)) {
-        const score = normalizePathologyScore(value)
-        if (score > 0) form.scores[key] = score
+        const score = String(value ?? '').trim()
+        if (score) form.scores[key] = score
         else delete form.scores[key]
       }
     }
+    mergeLegacyPathologyData()
     if (!form.prescription || !Array.isArray(form.prescription.rows)) {
       form.prescription = { ...defaultPrescription(), ...(form.prescription || {}) }
       if (!Array.isArray(form.prescription.rows)) form.prescription.rows = []
@@ -2035,14 +2193,7 @@ async function loadSymptomPresets() {
   try {
     const rows = await consultApi.symptomPresets()
     if (Array.isArray(rows) && rows.length) {
-      sections.value = rows.map((section) => ({
-        ...section,
-        inquiry_hints: section.inquiry_hints || [],
-        blocks: (section.blocks || []).map((block) => ({
-          ...block,
-          tone: block.tone || section.tone
-        }))
-      }))
+      sections.value = normalizePathologySections(rows)
       sections.value.forEach((s) => {
         if (collapsed[s.key] === undefined) {
           collapsed[s.key] = shouldAutoCollapseEmptyBlocks() ? !sectionHasContent(s) : false
@@ -2050,7 +2201,7 @@ async function loadSymptomPresets() {
       })
     }
   } catch {
-    sections.value = fallbackSections
+    sections.value = normalizePathologySections(fallbackSections)
   }
   initBlockCollapseState()
   syncCollapseState()
