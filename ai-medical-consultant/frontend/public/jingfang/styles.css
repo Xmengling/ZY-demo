@@ -1763,7 +1763,10 @@ textarea:focus {
 }
 
 .download-field-modal {
-  width: min(520px, 100%);
+  width: min(720px, 100%);
+  max-height: min(86vh, 760px);
+  display: flex;
+  flex-direction: column;
   border: 1px solid #bcd2ff;
   border-radius: 12px;
   background: #ffffff;
@@ -1803,7 +1806,20 @@ textarea:focus {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 10px;
+  overflow: auto;
   padding: 16px 0 18px;
+}
+
+.download-field-section-title {
+  grid-column: 1 / -1;
+  margin-top: 2px;
+  color: #245ed6;
+  font-size: 14px;
+  font-weight: 900;
+}
+
+.download-field-section-title--wide {
+  margin-top: 10px;
 }
 
 .download-field-option {
@@ -1818,6 +1834,10 @@ textarea:focus {
   color: #12213a;
   font-weight: 800;
   cursor: pointer;
+}
+
+.download-field-option--wide {
+  grid-column: 1 / -1;
 }
 
 .download-field-option input {

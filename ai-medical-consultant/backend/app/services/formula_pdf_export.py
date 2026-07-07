@@ -34,7 +34,12 @@ def _latest_pdf() -> Path | None:
     return pdfs[0] if pdfs else None
 
 
-def export_formula_cards_pdf(mode: str = "searchable") -> Path:
+def export_formula_cards_pdf(
+    mode: str = "searchable",
+    fields: str | None = None,
+    proofread_only: bool = False,
+    pathology_labels: str | None = None,
+) -> Path:
     script = EXPORT_MODES.get(mode)
     if script is None:
         raise ValueError(f"不支持的导出模式：{mode}")
@@ -48,9 +53,17 @@ def export_formula_cards_pdf(mode: str = "searchable") -> Path:
         [str(backend_root), env.get("PYTHONPATH", "")]
     ).strip(os.pathsep)
 
+    cmd = [sys.executable, str(script)]
+    if fields and mode == "searchable":
+        cmd.extend(["--fields", fields])
+    if proofread_only and mode == "searchable":
+        cmd.append("--proofread-only")
+    if pathology_labels and mode == "searchable":
+        cmd.extend(["--pathology-labels", pathology_labels])
+
     try:
         proc = subprocess.run(
-            [sys.executable, str(script)],
+            cmd,
             cwd=str(PROJECT_ROOT),
             capture_output=True,
             text=True,

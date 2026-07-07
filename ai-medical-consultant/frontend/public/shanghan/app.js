@@ -1203,6 +1203,19 @@ function drawCoverImageInRect(ctx, image, rect, radius = 8) {
   ctx.restore();
 }
 
+function drawExportWatermark(ctx, width, height) {
+  ctx.save();
+  ctx.globalAlpha = 0.055;
+  ctx.fillStyle = "#245ed6";
+  ctx.font = "900 76px Microsoft YaHei, PingFang SC, sans-serif";
+  ctx.textAlign = "center";
+  ctx.textBaseline = "middle";
+  ctx.translate(width / 2, height / 2);
+  ctx.rotate(-Math.PI / 6);
+  ctx.fillText("小小梦学中医", 0, 0);
+  ctx.restore();
+}
+
 const LEVEL_BADGE_CANVAS_STYLES = {
   "level-1": {
     stops: [
@@ -1431,6 +1444,7 @@ async function downloadCardPng() {
   ctx.fillRect(0, 0, CARD_EXPORT_WIDTH, exportHeight);
   ctx.fillStyle = "#f8fbff";
   ctx.fillRect(0, 0, CARD_EXPORT_WIDTH, exportHeight);
+  drawExportWatermark(ctx, CARD_EXPORT_WIDTH, exportHeight);
   ctx.strokeStyle = "rgba(71,124,255,.09)";
   ctx.lineWidth = 1;
   for (let x = 0; x < CARD_EXPORT_WIDTH; x += 32) {

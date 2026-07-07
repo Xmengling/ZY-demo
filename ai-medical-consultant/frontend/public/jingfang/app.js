@@ -94,6 +94,26 @@ const PARTIAL_DOWNLOAD_FIELDS = [
 ];
 
 const FULL_EXPORT_FIELD_SELECTION = Object.fromEntries(PARTIAL_DOWNLOAD_FIELDS.map((field) => [field.key, true]));
+const PDF_PROOFREAD_ONLY_KEY = "__pdfProofreadOnly";
+const PDF_PATHOLOGY_SELECT_ALL_KEY = "__pdfPathologySelectAll";
+const PDF_PATHOLOGY_FILTER_OPTIONS = [
+  "表虚",
+  "表实",
+  "里寒",
+  "里热",
+  "里虚",
+  "里实",
+  "半热",
+  "半虚",
+  "水虚",
+  "水实",
+  "血虚",
+  "血实",
+  "气虚",
+  "气实",
+  "阴证",
+];
+let downloadFieldModalTarget = "png";
 
 const fields = {
   id: $("#field-id"),
@@ -2367,6 +2387,19 @@ function cropCanvasBottomByContent(canvas, options = {}) {
   return cropped;
 }
 
+function drawExportWatermark(ctx, width, height) {
+  ctx.save();
+  ctx.globalAlpha = 0.055;
+  ctx.fillStyle = "#245ed6";
+  ctx.font = "900 76px Microsoft YaHei, PingFang SC, sans-serif";
+  ctx.textAlign = "center";
+  ctx.textBaseline = "middle";
+  ctx.translate(width / 2, height / 2);
+  ctx.rotate(-Math.PI / 6);
+  ctx.fillText("小小梦学中医", 0, 0);
+  ctx.restore();
+}
+
 function renderCardSidePathology(formula) {
   const items = getCardPathologyItems(formula);
   $("#card-pathology-tags").innerHTML = items.length
@@ -2391,13 +2424,35 @@ function syncPathologyTagWidths() {
   cardSide.style.setProperty("--pathology-tag-width", `${maxWidth}px`);
 }
 
-async function downloadAllPdf() {
+async function downloadAllPdf(selectedFields = null, options = {}) {
   const btn = $("#export-all-pdf");
   if (!btn || btn.disabled) return;
+  const selection = normalizeDownloadSelection("partial", selectedFields);
+  const selectedFieldOptions = PARTIAL_DOWNLOAD_FIELDS.filter((field) => selection[field.key]);
+  const selectedKeys = selectedFieldOptions.map((field) => field.key);
+  if (!selectedKeys.length) {
+    toast("请至少选择一个导出字段");
+    return;
+  }
   btn.disabled = true;
-  toast("正在导出全部方剂 PDF，请稍候（约 10–30 秒）…");
+  const scopeText = options.proofreadOnly ? "已校对方剂" : "全部方剂";
+  const fieldText = selectedFieldOptions.map((field) => field.label).join("、");
+  const pathologyText = options.pathologyLabels?.length
+    ? `；病理：${options.pathologyLabels.join("、")}`
+    : "";
+  toast(`正在导出${scopeText} PDF：${fieldText}${pathologyText}，请稍候…`);
   try {
-    const res = await fetch(`${API_BASE}/export/pdf?mode=searchable`, {
+    const params = new URLSearchParams({
+      mode: "searchable",
+      fields: selectedKeys.join(","),
+    });
+    if (options.proofreadOnly) {
+      params.set("proofreadOnly", "true");
+    }
+    if (options.pathologyLabels?.length) {
+      params.set("pathologyLabels", options.pathologyLabels.join(","));
+    }
+    const res = await fetch(`${API_BASE}/export/pdf?${params.toString()}`, {
       method: "POST",
       headers: authHeaders(),
     });
@@ -2443,15 +2498,61 @@ function normalizeDownloadSelection(mode, selectedFields = null) {
   return { ...defaultPartialDownloadSelection(), ...(selectedFields || {}) };
 }
 
-function renderPartialDownloadFields() {
+function renderPartialDownloadFields({ includePdfOptions = false } = {}) {
   const container = $("#partial-download-fields");
   if (!container) return;
-  container.innerHTML = PARTIAL_DOWNLOAD_FIELDS.map((field) => `
+  const fieldOptions = `
+    <div class="download-field-section-title">导出字段</div>
+    ${PARTIAL_DOWNLOAD_FIELDS.map((field) => `
     <label class="download-field-option">
-      <input type="checkbox" value="${escapeHtml(field.key)}" ${field.defaultChecked ? "checked" : ""} />
+      <input type="checkbox" value="${escapeHtml(field.key)}" data-download-field="true" ${field.defaultChecked ? "checked" : ""} />
       <span>${escapeHtml(field.label)}</span>
     </label>
-  `).join("");
+  `).join("")}`;
+  const pdfOptions = includePdfOptions ? `
+    <div class="download-field-section-title download-field-section-title--wide">导出范围</div>
+    <label class="download-field-option">
+      <input type="checkbox" value="${PDF_PROOFREAD_ONLY_KEY}" />
+      <span>只导出已校对卡片</span>
+    </label>
+    <div class="download-field-section-title download-field-section-title--wide">病理筛选</div>
+    <label class="download-field-option download-field-option--wide">
+      <input type="checkbox" value="${PDF_PATHOLOGY_SELECT_ALL_KEY}" data-pathology-select-all="true" checked />
+      <span>全选</span>
+    </label>
+    ${PDF_PATHOLOGY_FILTER_OPTIONS.map((label) => `
+      <label class="download-field-option">
+        <input type="checkbox" value="${escapeHtml(label)}" data-pathology-filter="true" checked />
+        <span>${escapeHtml(label)}</span>
+      </label>
+    `).join("")}
+  ` : "";
+  container.innerHTML = fieldOptions + pdfOptions;
+  syncPathologySelectAllState();
+}
+
+function syncPathologySelectAllState() {
+  const selectAll = $("#partial-download-fields input[data-pathology-select-all='true']");
+  const filters = $$("#partial-download-fields input[data-pathology-filter='true']");
+  if (!selectAll || !filters.length) return;
+  const checkedCount = filters.filter((input) => input.checked).length;
+  selectAll.checked = checkedCount === filters.length;
+  selectAll.indeterminate = checkedCount > 0 && checkedCount < filters.length;
+}
+
+function handleDownloadFieldChange(event) {
+  const target = event.target;
+  if (!(target instanceof HTMLInputElement)) return;
+  if (target.matches("input[data-pathology-select-all='true']")) {
+    $$("#partial-download-fields input[data-pathology-filter='true']").forEach((input) => {
+      input.checked = target.checked;
+    });
+    syncPathologySelectAllState();
+    return;
+  }
+  if (target.matches("input[data-pathology-filter='true']")) {
+    syncPathologySelectAllState();
+  }
 }
 
 function closePartialDownloadModal() {
@@ -2459,27 +2560,60 @@ function closePartialDownloadModal() {
 }
 
 function openPartialDownloadModal() {
+  downloadFieldModalTarget = "png";
+  const title = $("#partial-download-title");
+  const confirm = $("#partial-download-confirm");
+  if (title) title.textContent = "选择下载字段";
+  if (confirm) confirm.textContent = "确认下载";
   renderPartialDownloadFields();
   const modal = $("#partial-download-modal");
   modal?.removeAttribute("hidden");
   modal?.querySelector("input")?.focus();
 }
 
-function selectedPartialDownloadFields() {
-  const selected = {};
-  $$("#partial-download-fields input[type='checkbox']").forEach((input) => {
-    selected[input.value] = input.checked;
+function openPdfDownloadModal() {
+  downloadFieldModalTarget = "pdf";
+  const title = $("#partial-download-title");
+  const confirm = $("#partial-download-confirm");
+  if (title) title.textContent = "选择PDF字段";
+  if (confirm) confirm.textContent = "确认导出";
+  renderPartialDownloadFields({ includePdfOptions: true });
+  const modal = $("#partial-download-modal");
+  modal?.removeAttribute("hidden");
+  modal?.querySelector("input")?.focus();
+}
+
+function selectedPartialDownloadOptions() {
+  const selectedFields = {};
+  let proofreadOnly = false;
+  const pathologyLabels = [];
+  $$("#partial-download-fields input[type='checkbox'][data-download-field='true']").forEach((input) => {
+    selectedFields[input.value] = input.checked;
   });
-  return selected;
+  const proofreadInput = $(`#partial-download-fields input[value='${PDF_PROOFREAD_ONLY_KEY}']`);
+  if (proofreadInput) proofreadOnly = proofreadInput.checked;
+  $$("#partial-download-fields input[type='checkbox'][data-pathology-filter='true']:checked").forEach((input) => {
+    pathologyLabels.push(input.value);
+  });
+  return { selectedFields, proofreadOnly, pathologyLabels };
 }
 
 async function confirmPartialDownload() {
-  const selected = selectedPartialDownloadFields();
+  const { selectedFields, proofreadOnly, pathologyLabels } = selectedPartialDownloadOptions();
+  const selected = selectedFields;
   if (!Object.values(selected).some(Boolean)) {
     toast("请至少选择一个下载字段");
     return;
   }
+  if (downloadFieldModalTarget === "pdf" && !pathologyLabels.length) {
+    toast("请至少选择一个病理");
+    return;
+  }
   closePartialDownloadModal();
+  if (downloadFieldModalTarget === "pdf") {
+    await downloadAllPdf(selected, { proofreadOnly, pathologyLabels });
+    return;
+  }
   await downloadCardPng("partial", selected);
 }
 
@@ -2564,6 +2698,7 @@ async function downloadCardPng(mode = "partial", selectedFields = null) {
 
     ctx.fillStyle = "#ffffff";
     ctx.fillRect(0, 0, width, height);
+    drawExportWatermark(ctx, width, height);
     ctx.strokeStyle = "#4f7cff";
     ctx.lineWidth = 6;
     roundRect(ctx, 28, 28, width - 56, height - 56, 6);
@@ -2823,7 +2958,7 @@ $("#filter-unproofread")?.addEventListener("click", () => {
   renderFormulaList();
 });
 $("#toggle-proofread")?.addEventListener("click", toggleProofreadComplete);
-$("#export-all-pdf")?.addEventListener("click", downloadAllPdf);
+$("#export-all-pdf")?.addEventListener("click", openPdfDownloadModal);
 $("#new-formula").addEventListener("click", newFormula);
 $("#toggle-list-panel")?.addEventListener("click", () => setListPanelCollapsed(!state.listCollapsed));
 $("#save-formula").addEventListener("click", saveCurrentFormula);
@@ -2836,6 +2971,7 @@ $("#partial-download-confirm")?.addEventListener("click", confirmPartialDownload
 $("#partial-download-modal")?.addEventListener("click", (event) => {
   if (event.target === event.currentTarget) closePartialDownloadModal();
 });
+$("#partial-download-modal")?.addEventListener("change", handleDownloadFieldChange);
 document.addEventListener("keydown", (event) => {
   if (event.key === "Escape" && !$("#partial-download-modal")?.hasAttribute("hidden")) {
     closePartialDownloadModal();

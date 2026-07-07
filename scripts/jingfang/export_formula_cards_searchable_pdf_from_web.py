@@ -28,10 +28,39 @@ from _export_common import (  # noqa: E402
     stop_server,
 )
 FOOTER_TEXT = "© 小小梦学中医｜学习资料，仅供中医学习交流，不作为诊疗处方依据。"
-ROWS_PER_TOC_PAGE = 8
-STATIC_PAGES_BEFORE_TOC = 2
+ROWS_PER_TOC_PAGE = 24
+STATIC_PAGES_BEFORE_TOC = 1
 CARD_FOOTER_HEIGHT = 74
-TOC_CATEGORY_ORDER = ["表证", "里证", "半证", "水证", "血证", "气证"]
+TOC_CATEGORY_ORDER = [
+    "表虚",
+    "表实",
+    "里寒",
+    "里热",
+    "里虚",
+    "里实",
+    "半热",
+    "半虚",
+    "水虚",
+    "水实",
+    "血虚",
+    "血实",
+    "气虚",
+    "气实",
+    "阴证",
+]
+EXPORT_FIELD_KEYS = {
+    "classicDosage",
+    "composition",
+    "pathology",
+    "pathologySymptoms",
+    "caution",
+    "compare",
+    "points",
+    "classics",
+    "cases",
+    "hu",
+    "li",
+}
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
 HERB_DOCX = PROJECT_ROOT / "tcm_rag_demo/data/李冠杰经方病理辨证体系经方药物集萃（目录)(1).docx"
 SOURCE_KEY = "经方病理辨证体系"
@@ -130,6 +159,23 @@ def html_page(title: str, body: str) -> str:
       box-shadow: inset 0 0 0 20px #f8fbff, inset 0 0 0 23px #d8e5ff;
       padding: 96px 96px 140px;
     }}
+    .page::after {{
+      content: "小小梦学中医";
+      position: absolute;
+      left: 50%;
+      top: 50%;
+      transform: translate(-50%, -50%) rotate(-30deg);
+      color: rgba(36, 94, 214, .055);
+      font-size: 76px;
+      font-weight: 900;
+      white-space: nowrap;
+      pointer-events: none;
+      z-index: 0;
+    }}
+    .page > * {{
+      position: relative;
+      z-index: 1;
+    }}
     h1 {{ margin: 0; font-size: 58px; line-height: 1.18; }}
     h2 {{ margin: 14px 0 0; font-size: 34px; color: #245ed6; }}
     .line {{ height: 3px; background: #d8e5ff; margin: 58px 0 72px; }}
@@ -211,12 +257,12 @@ def html_page(title: str, body: str) -> str:
       overflow: hidden;
       text-overflow: ellipsis;
     }}
-    table {{ width: 100%; border-collapse: collapse; margin-top: 48px; font-size: 19px; }}
-    th {{ color: #245ed6; text-align: left; border-bottom: 3px solid #d8e5ff; padding: 12px 8px; }}
-    td {{ border-bottom: 1px solid #e8f0ff; padding: 16px 8px; vertical-align: top; line-height: 1.45; }}
+    table {{ width: 100%; border-collapse: collapse; margin-top: 28px; font-size: 18px; }}
+    th {{ color: #245ed6; text-align: left; border-bottom: 3px solid #d8e5ff; padding: 10px 8px; }}
+    td {{ border-bottom: 1px solid #e8f0ff; padding: 12px 8px; vertical-align: top; line-height: 1.4; }}
     td:first-child {{ width: 70px; color: #245ed6; font-weight: 900; }}
-    td:nth-child(2) {{ width: 220px; font-weight: 900; }}
-    td:nth-child(3) {{ width: 250px; color: #245ed6; }}
+    td:nth-child(2) {{ width: 34%; font-weight: 800; }}
+    td:nth-child(3) {{ width: auto; }}
     .toc-label {{ display: inline-block; white-space: nowrap; }}
     .toc-sep {{ color: #9aabc4; padding: 0 3px; }}
   </style>
@@ -363,12 +409,16 @@ def herb_roles_for_formula(herb: str, formula_labels: list[str], herb_labels: di
 
 
 def primary_toc_category(formula: dict, herb_labels: dict[str, list[str]]) -> str:
+    formula_labels = formula_pathology_labels(formula)
+    for label in TOC_CATEGORY_ORDER:
+        if label in formula_labels:
+            return label
+
     label_votes: Counter[str] = Counter()
     for herb in parse_composition_herbs(formula.get("composition")):
-        for role in herb_roles_for_formula(herb, formula_pathology_labels(formula), herb_labels):
-            category = LABEL_TO_CATEGORY.get(role)
-            if category:
-                label_votes[category] += 1
+        for role in herb_roles_for_formula(herb, formula_labels, herb_labels):
+            if role in TOC_CATEGORY_ORDER:
+                label_votes[role] += 1
     if label_votes:
         return sorted(label_votes, key=lambda c: (-label_votes[c], TOC_CATEGORY_ORDER.index(c)))[0]
     for category in formula.get("categories") or []:
@@ -394,7 +444,14 @@ def toc_entries_by_category(formulas: list[dict]) -> list[dict]:
         )
     entries: list[dict] = []
     for category in TOC_CATEGORY_ORDER:
-        entries.extend(item for item in raw_entries if item["category"] == category)
+        category_entries = [item for item in raw_entries if item["category"] == category]
+        category_entries.sort(
+            key=lambda item: (
+                len(formula_pathology_labels(item["formula"])),
+                item["card_index"],
+            )
+        )
+        entries.extend(category_entries)
     for display_index, entry in enumerate(entries, 1):
         entry["display_index"] = display_index
     return entries
@@ -409,10 +466,9 @@ def cover_html(formulas: list[dict], total_pages: int) -> str:
     body = f"""
     <main class="page">
       <h1>方剂梳理</h1>
-      <h2>方剂卡片合集 PDF 可搜索版</h2>
+      <h2>方剂卡片合集 PDF</h2>
       <div class="line"></div>
-      <div class="row"><span class="label">当前导出</span><span class="value">{len(formulas)} 首</span></div>
-      <div class="row"><span class="label">导出方式</span><span class="value">复用 Web 预览样式，文字可复制检索</span></div>
+      <div class="row"><span class="label">方剂数量</span><span class="value">{len(formulas)} 首</span></div>
       <div class="row"><span class="label">资料定位</span><span class="value">中医方剂学习资料</span></div>
       <div class="section-title">本次包含</div>
       <div class="names">{html.escape(names or "暂无方剂")}</div>
@@ -483,13 +539,11 @@ def toc_html_pages(formulas: list[dict], total_pages: int, entries: list[dict] |
             for item in chunk:
                 formula = item["formula"]
                 cats = formula_pathology_html(formula)
-                points = "；".join(clean_plain_text(x) for x in formula["points"][:2])
                 rows.append(
                     "<tr>"
                     f"<td>{item['display_index']:02d}</td>"
                     f"<td>{html.escape(clean_plain_text(formula['name']))}</td>"
                     f"<td>{cats}</td>"
-                    f"<td>{html.escape(points)}</td>"
                     "</tr>"
                 )
             title_suffix = (
@@ -502,7 +556,7 @@ def toc_html_pages(formulas: list[dict], total_pages: int, entries: list[dict] |
     <main class="page">
       <h1>{html.escape(category)}目录{html.escape(title_suffix)}</h1>
       <table>
-        <thead><tr><th>序号</th><th>方剂</th><th>归类</th><th>辨证要点</th></tr></thead>
+        <thead><tr><th>序号</th><th>方剂</th><th>归类</th></tr></thead>
         <tbody>{''.join(rows)}</tbody>
       </table>
       {footer_html(page_num, total_pages, "点击目录中的方剂名可跳转到对应卡片")}
@@ -528,6 +582,30 @@ def launch_browser(playwright):
     return playwright.chromium.launch(**kwargs)
 
 
+def parse_export_fields(raw: str | None) -> set[str]:
+    if not raw:
+        return set(EXPORT_FIELD_KEYS)
+    fields = {item.strip() for item in raw.split(",") if item.strip()}
+    unknown = fields - EXPORT_FIELD_KEYS
+    if unknown:
+        raise ValueError("不支持的导出字段：" + "、".join(sorted(unknown)))
+    if not fields:
+        raise ValueError("请至少选择一个导出字段")
+    return fields
+
+
+def parse_pathology_filter(raw: str | None) -> set[str]:
+    if not raw:
+        return set(TOC_CATEGORY_ORDER)
+    labels = {normalize_label(item) for item in raw.split(",") if item.strip()}
+    unknown = labels - set(TOC_CATEGORY_ORDER)
+    if unknown:
+        raise ValueError("不支持的病理筛选：" + "、".join(sorted(unknown)))
+    if not labels:
+        raise ValueError("请至少选择一个病理")
+    return labels
+
+
 def write_static_pdf(browser, html_source: str, output_path: Path) -> None:
     page = browser.new_page(viewport={"width": 1080, "height": 1501}, locale="zh-CN")
     page.set_content(html_source, wait_until="load")
@@ -547,6 +625,7 @@ def render_card_pdfs(
     output_dir: Path,
     total_pages: int,
     ordered_formulas: list[dict],
+    selected_fields: set[str],
     toc_pages: int = 1,
 ) -> list[Path]:
     first_card_page = STATIC_PAGES_BEFORE_TOC + toc_pages + 1
@@ -557,7 +636,8 @@ def render_card_pdfs(
         page.wait_for_selector("#formula-card")
         page.wait_for_function("typeof state !== 'undefined' && state.formulas && state.formulas.length > 0", timeout=60000)
         result = page.evaluate(
-            """async ({ index, formulaId, formulaName, footerText, totalPages, firstCardPage, footerHeight }) => {
+            """async ({ index, formulaId, formulaName, footerText, totalPages, firstCardPage, footerHeight, selectedFields }) => {
+              const selected = new Set(selectedFields || []);
               const sourceIndex = state.formulas.findIndex((item) => {
                 if (formulaId && item.id === formulaId) return true;
                 return formulaName && item.name === formulaName;
@@ -571,9 +651,33 @@ def render_card_pdfs(
                 formula.caseItems = [sourceCases[0]];
                 formula.cases = sourceCases[0];
               }
+              if (!selected.has('classicDosage')) formula.classicDosage = '';
+              if (!selected.has('composition')) formula.composition = '';
+              if (!selected.has('pathology')) formula.pathology = [];
+              if (!selected.has('pathologySymptoms')) formula.pathologySymptoms = [];
+              if (!selected.has('caution')) formula.caution = '';
+              if (!selected.has('compare')) {
+                formula.compare = '';
+                formula.comparison = '';
+              }
+              if (!selected.has('points')) formula.diagnosisPoints = [];
+              if (!selected.has('classics')) formula.classicTexts = [];
+              if (!selected.has('cases')) {
+                formula.caseItems = [];
+                formula.cases = '';
+              }
+              if (!selected.has('hu')) formula.huXishuAnalysis = '';
+              if (!selected.has('li')) formula.liGuanjieAnalysis = '';
               fillForm(formula);
               renderPreview(formula);
               await new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve)));
+              document.querySelectorAll('[data-edit-target]').forEach((section) => {
+                const target = section.getAttribute('data-edit-target');
+                if (target && target !== 'name' && !selected.has(target)) {
+                  section.style.display = 'none';
+                  section.setAttribute('hidden', '');
+                }
+              });
               await Promise.all([...document.images].map((img) => img.complete ? true : new Promise((resolve) => {
                 img.addEventListener('load', resolve, { once: true });
                 img.addEventListener('error', resolve, { once: true });
@@ -621,6 +725,10 @@ def render_card_pdfs(
               clone.style.display = 'flex';
               clone.style.flexDirection = 'column';
               clone.style.overflow = 'visible';
+              const watermark = document.createElement('div');
+              watermark.className = 'pdf-watermark';
+              watermark.textContent = '小小梦学中医';
+              clone.appendChild(watermark);
               const footer = document.createElement('div');
               footer.className = 'pdf-card-footer';
               const footerLeft = document.createElement('span');
@@ -658,6 +766,17 @@ def render_card_pdfs(
                 }
                 .card-body {
                   flex: 1 0 auto !important;
+                }
+                .pdf-watermark {
+                  position: absolute;
+                  left: 50%;
+                  top: 50%;
+                  transform: translate(-50%, -50%) rotate(-30deg);
+                  color: rgba(36, 94, 214, .055);
+                  font: 900 76px "Microsoft YaHei", "PingFang SC", "Noto Sans SC", Arial, sans-serif;
+                  white-space: nowrap;
+                  pointer-events: none;
+                  z-index: 99;
                 }
                 .pdf-card-footer {
                   flex: 0 0 auto;
@@ -724,6 +843,7 @@ def render_card_pdfs(
                 "totalPages": total_pages,
                 "firstCardPage": first_card_page,
                 "footerHeight": CARD_FOOTER_HEIGHT,
+                "selectedFields": sorted(selected_fields),
             },
         )
         safe_name = "".join(ch for ch in result["name"] if ch not in '<>:"/\\|?*').strip() or f"formula-{index + 1}"
@@ -824,19 +944,49 @@ def add_toc_links(pdf_path: Path, formulas: list[dict], toc_pages: int = 1, entr
 
 def main() -> None:
     parser = argparse.ArgumentParser()
-    parser.parse_args()
+    parser.add_argument(
+        "--fields",
+        default="",
+        help="逗号分隔的导出字段 key；不传则导出完整卡片",
+    )
+    parser.add_argument(
+        "--proofread-only",
+        action="store_true",
+        help="只导出已标记校对完成的方剂",
+    )
+    parser.add_argument(
+        "--pathology-labels",
+        default="",
+        help="逗号分隔的病理标签；只导出包含这些标签的方剂",
+    )
+    args = parser.parse_args()
+    selected_fields = parse_export_fields(args.fields)
+    selected_pathology_labels = parse_pathology_filter(args.pathology_labels)
 
     formulas = load_formula_summary()
+    if args.proofread_only:
+        formulas = [formula for formula in formulas if formula.get("proofreadComplete") is True]
+    if selected_pathology_labels != set(TOC_CATEGORY_ORDER):
+        formulas = [
+            formula for formula in formulas
+            if selected_pathology_labels.intersection(formula_pathology_labels(formula))
+        ]
     if not formulas:
-        raise RuntimeError("数据库中没有方剂")
+        message = "没有符合筛选条件的方剂" if (args.proofread_only or args.pathology_labels) else "数据库中没有方剂"
+        raise RuntimeError(message)
     toc_entries = toc_entries_by_category(formulas)
     ordered_formulas = [entry["formula"] for entry in toc_entries]
+    if not ordered_formulas:
+        raise RuntimeError("没有可归入目录分类的方剂")
     toc_pages = toc_page_count(entries=toc_entries)
-    total_pages = len(formulas) + STATIC_PAGES_BEFORE_TOC + toc_pages
+    total_pages = len(ordered_formulas) + STATIC_PAGES_BEFORE_TOC + toc_pages
 
     OUT_DIR.mkdir(parents=True, exist_ok=True)
     stamp = datetime.now().strftime("%Y%m%d_%H%M")
-    output_path = OUT_DIR / f"方剂卡片合集_网页预览可搜索版_现有{len(formulas)}首_{stamp}.pdf"
+    scope_label = "已校对" if args.proofread_only else "现有"
+    field_label = "字段筛选版" if selected_fields != EXPORT_FIELD_KEYS else "完整版"
+    pathology_label = "病理筛选_" if selected_pathology_labels != set(TOC_CATEGORY_ORDER) else ""
+    output_path = OUT_DIR / f"方剂卡片合集_网页预览可搜索版_{field_label}_{pathology_label}{scope_label}{len(ordered_formulas)}首_{stamp}.pdf"
     process: subprocess.Popen | None = start_server()
 
     with tempfile.TemporaryDirectory(prefix="formula-searchable-pdf-") as tmp_name:
@@ -847,18 +997,16 @@ def main() -> None:
             with sync_playwright() as p:
                 browser = launch_browser(p)
                 cover_path = tmp / "00_cover.pdf"
-                usage_path = tmp / "01_usage.pdf"
                 toc_paths: list[Path] = []
-                write_static_pdf(browser, cover_html(formulas, total_pages), cover_path)
-                write_static_pdf(browser, usage_html(total_pages), usage_path)
-                for page_idx, toc_source in enumerate(toc_html_pages(formulas, total_pages, toc_entries)):
-                    toc_path = tmp / f"02_toc_{page_idx:02d}.pdf"
+                write_static_pdf(browser, cover_html(ordered_formulas, total_pages), cover_path)
+                for page_idx, toc_source in enumerate(toc_html_pages(ordered_formulas, total_pages, toc_entries)):
+                    toc_path = tmp / f"01_toc_{page_idx:02d}.pdf"
                     write_static_pdf(browser, toc_source, toc_path)
                     toc_paths.append(toc_path)
-                card_paths = render_card_pdfs(browser, tmp, total_pages, ordered_formulas, toc_pages)
+                card_paths = render_card_pdfs(browser, tmp, total_pages, ordered_formulas, selected_fields, toc_pages)
                 browser.close()
-            merge_pdfs([cover_path, usage_path, *toc_paths, *card_paths], output_path)
-            link_count = add_toc_links(output_path, formulas, toc_pages, toc_entries)
+            merge_pdfs([cover_path, *toc_paths, *card_paths], output_path)
+            link_count = add_toc_links(output_path, ordered_formulas, toc_pages, toc_entries)
         finally:
             stop_server(process)
 
@@ -871,7 +1019,7 @@ def main() -> None:
             if doc.page_count > first_card_page_idx
             else ""
         )
-        print(f"导出方剂：{len(formulas)} 首")
+        print(f"导出方剂：{len(ordered_formulas)} 首")
         print(f"PDF：{output_path}")
         print(f"页数：{doc.page_count}")
         print(f"目录链接：{link_count} 个")

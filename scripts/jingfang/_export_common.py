@@ -48,6 +48,7 @@ def load_formula_summary() -> list[dict]:
                 "categories": item.get("categories") or [],
                 "pathology": item.get("pathology") or [],
                 "points": item.get("diagnosisPoints") or [],
+                "proofreadComplete": item.get("proofreadComplete") is True,
                 "updated_at": updated_at,
             }
         )

@@ -58,10 +58,18 @@ def remove_formula(formula_id: str, _user: User = Depends(get_current_user)):
 @router.post("/export/pdf")
 def export_all_cards_pdf(
     mode: str = Query(default="searchable", pattern="^(searchable|web-hd)$"),
+    fields: str | None = Query(default=None),
+    proofread_only: bool = Query(default=False, alias="proofreadOnly"),
+    pathology_labels: str | None = Query(default=None, alias="pathologyLabels"),
 ):
     """批量导出全部方剂卡片 PDF（与 ZY-Study 网页预览一致的可搜索版）。"""
     try:
-        pdf_path = export_formula_cards_pdf(mode=mode)
+        pdf_path = export_formula_cards_pdf(
+            mode=mode,
+            fields=fields,
+            proofread_only=proofread_only,
+            pathology_labels=pathology_labels,
+        )
     except ValueError as exc:
         raise HTTPException(status.HTTP_400_BAD_REQUEST, str(exc)) from exc
     except FileNotFoundError as exc:
