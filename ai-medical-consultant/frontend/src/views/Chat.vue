@@ -220,16 +220,20 @@
                 class="pathology-table-row"
                 :class="pathologyToneClass(row.label)"
               >
+                <!-- 病理分类列 -->
                 <div class="pathology-reference-cell">
                   <template v-if="editingHintKey === row.key">
                     <div class="pathology-reference-edit">
-                      <strong>{{ row.label }}：</strong>
+                      <div class="pathology-edit-header">
+                        <strong>{{ row.label }}：</strong>
+                        <span class="pathology-edit-tip">保存后所有病例生效</span>
+                      </div>
                       <el-input
                         v-model="hintDraft"
                         type="textarea"
                         :autosize="{ minRows: 3, maxRows: 8 }"
                         class="pathology-hint-textarea"
-                        placeholder="输入需要问诊的症状提示"
+                        placeholder="输入需要问诊的症状提示，用逗号或顿号分隔"
                       />
                       <div class="pathology-reference-actions">
                         <el-button size="small" :disabled="savingHintKey === row.key" @click="cancelEditPathologyHint">取消</el-button>
@@ -241,21 +245,34 @@
                     <div class="pathology-reference-display">
                       <div class="pathology-reference-text">
                         <strong>{{ row.label }}：</strong>
-                        <span>{{ row.hintText }}</span>
+                        <span>{{ row.hintText || '暂无提示症状' }}</span>
                       </div>
-                      <button type="button" class="pathology-reference-edit-btn" @click="startEditPathologyHint(row)">编辑</button>
+                      <button
+                        type="button"
+                        class="pathology-reference-edit-btn"
+                        @click="startEditPathologyHint(row)"
+                      >编辑</button>
                     </div>
                   </template>
                 </div>
+
+                <!-- 症状记录列 -->
                 <div class="pathology-symptom-cell">
-                  <el-input
-                    v-model="form.notes[row.label]"
-                    type="textarea"
-                    :autosize="{ minRows: 2, maxRows: 8 }"
-                    class="consult-textarea pathology-table-textarea"
-                    placeholder="记录本例所见症状、程度、时间、诱因"
-                  />
+                  <div class="symptom-cell-inner">
+                    <el-input
+                      v-model="form.notes[row.label]"
+                      type="textarea"
+                      :autosize="{ minRows: 2, maxRows: 8 }"
+                      class="consult-textarea pathology-table-textarea"
+                      placeholder="记录本例所见症状、程度、时间、诱因…"
+                    />
+                    <div v-if="form.notes[row.label]" class="symptom-cell-footer">
+                      <span class="symptom-count">{{ noteSymptomCount(row.label) }} 项症状</span>
+                    </div>
+                  </div>
                 </div>
+
+                <!-- 病理打分列 -->
                 <div class="pathology-score-cell">
                   <el-input
                     v-model="form.scores[row.label]"
@@ -852,6 +869,11 @@ function uniqueList(list) {
   return Array.from(new Set((list || []).map((item) => String(item || '').trim()).filter(Boolean)))
 }
 
+function isModuleMissingError(error) {
+  const detail = error?.response?.data?.detail
+  return error?.response?.status === 404 && String(detail || '').includes('模块不存在')
+}
+
 function sectionPathologyLabel(section) {
   const byKey = sectionKeyToPathologyLabel[section?.key]
   if (byKey) return byKey
@@ -1129,14 +1151,25 @@ async function savePathologyHint(row) {
   const hints = editTextToHints(hintDraft.value)
   savingHintKey.value = row.key
   try {
-    const data = await consultApi.updateModuleHints(row.key, { hints })
+    const data = await consultApi.updateModuleHints(row.key, { hints }, { silent: true })
     updatePathologyHintRow(row.key, data?.hints || hints)
     editingHintKey.value = ''
     hintDraft.value = ''
-    ElMessage.success('症状提示已保存')
+    ElMessage.success('症状提示已保存，所有病例已同步')
+  } catch (error) {
+    const message = isModuleMissingError(error)
+      ? '保存失败：后端服务需要重启后才能支持全局提示保存'
+      : '保存失败，请确认后端服务已启动'
+    ElMessage.error(message)
   } finally {
     savingHintKey.value = ''
   }
+}
+
+function noteSymptomCount(label) {
+  const text = String(form.notes[label] || '').trim()
+  if (!text) return 0
+  return text.split(/[，,、；;。\s]+/).filter(Boolean).length
 }
 
 function sessionNavLabel(row) {

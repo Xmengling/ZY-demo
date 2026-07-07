@@ -935,88 +935,229 @@
   font-weight: 800;
   white-space: nowrap;
 }
+/* ========== 病理症状采集 — 优化版 ========== */
 .pathology-table-section .section-content {
   padding: 0;
 }
+
 .pathology-table {
   display: grid;
-  grid-template-columns: minmax(260px, 1.25fr) minmax(280px, 1fr) minmax(150px, 0.34fr);
-  border-top: 1px solid #d9dee5;
+  grid-template-columns: minmax(320px, 1.25fr) minmax(320px, 1fr) minmax(160px, 0.36fr);
   background: #fff;
+  border-radius: 0;
+  overflow: hidden;
+  border-top: 1px solid #d9dee5;
+  border-left: 1px solid #d9dee5;
 }
+
+/* 表头 */
 .pathology-table-head,
 .pathology-table-row {
   display: contents;
 }
+
 .pathology-table-head > div {
-  min-height: 52px;
-  padding: 14px 16px;
-  border-right: 1px solid #d9dee5;
-  border-bottom: 1px solid #d9dee5;
+  min-height: 34px;
+  padding: 7px 12px;
   background: #fbfcfe;
   color: #182230;
-  font-size: 16px;
-  font-weight: 900;
-  line-height: 1.45;
+  font-size: 14px;
+  font-weight: 800;
+  line-height: 1.35;
+  display: flex;
+  align-items: center;
+  gap: 0;
+  border-right: 1px solid #d9dee5;
+  border-bottom: 1px solid #e4e8ef;
 }
-.pathology-table-head > div:last-child,
-.pathology-score-cell {
-  border-right: none;
-}
+
+/* 行：通用单元格 */
 .pathology-reference-cell,
 .pathology-symptom-cell,
 .pathology-score-cell {
-  min-height: 82px;
-  padding: 14px 16px;
-  border-right: 1px solid #d9dee5;
-  border-bottom: 1px solid #d9dee5;
+  min-height: 76px;
+  padding: 10px 12px;
   background: #fff;
   box-sizing: border-box;
+  border-right: 1px solid #d9dee5;
+  border-bottom: 1px solid #eef1f6;
+  transition: background 0.2s ease;
 }
+
+/* 行悬停效果 */
+.pathology-table-row:hover .pathology-reference-cell,
+.pathology-table-row:hover .pathology-symptom-cell,
+.pathology-table-row:hover .pathology-score-cell {
+  background: #fafbfd;
+}
+/* 最后一行去掉底边 */
+.pathology-table-row:last-child .pathology-reference-cell,
+.pathology-table-row:last-child .pathology-symptom-cell,
+.pathology-table-row:last-child .pathology-score-cell {
+  border-bottom: none;
+}
+
+/* —— 左列：病理分类 + 问诊提示 —— */
 .pathology-reference-cell {
   color: #1f2937;
-  font-size: 16px;
-  font-weight: 800;
-  line-height: 1.65;
+  font-size: 14px;
+  line-height: 1.6;
   word-break: break-word;
 }
-.pathology-reference-cell strong {
+
+.pathology-reference-display {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 10px;
+  align-items: start;
+  width: 100%;
+}
+.pathology-reference-text {
+  min-width: 0;
+  color: #1f2937;
+  font-size: 14px;
+  font-weight: 700;
+  line-height: 1.65;
+}
+.pathology-reference-text strong,
+.pathology-edit-header strong {
   color: #111827;
   font-weight: 900;
 }
-.pathology-symptom-cell,
-.pathology-score-cell {
+
+/* 编辑按钮 */
+.pathology-reference-edit-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  height: 26px;
+  padding: 0 10px;
+  border: 1px solid #e2e8f0;
+  border-radius: 6px;
+  background: #fff;
+  color: #64748b;
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.18s ease;
+}
+.pathology-reference-edit-btn:hover {
+  border-color: var(--path-border, #94a3b8);
+  color: var(--path-fg, #334155);
+  background: var(--path-bg, #f1f5f9);
+}
+
+/* 编辑模式 */
+.pathology-reference-edit {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.pathology-edit-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.pathology-edit-tip {
+  color: #64748b;
+  font-size: 12.5px;
+  font-weight: 600;
+}
+.pathology-hint-textarea :deep(.el-textarea__inner) {
+  min-height: 78px !important;
+  padding: 10px 12px;
+  border-radius: 8px;
+  color: #1e293b;
+  font-size: 14px;
+  font-weight: 600;
+  line-height: 1.6;
+  border-color: #cbd5e1;
+}
+.pathology-hint-textarea :deep(.el-textarea__inner:focus) {
+  border-color: var(--path-bar, #3b82f6);
+}
+.pathology-reference-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+/* —— 中列：症状记录 —— */
+.pathology-symptom-cell {
   display: flex;
   align-items: stretch;
 }
-.pathology-table-textarea,
-.pathology-score-input {
+.symptom-cell-inner {
+  display: flex;
+  flex-direction: column;
   width: 100%;
+  gap: 6px;
+}
+.pathology-table-textarea {
+  width: 100%;
+  flex: 1;
 }
 .pathology-table-textarea :deep(.el-textarea__inner) {
   min-height: 54px !important;
   height: 100%;
-  padding: 8px 10px;
-  border-radius: 6px;
+  padding: 10px 12px;
+  border-radius: 8px;
   background: #fff;
-  color: #182230;
-  font-size: 15px;
-  font-weight: 700;
-  line-height: 1.55;
+  color: #1e293b;
+  font-size: 14px;
+  font-weight: 600;
+  line-height: 1.6;
   resize: vertical;
+  border-color: #e2e8f0;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+.pathology-table-textarea :deep(.el-textarea__inner:focus) {
+  border-color: var(--path-bar, #3b82f6);
+  box-shadow: 0 0 0 3px var(--path-glow, rgba(59, 130, 246, 0.1));
+}
+.symptom-cell-footer {
+  display: flex;
+  justify-content: flex-end;
+}
+.symptom-count {
+  color: #94a3b8;
+  font-size: 11.5px;
+  font-weight: 600;
+  padding: 2px 8px;
+  background: #f1f5f9;
+  border-radius: 10px;
+}
+
+/* —— 右列：病理打分 —— */
+.pathology-score-cell {
+  display: flex;
+  align-items: flex-start;
+}
+.pathology-score-input {
+  width: 100%;
 }
 .pathology-score-input :deep(.el-input__wrapper) {
-  align-self: flex-start;
-  min-height: 38px;
-  padding: 0 10px;
-  border-radius: 6px;
+  min-height: 36px;
+  padding: 0 12px;
+  border-radius: 8px;
   background: #fff;
+  border-color: #e2e8f0;
+  box-shadow: none;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+.pathology-score-input :deep(.el-input__wrapper:hover) {
+  border-color: #cbd5e1;
+}
+.pathology-score-input :deep(.el-input__wrapper.is-focus) {
+  border-color: var(--path-bar, #3b82f6);
+  box-shadow: 0 0 0 3px var(--path-glow, rgba(59, 130, 246, 0.1));
 }
 .pathology-score-input :deep(.el-input__inner) {
-  height: 36px;
-  color: #182230;
-  font-size: 15px;
+  height: 34px;
+  color: #1e293b;
+  font-size: 13.5px;
   font-weight: 700;
+  text-align: center;
 }
 .biao-list {
   display: grid;
@@ -1589,7 +1730,7 @@
     grid-template-columns: 1fr;
   }
   .pathology-table {
-    grid-template-columns: minmax(220px, 1fr) minmax(260px, 1fr) 150px;
+    grid-template-columns: minmax(240px, 1fr) minmax(240px, 1fr) 160px;
   }
   .tongue-three-grid {
     grid-template-columns: 1fr;
@@ -1636,7 +1777,9 @@
     display: block;
     border-top: none;
     padding: 10px;
-    background: #fbfdff;
+    background: #f7f9fc;
+    border: none;
+    border-radius: 0;
   }
   .pathology-table-head {
     display: none;
@@ -1644,22 +1787,26 @@
   .pathology-table-row {
     display: grid;
     grid-template-columns: 1fr;
-    margin-bottom: 10px;
-    border: 1px solid #d9dee5;
-    border-radius: 8px;
+    margin-bottom: 12px;
+    border: 1px solid #e4e8ef;
+    border-radius: 10px;
     background: #fff;
     overflow: hidden;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
   }
   .pathology-reference-cell,
   .pathology-symptom-cell,
   .pathology-score-cell {
     min-height: 0;
-    padding: 10px 12px;
+    padding: 10px 14px;
     border-right: none;
+    border-bottom: 1px solid #f1f5f9;
   }
-  .pathology-reference-cell,
-  .pathology-symptom-cell {
-    border-bottom: 1px solid #e4e8ee;
+  .pathology-reference-cell {
+    padding-top: 12px;
+  }
+  .pathology-score-cell {
+    border-bottom: none;
   }
   .actions {
     flex-direction: column;

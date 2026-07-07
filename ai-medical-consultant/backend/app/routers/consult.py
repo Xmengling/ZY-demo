@@ -78,6 +78,20 @@ from ..services.llm_service import llm_service
 
 router = APIRouter(prefix="/api/v1/consult", tags=["consult"])
 
+PATHOLOGY_HINT_MODULES = {
+    "extreme-yin": (2, "极阴证"),
+    "extreme-yang": (3, "极阳证"),
+    "interior": (4, "里证"),
+    "half": (5, "半证"),
+    "surface": (6, "表证"),
+    "water": (7, "水证"),
+    "blood": (8, "血证"),
+    "qi": (9, "气证"),
+    "female": (10, "妇科"),
+    "inspection": (11, "望闻切"),
+    "abdomen": (12, "腹诊及补充"),
+}
+
 AUTOFILL_FIELDS = {
     "patient_name",
     "phone",
@@ -587,6 +601,25 @@ def list_symptom_presets(db: Session = Depends(get_db)):
                 symptoms=_loads(row.symptoms) if row.symptoms else [],
             )
         )
+    for module_key, hints in hints_by_module.items():
+        if module_key in sections or module_key not in PATHOLOGY_HINT_MODULES:
+            continue
+        module_order, module_title = PATHOLOGY_HINT_MODULES[module_key]
+        sections[module_key] = SymptomPresetSection(
+            key=module_key,
+            order=module_order,
+            title=module_title,
+            tag="",
+            tone="",
+            blocks=[
+                SymptomPresetBlock(
+                    label=module_title,
+                    tone="",
+                    symptoms=hints,
+                )
+            ],
+            inquiry_hints=hints,
+        )
     return list(sections.values())
 
 
@@ -722,10 +755,15 @@ def update_module_hints(
             .first()
         )
         if not preset:
-            raise HTTPException(status.HTTP_404_NOT_FOUND, "模块不存在")
+            module_meta = PATHOLOGY_HINT_MODULES.get(module_key)
+            if not module_meta:
+                raise HTTPException(status.HTTP_404_NOT_FOUND, "模块不存在")
+            module_order = module_meta[0]
+        else:
+            module_order = preset.module_order
         row = ConsultModuleHint(
             module_key=module_key,
-            module_order=preset.module_order,
+            module_order=module_order,
             hints=json.dumps(hints, ensure_ascii=False),
         )
         db.add(row)
