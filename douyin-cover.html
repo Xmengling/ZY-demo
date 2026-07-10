@@ -1,0 +1,388 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>抖音封面 - 伤寒论AI私教</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    min-height: 100vh;
+    background: #1a1a2e;
+    font-family: "PingFang SC", "Microsoft YaHei", "Hiragino Sans GB", sans-serif;
+  }
+  .cover {
+    width: 1080px;
+    height: 1440px;
+    position: relative;
+    overflow: hidden;
+    background: linear-gradient(180deg, #0b0f1a 0%, #0f1a2e 40%, #142438 100%);
+    box-shadow: 0 20px 60px rgba(0,0,0,0.5);
+  }
+
+  /* 背景 */
+  .bg-glow-top {
+    position: absolute;
+    top: -200px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 900px;
+    height: 500px;
+    background: radial-gradient(ellipse, rgba(0, 140, 255, 0.18), transparent 70%);
+  }
+  .bg-glow-bottom {
+    position: absolute;
+    bottom: 0;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 1000px;
+    height: 400px;
+    background: radial-gradient(ellipse, rgba(0, 180, 200, 0.12), transparent 70%);
+  }
+  .bg-particles {
+    position: absolute;
+    inset: 0;
+    background-image:
+      radial-gradient(1px 1px at 20% 30%, rgba(255,255,255,0.15), transparent),
+      radial-gradient(1px 1px at 60% 20%, rgba(255,255,255,0.1), transparent),
+      radial-gradient(1px 1px at 80% 50%, rgba(255,255,255,0.12), transparent),
+      radial-gradient(1px 1px at 30% 70%, rgba(255,255,255,0.08), transparent),
+      radial-gradient(1px 1px at 70% 80%, rgba(255,255,255,0.1), transparent),
+      radial-gradient(1.5px 1.5px at 50% 40%, rgba(0,180,255,0.2), transparent),
+      radial-gradient(1px 1px at 15% 55%, rgba(255,255,255,0.1), transparent);
+  }
+
+  /* 顶部标签 */
+  .top-tag {
+    position: absolute;
+    top: 60px;
+    left: 60px;
+    padding: 14px 32px;
+    background: rgba(0, 140, 255, 0.2);
+    border: 2px solid rgba(0, 160, 255, 0.5);
+    border-radius: 40px;
+    z-index: 10;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    backdrop-filter: blur(10px);
+  }
+  .top-tag .dot {
+    width: 12px;
+    height: 12px;
+    background: #00d4ff;
+    border-radius: 50%;
+    box-shadow: 0 0 12px rgba(0, 212, 255, 0.6);
+    animation: pulse 2s ease-in-out infinite;
+  }
+  @keyframes pulse {
+    0%, 100% { transform: scale(1); opacity: 1; }
+    50% { transform: scale(1.4); opacity: 0.5; }
+  }
+  .top-tag span {
+    color: #fff;
+    font-size: 28px;
+    font-weight: 700;
+    letter-spacing: 3px;
+  }
+
+  /* 头像区域 */
+  .avatar-section {
+    position: absolute;
+    top: 200px;
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 5;
+  }
+  .avatar-outer {
+    position: relative;
+    width: 340px;
+    height: 340px;
+  }
+  .avatar-ring {
+    position: absolute;
+    inset: -12px;
+    border-radius: 50%;
+    border: 4px solid transparent;
+    background: conic-gradient(from 0deg, #0066ff, #00c8ff, #00e0ff, #0066ff) border-box;
+    -webkit-mask: linear-gradient(#fff 0 0) padding-box, linear-gradient(#fff 0 0);
+    mask: linear-gradient(#fff 0 0) padding-box, linear-gradient(#fff 0 0);
+    -webkit-mask-composite: exclude;
+    mask-composite: exclude;
+    animation: spin 5s linear infinite;
+  }
+  @keyframes spin {
+    to { transform: rotate(360deg); }
+  }
+  .avatar-photo {
+    position: absolute;
+    inset: 0;
+    border-radius: 50%;
+    overflow: hidden;
+    border: 6px solid #0b0f1a;
+  }
+  .avatar-photo img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+  }
+  .ai-chip {
+    position: absolute;
+    bottom: 15px;
+    right: -5px;
+    width: 90px;
+    height: 90px;
+    background: linear-gradient(135deg, #0066ff, #00b4ff);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border: 6px solid #0b0f1a;
+    z-index: 6;
+    box-shadow: 0 4px 20px rgba(0, 100, 255, 0.4);
+  }
+  .ai-chip span {
+    color: #fff;
+    font-size: 24px;
+    font-weight: 900;
+    letter-spacing: 1px;
+  }
+
+  /* 标题区域 */
+  .title-section {
+    position: absolute;
+    top: 600px;
+    left: 50%;
+    transform: translateX(-50%);
+    text-align: center;
+    width: 100%;
+    z-index: 5;
+  }
+  .title-line1 {
+    font-size: 100px;
+    font-weight: 900;
+    color: #ffffff;
+    letter-spacing: 12px;
+    line-height: 1.15;
+    text-shadow:
+      3px 3px 0 #0066cc,
+      -3px -3px 0 #0066cc,
+      3px -3px 0 #0066cc,
+      -3px 3px 0 #0066cc,
+      0 0 40px rgba(0, 150, 255, 0.5),
+      0 8px 20px rgba(0, 0, 0, 0.7);
+  }
+  .title-line2 {
+    font-size: 120px;
+    font-weight: 900;
+    background: linear-gradient(135deg, #00ffe0 0%, #00b4ff 50%, #0080ff 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    letter-spacing: 10px;
+    line-height: 1.2;
+    filter: drop-shadow(0 4px 16px rgba(0, 180, 255, 0.4));
+    margin-top: 5px;
+  }
+
+  /* 副标题 */
+  .subtitle-section {
+    position: absolute;
+    top: 940px;
+    left: 50%;
+    transform: translateX(-50%);
+    display: flex;
+    align-items: center;
+    gap: 22px;
+    padding: 20px 50px;
+    background: rgba(0, 150, 255, 0.12);
+    border: 2px solid rgba(0, 180, 255, 0.35);
+    border-radius: 50px;
+    backdrop-filter: blur(12px);
+    z-index: 5;
+  }
+  .subtitle-pill {
+    padding: 10px 28px;
+    background: linear-gradient(135deg, #00b4ff, #00e0ff);
+    border-radius: 30px;
+    color: #0b0f1a;
+    font-size: 30px;
+    font-weight: 800;
+    letter-spacing: 2px;
+  }
+  .subtitle-divider {
+    color: rgba(0, 200, 255, 0.4);
+    font-size: 32px;
+    font-weight: 300;
+  }
+  .subtitle-text {
+    color: #b0e0ff;
+    font-size: 30px;
+    font-weight: 600;
+    letter-spacing: 3px;
+  }
+
+  /* 底部功能标签 */
+  .bottom-section {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    padding: 40px 50px 60px;
+    background: linear-gradient(to top, rgba(8, 12, 24, 0.97) 40%, transparent);
+    z-index: 5;
+  }
+  .feature-strip {
+    display: flex;
+    justify-content: center;
+    gap: 24px;
+    margin-bottom: 30px;
+  }
+  .feature-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 14px 28px;
+    background: rgba(255, 255, 255, 0.06);
+    border: 1.5px solid rgba(0, 180, 255, 0.25);
+    border-radius: 16px;
+  }
+  .feature-item .fi-icon {
+    font-size: 28px;
+  }
+  .feature-item span {
+    color: #90d4ff;
+    font-size: 24px;
+    font-weight: 600;
+  }
+
+  .cta-bar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 10px;
+  }
+  .cta-left {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+  }
+  .play-btn {
+    width: 60px;
+    height: 60px;
+    background: linear-gradient(135deg, #ff3b5c, #ff6b81);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 4px 20px rgba(255, 59, 92, 0.4);
+  }
+  .play-btn::after {
+    content: "";
+    width: 0;
+    height: 0;
+    border-style: solid;
+    border-width: 14px 0 14px 22px;
+    border-color: transparent transparent transparent #fff;
+    margin-left: 4px;
+  }
+  .cta-label {
+    color: #fff;
+    font-size: 28px;
+    font-weight: 700;
+    letter-spacing: 2px;
+  }
+  .cta-arrow {
+    color: #00b4ff;
+    font-size: 48px;
+    font-weight: 700;
+    animation: arrowBounce 1.6s ease-in-out infinite;
+  }
+  @keyframes arrowBounce {
+    0%, 100% { transform: translateX(0); }
+    50% { transform: translateX(12px); }
+  }
+
+  /* 医学装饰 */
+  .med-deco {
+    position: absolute;
+    top: 40px;
+    right: 50px;
+    width: 100px;
+    height: 100px;
+    opacity: 0.08;
+    z-index: 2;
+  }
+  .med-deco svg { width: 100%; height: 100%; }
+</style>
+</head>
+<body>
+
+<div class="cover">
+  <div class="bg-glow-top"></div>
+  <div class="bg-glow-bottom"></div>
+  <div class="bg-particles"></div>
+
+  <!-- 医学装饰 -->
+  <div class="med-deco">
+    <svg viewBox="0 0 100 100" fill="none" stroke="currentColor" stroke-width="1.5">
+      <circle cx="50" cy="50" r="46"/>
+      <path d="M50 4 L50 96 M4 50 L96 50 M18 18 L82 82 M82 18 L18 82"/>
+      <circle cx="50" cy="50" r="18" fill="none"/>
+    </svg>
+  </div>
+
+  <!-- 顶部标签 -->
+  <div class="top-tag">
+    <div class="dot"></div>
+    <span>AI 教程</span>
+  </div>
+
+  <!-- 头像 -->
+  <div class="avatar-section">
+    <div class="avatar-outer">
+      <div class="avatar-ring"></div>
+      <div class="avatar-photo">
+        <img src="avatar.jpg" alt="头像">
+      </div>
+      <div class="ai-chip">
+        <span>AI</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- 标题 -->
+  <div class="title-section">
+    <div class="title-line1">《伤寒论》</div>
+    <div class="title-line2">AI 私教</div>
+  </div>
+
+  <!-- 副标题 -->
+  <div class="subtitle-section">
+    <div class="subtitle-pill">AI 小白</div>
+    <div class="subtitle-divider">|</div>
+    <div class="subtitle-text">安装使用教程</div>
+  </div>
+
+  <!-- 底部 -->
+  <div class="bottom-section">
+    <div class="feature-strip">
+      <div class="feature-item"><span class="fi-icon">🔧</span><span>零基础安装</span></div>
+      <div class="feature-item"><span class="fi-icon">💻</span><span>一键启动</span></div>
+      <div class="feature-item"><span class="fi-icon">📱</span><span>手机可用</span></div>
+    </div>
+    <div class="cta-bar">
+      <div class="cta-left">
+        <div class="play-btn"></div>
+        <div class="cta-label">点击观看完整教程</div>
+      </div>
+      <div class="cta-arrow">→</div>
+    </div>
+  </div>
+</div>
+
+</body>
+</html>
