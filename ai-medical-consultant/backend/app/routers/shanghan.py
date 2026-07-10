@@ -8,14 +8,15 @@ import re
 from difflib import SequenceMatcher
 from urllib.parse import unquote
 
-from fastapi import APIRouter, Depends, HTTPException, status
-from fastapi.responses import StreamingResponse
+from fastapi import APIRouter, Depends, HTTPException, Query, status
+from fastapi.responses import FileResponse, StreamingResponse
 
 from ..deps import get_current_user
 from ..models import User
 from ..services import shanghan_prompt_config, shanghan_store
 from ..services.consult_knowledge import consult_knowledge
 from ..services.llm_service import llm_service
+from ..services.shanghan_pdf_export import export_shanghan_cards_pdf
 from ..services.shanghan_teacher_prompt import build_system_prompt, build_user_prompt, hard_rules_text
 
 router = APIRouter(prefix="/api/v1/shanghan", tags=["shanghan"])
@@ -234,6 +235,31 @@ def _prepare_study_chat(payload: dict, user: User) -> dict:
 @router.get("")
 def list_articles():
     return {"articles": shanghan_store.list_articles()}
+
+
+@router.post("/export/pdf")
+def export_all_articles_pdf(
+    levels: str | None = Query(default=None),
+    start: int | None = Query(default=None, ge=1),
+    end: int | None = Query(default=None, ge=1),
+    _user: User = Depends(get_current_user),
+):
+    if start is not None and end is not None and start > end:
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, "起始条文不能大于结束条文")
+    try:
+        pdf_path = export_shanghan_cards_pdf(levels=levels, start=start, end=end)
+    except ValueError as exc:
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, str(exc)) from exc
+    except FileNotFoundError as exc:
+        raise HTTPException(status.HTTP_500_INTERNAL_SERVER_ERROR, str(exc)) from exc
+    except RuntimeError as exc:
+        raise HTTPException(status.HTTP_500_INTERNAL_SERVER_ERROR, str(exc)) from exc
+
+    return FileResponse(
+        pdf_path,
+        media_type="application/pdf",
+        filename=pdf_path.name,
+    )
 
 
 @router.get("/study/progress")

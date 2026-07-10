@@ -501,7 +501,8 @@ function parseCompareText(text) {
   lines.forEach((line) => {
     const clean = line.replace(/^[-–—•]\s*/, "").trim();
     if (!clean || /^易混淆方[：:]/.test(clean) || /^核心区别[：:]?$/.test(clean)) return;
-    const match = clean.match(/^([^：:]{1,18})[：:]\s*(.+)$/);
+    const withoutIndex = clean.replace(/^(?:(?:[\(（]?\d{1,2}[\)）]?)|(?:\d{1,2}))[.、．]?\s*/, "");
+    const match = withoutIndex.match(/^([^：:]{1,18})[：:]\s*(.+)$/);
     if (!match) return;
     rows.push({ name: match[1].trim(), detail: match[2].trim() });
   });

@@ -18,6 +18,7 @@
           <div class="section-title">
             <h1>伤寒论条文解读</h1>
             <div class="toolbar-actions">
+              <button id="export-all-pdf" class="primary small" type="button">导出全部PDF</button>
               <button id="new-article" class="primary small" type="button">新增</button>
             </div>
           </div>
@@ -157,7 +158,29 @@
     </div>
   </main>
 
+  <div id="export-pdf-modal" class="modal-backdrop" hidden>
+    <section class="export-pdf-modal" role="dialog" aria-modal="true" aria-labelledby="export-pdf-title">
+      <div class="export-pdf-modal__head">
+        <h3 id="export-pdf-title">选择导出范围</h3>
+        <button id="export-pdf-close" class="modal-icon-btn" type="button" aria-label="关闭">×</button>
+      </div>
+      <div class="export-pdf-grid">
+        <div class="export-pdf-section-title">条文等级</div>
+        <label class="export-pdf-option"><input type="checkbox" value="一级" data-export-level checked /><span>一级条文</span></label>
+        <label class="export-pdf-option"><input type="checkbox" value="二级" data-export-level checked /><span>二级条文</span></label>
+        <label class="export-pdf-option"><input type="checkbox" value="三级" data-export-level checked /><span>三级条文</span></label>
+        <div class="export-pdf-section-title export-pdf-section-title--wide">条文序号范围</div>
+        <label class="export-pdf-field"><span>起始条文</span><input id="export-pdf-start" type="number" min="1" placeholder="不限" /></label>
+        <label class="export-pdf-field"><span>结束条文</span><input id="export-pdf-end" type="number" min="1" placeholder="不限" /></label>
+      </div>
+      <div class="export-pdf-modal__actions">
+        <button id="export-pdf-cancel" class="ghost" type="button">取消</button>
+        <button id="export-pdf-confirm" class="primary" type="button">确认导出</button>
+      </div>
+    </section>
+  </div>
+
   <div id="toast" class="toast" role="status"></div>
-  <script src="app.js?v=watermark1"></script>
+  <script src="app.js?v=shanghanPdf1"></script>
 </body>
 </html>

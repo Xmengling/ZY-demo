@@ -1536,6 +1536,84 @@ async function downloadCardPng() {
   URL.revokeObjectURL(link.href);
 }
 
+function closeExportPdfModal() {
+  $("#export-pdf-modal")?.setAttribute("hidden", "");
+}
+
+function openExportPdfModal() {
+  const modal = $("#export-pdf-modal");
+  modal?.removeAttribute("hidden");
+  modal?.querySelector("input")?.focus();
+}
+
+function selectedExportPdfOptions() {
+  const levels = $$("input[data-export-level]:checked").map((input) => input.value);
+  const start = $("#export-pdf-start")?.value.trim() || "";
+  const end = $("#export-pdf-end")?.value.trim() || "";
+  return { levels, start, end };
+}
+
+async function confirmExportPdf() {
+  const btn = $("#export-all-pdf");
+  const { levels, start, end } = selectedExportPdfOptions();
+  if (!levels.length) {
+    toast("请至少选择一个条文等级");
+    return;
+  }
+  const startNum = start ? Number(start) : null;
+  const endNum = end ? Number(end) : null;
+  if ((start && (!Number.isFinite(startNum) || startNum < 1)) || (end && (!Number.isFinite(endNum) || endNum < 1))) {
+    toast("条文范围请输入大于 0 的数字");
+    return;
+  }
+  if (startNum && endNum && startNum > endNum) {
+    toast("起始条文不能大于结束条文");
+    return;
+  }
+  closeExportPdfModal();
+  if (btn) btn.disabled = true;
+  toast(`正在导出伤寒论条文 PDF：${levels.join("、")}，请稍候…`);
+  try {
+    const params = new URLSearchParams({ levels: levels.join(",") });
+    if (start) params.set("start", start);
+    if (end) params.set("end", end);
+    const res = await fetch(`${API_BASE}/export/pdf?${params.toString()}`, {
+      method: "POST",
+      headers: authHeaders(),
+    });
+    if (!res.ok) {
+      let message = `导出失败 (${res.status})`;
+      try {
+        const data = await res.json();
+        if (data?.detail) message = typeof data.detail === "string" ? data.detail : JSON.stringify(data.detail);
+      } catch (_) {
+        const text = await res.text();
+        if (text) message = text.slice(0, 240);
+      }
+      throw new Error(message);
+    }
+    const blob = await res.blob();
+    const disposition = res.headers.get("Content-Disposition") || "";
+    const utfMatch = disposition.match(/filename\*=UTF-8''([^;]+)/i);
+    const plainMatch = disposition.match(/filename="?([^";]+)"?/i);
+    const filename = utfMatch
+      ? decodeURIComponent(utfMatch[1])
+      : (plainMatch?.[1] || `伤寒论条文解读_${state.articles.length || 0}条.pdf`);
+    const link = document.createElement("a");
+    link.href = URL.createObjectURL(blob);
+    link.download = filename;
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    URL.revokeObjectURL(link.href);
+    toast("伤寒论条文 PDF 已生成");
+  } catch (error) {
+    toast(error.message || "PDF 导出失败");
+  } finally {
+    if (btn) btn.disabled = false;
+  }
+}
+
 function syncEditorFromForm() {
   const article = normalizeArticleFromForm();
   renderEditorTitle(article);
@@ -1585,10 +1663,20 @@ fields.terms?.addEventListener("click", (event) => {
 });
 
 $("#search").addEventListener("input", renderArticleList);
+$("#export-all-pdf")?.addEventListener("click", openExportPdfModal);
 $("#new-article").addEventListener("click", newArticle);
 $("#save-article").addEventListener("click", saveCurrentArticle);
 $("#delete-article").addEventListener("click", deleteCurrentArticle);
 $("#download-card").addEventListener("click", downloadCardPng);
+$("#export-pdf-close")?.addEventListener("click", closeExportPdfModal);
+$("#export-pdf-cancel")?.addEventListener("click", closeExportPdfModal);
+$("#export-pdf-confirm")?.addEventListener("click", confirmExportPdf);
+$("#export-pdf-modal")?.addEventListener("click", (event) => {
+  if (event.target === event.currentTarget) closeExportPdfModal();
+});
+document.addEventListener("keydown", (event) => {
+  if (event.key === "Escape" && !$("#export-pdf-modal")?.hasAttribute("hidden")) closeExportPdfModal();
+});
 $("#toggle-list-panel").addEventListener("click", () => setListPanelCollapsed(!state.listCollapsed));
 $("#article-card")?.addEventListener("click", handlePreviewTargetClick);
 window.addEventListener("resize", () => {

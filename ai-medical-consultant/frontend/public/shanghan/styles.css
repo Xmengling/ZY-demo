@@ -1182,6 +1182,121 @@ p {
   text-align: center;
 }
 
+.modal-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 80;
+  display: grid;
+  place-items: center;
+  padding: 24px;
+  background: rgba(15, 23, 42, .34);
+  backdrop-filter: blur(2px);
+}
+
+.modal-backdrop[hidden] {
+  display: none;
+}
+
+.export-pdf-modal {
+  width: min(560px, 100%);
+  border: 1px solid #bcd2ff;
+  border-radius: 12px;
+  background: #ffffff;
+  box-shadow: 0 18px 45px rgba(30, 64, 175, .18);
+  padding: 18px;
+}
+
+.export-pdf-modal__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  padding-bottom: 14px;
+  border-bottom: 1px solid #e5edff;
+}
+
+.export-pdf-modal__head h3 {
+  margin: 0;
+  color: #12213a;
+  font-size: 20px;
+  line-height: 1.2;
+}
+
+.modal-icon-btn {
+  width: 34px;
+  height: 34px;
+  border: 1px solid #c9dbff;
+  border-radius: 8px;
+  background: #f8fbff;
+  color: #375a9e;
+  font-size: 24px;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.export-pdf-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+  padding: 16px 0 18px;
+}
+
+.export-pdf-section-title {
+  grid-column: 1 / -1;
+  margin-top: 2px;
+  color: var(--blue-dark);
+  font-size: 14px;
+  font-weight: 900;
+}
+
+.export-pdf-section-title--wide {
+  margin-top: 10px;
+}
+
+.export-pdf-option,
+.export-pdf-field {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  min-height: 42px;
+  border: 1px solid #d7e4ff;
+  border-radius: 8px;
+  padding: 8px 10px;
+  background: #fbfdff;
+  color: #12213a;
+  font-weight: 800;
+}
+
+.export-pdf-option input {
+  width: 16px;
+  height: 16px;
+  accent-color: var(--blue);
+}
+
+.export-pdf-field {
+  flex-direction: column;
+  align-items: flex-start;
+}
+
+.export-pdf-field input {
+  width: 100%;
+  min-height: 36px;
+  border: 1px solid #cddcff;
+  border-radius: 7px;
+  padding: 6px 9px;
+}
+
+.export-pdf-modal__actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+}
+
+.export-pdf-modal__actions .ghost,
+.export-pdf-modal__actions .primary {
+  min-width: 96px;
+}
+
 .toast {
   position: fixed;
   left: 50%;
