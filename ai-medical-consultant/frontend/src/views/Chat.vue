@@ -250,8 +250,12 @@
                       <button
                         type="button"
                         class="pathology-reference-edit-btn"
+                        aria-label="编辑病理提示"
+                        title="编辑病理提示"
                         @click="startEditPathologyHint(row)"
-                      >编辑</button>
+                      >
+                        <el-icon :size="15" aria-hidden="true"><EditPen /></el-icon>
+                      </button>
                     </div>
                   </template>
                 </div>
@@ -539,8 +543,13 @@
                       <span
                         class="summary-pathology-label"
                         :class="item.kind === 'pathology' ? pathologyToneClass(item.label) : 'summary-label-meta'"
-                      >{{ item.label }}<template v-if="item.score != null"><span class="summary-pathology-score">{{ item.score }}</span></template>：</span>
-                      <span class="summary-line-text">{{ item.text }}</span>
+                      >{{ item.label }}：</span>
+                      <span class="summary-line-text">
+                        <template v-if="item.text">{{ item.text }}</template>
+                        <template v-if="item.score != null">
+                          <span class="summary-pathology-score">{{ item.text ? `（${item.score}）` : item.score }}</span>
+                        </template>
+                      </span>
                     </template>
                   </li>
                 </ul>
@@ -660,7 +669,7 @@
 import { computed, nextTick, onMounted, reactive, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
-import { ArrowLeft, ArrowRight, DocumentCopy, Download } from '@element-plus/icons-vue'
+import { ArrowLeft, ArrowRight, DocumentCopy, Download, EditPen } from '@element-plus/icons-vue'
 import { consultApi, formulasApi } from '../api'
 import PrescriptionBlock from '../components/consult/PrescriptionBlock.vue'
 import IntakeAttachments from '../components/consult/IntakeAttachments.vue'
@@ -865,6 +874,8 @@ const sectionKeyToPathologyLabel = {
   yin: '极阴证'
 }
 
+const pathologyReferenceLabelByKey = new Map(pathologyReferenceRows.map((row) => [row.key, row.label]))
+
 function uniqueList(list) {
   return Array.from(new Set((list || []).map((item) => String(item || '').trim()).filter(Boolean)))
 }
@@ -883,6 +894,13 @@ function sectionPathologyLabel(section) {
 }
 
 function normalizePathologySections(rows = []) {
+  const explicitHintsByLabel = new Map()
+  ;(rows || []).forEach((section) => {
+    const referenceLabel = pathologyReferenceLabelByKey.get(section?.key)
+    if (!referenceLabel) return
+    explicitHintsByLabel.set(referenceLabel, uniqueList(section.inquiry_hints || []))
+  })
+
   const byLabel = new Map(
     pathologyReferenceRows.map((row, index) => [
       row.label,
@@ -891,6 +909,7 @@ function normalizePathologySections(rows = []) {
         order: index + 2,
         title: row.label,
         inquiry_hints: [...row.hints],
+        hasExplicitHints: explicitHintsByLabel.has(row.label),
         legacyLabels: [],
         blocks: [{ label: row.label, symptoms: [...row.hints] }]
       }
@@ -910,9 +929,15 @@ function normalizePathologySections(rows = []) {
     }
     const blockSymptoms = (section.blocks || []).flatMap((block) => block.symptoms || [])
     const blockLabels = (section.blocks || []).map((block) => block.label).filter((item) => item && item !== label)
-    target.inquiry_hints = uniqueList([...(target.inquiry_hints || []), ...(section.inquiry_hints || []), ...blockSymptoms])
+    if (explicitHintsByLabel.has(label)) {
+      target.inquiry_hints = [...explicitHintsByLabel.get(label)]
+      target.hasExplicitHints = true
+    } else {
+      target.inquiry_hints = uniqueList([...(target.inquiry_hints || []), ...(section.inquiry_hints || [])])
+    }
     target.legacyLabels = uniqueList([...(target.legacyLabels || []), ...blockLabels])
     target.blocks = [{ label, symptoms: uniqueList([...(target.blocks?.[0]?.symptoms || []), ...target.inquiry_hints]) }]
+    target.blocks[0].symptoms = uniqueList([...target.blocks[0].symptoms, ...blockSymptoms])
     byLabel.set(label, target)
   })
 
@@ -1062,7 +1087,7 @@ const pathologyRows = computed(() =>
     return {
       key: section.key,
       label: block.label || section.title,
-      hintText: uniqueList([...(section.inquiry_hints || []), ...(block.symptoms || [])]).join('，')
+      hintText: uniqueList(section.inquiry_hints || []).join('，')
     }
   })
 )

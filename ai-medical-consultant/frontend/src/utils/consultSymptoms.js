@@ -45,8 +45,8 @@ export function buildPathologyBlockText(block, notes, selected) {
 }
 
 function pathologyScoreValue(scores, label) {
-  const num = Number(scores?.[label])
-  return !Number.isNaN(num) && num > 0 ? num : null
+  const text = String(scores?.[label] ?? '').trim()
+  return text || null
 }
 
 /** 病例摘要：按病理标签汇总描述（水实、水虚分别列出） */
@@ -56,11 +56,12 @@ export function buildPathologySummaryLines(sections, notes, selected, scores = {
   for (const section of sections || []) {
     for (const block of section.blocks || []) {
       const text = buildPathologyBlockText(block, notes, selected)
-      if (text) {
+      const score = pathologyScoreValue(scores, block.label)
+      if (text || score != null) {
         lines.push({
           label: block.label,
           text,
-          score: pathologyScoreValue(scores, block.label)
+          score
         })
       }
     }
@@ -150,15 +151,17 @@ export function formatConsultSummaryLine(item) {
       .map((group) => `${group.label}：${String(group.text || '').trim()}`)
       .join('\n')
   }
-  let label = String(item?.label || '').trim()
-  if (item?.score != null) label += ` ${item.score}`
-  return `${label}：${String(item?.text || '').trim()}`
+  const label = String(item?.label || '').trim()
+  const text = String(item?.text || '').trim()
+  const score = item?.score != null ? String(item.score).trim() : ''
+  const body = text && score ? `${text}（${score}）` : text || score
+  return `${label}：${body}`
 }
 
 /** 病例摘要全文（用于复制） */
 export function formatConsultSummaryText(lines) {
   return (lines || [])
-    .filter((item) => String(item?.text || '').trim() || (item?.groups || []).some((group) => String(group?.text || '').trim()))
+    .filter((item) => item?.score != null || String(item?.text || '').trim() || (item?.groups || []).some((group) => String(group?.text || '').trim()))
     .map((item) => formatConsultSummaryLine(item))
     .join('\n')
 }
@@ -235,7 +238,7 @@ export function buildFollowupChangeGroups(visit) {
 
 export function formatConsultSummaryGroups(groups) {
   return (groups || [])
-    .filter((group) => Array.isArray(group?.lines) && group.lines.some((item) => String(item?.text || '').trim()))
+    .filter((group) => Array.isArray(group?.lines) && group.lines.some((item) => item?.score != null || String(item?.text || '').trim()))
     .map((group) => {
       const body = formatConsultSummaryText(group.lines)
       return body ? `【${group.label}】\n${body}` : ''
