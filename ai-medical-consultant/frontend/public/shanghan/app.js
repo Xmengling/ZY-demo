@@ -205,6 +205,14 @@ function authHeaders(extra = {}) {
   };
 }
 
+function redirectToLogin() {
+  localStorage.removeItem("token");
+  localStorage.removeItem("user");
+  const target = `/login?redirect=${encodeURIComponent(window.location.pathname + window.location.search + window.location.hash)}`;
+  if (window.top && window.top !== window) window.top.location.href = target;
+  else window.location.href = target;
+}
+
 function toast(message) {
   const el = $("#toast");
   el.textContent = message;
@@ -629,6 +637,10 @@ function newArticle() {
 
 async function loadData() {
   const res = await fetch(API_BASE, { headers: authHeaders() });
+  if (res.status === 401) {
+    redirectToLogin();
+    return;
+  }
   if (!res.ok) throw new Error("数据加载失败");
   const data = await res.json();
   state.articles = data.articles?.length ? data.articles : [DEFAULT_ARTICLE];

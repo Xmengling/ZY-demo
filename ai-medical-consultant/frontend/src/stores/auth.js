@@ -1,6 +1,23 @@
 import { defineStore } from 'pinia'
 import { authApi } from '../api'
 
+let expiryTimer = null
+
+function tokenExpiresAt(token) {
+  try {
+    const [, payload] = token.split('.')
+    const { exp } = JSON.parse(atob(payload.replace(/-/g, '+').replace(/_/g, '/')))
+    return Number.isFinite(exp) ? exp * 1000 : null
+  } catch {
+    return null
+  }
+}
+
+function loginUrl() {
+  const redirect = `${location.pathname}${location.search}${location.hash}`
+  return `/login?redirect=${encodeURIComponent(redirect)}`
+}
+
 export const useAuthStore = defineStore('auth', {
   state: () => ({
     token: localStorage.getItem('token') || '',
@@ -25,8 +42,25 @@ export const useAuthStore = defineStore('auth', {
       this.user = data.user
       localStorage.setItem('token', data.access_token)
       localStorage.setItem('user', JSON.stringify(data.user))
+      this.scheduleExpiry()
+    },
+    scheduleExpiry() {
+      clearTimeout(expiryTimer)
+      const expiresAt = tokenExpiresAt(this.token)
+      if (!expiresAt) return
+      const delay = expiresAt - Date.now()
+      if (delay <= 0) {
+        this.expire()
+        return
+      }
+      expiryTimer = window.setTimeout(() => this.expire(), delay)
+    },
+    expire() {
+      this.logout()
+      if (location.pathname !== '/login') location.replace(loginUrl())
     },
     logout() {
+      clearTimeout(expiryTimer)
       this.token = ''
       this.user = null
       localStorage.removeItem('token')

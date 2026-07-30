@@ -1,0 +1,117 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1242" height="1656" viewBox="0 0 1242 1656">
+  <defs>
+    <filter id="shadow" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="0" dy="18" stdDeviation="22" flood-color="#163b63" flood-opacity=".28"/>
+    </filter>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#315f98"/>
+      <stop offset="1" stop-color="#173d6e"/>
+    </linearGradient>
+    <linearGradient id="red" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#d75a45"/>
+      <stop offset="1" stop-color="#ac382b"/>
+    </linearGradient>
+    <pattern id="grain" width="90" height="90" patternUnits="userSpaceOnUse">
+      <circle cx="14" cy="22" r="1.2" fill="#fff" opacity=".09"/>
+      <circle cx="62" cy="48" r="1" fill="#fff" opacity=".07"/>
+      <path d="M4 78 C28 61 49 64 84 43" fill="none" stroke="#fff" stroke-width="1" opacity=".035"/>
+    </pattern>
+    <style>
+      text { font-family: "PingFang SC","Hiragino Sans GB","Microsoft YaHei",sans-serif; }
+      .body { font-size: 32px; fill: #34485c; font-weight: 500; }
+      .section { font-size: 36px; fill: #173d6e; font-weight: 800; }
+      .num { font-family: Georgia,serif; font-size: 33px; fill: #fff; font-weight: 700; font-style: italic; }
+    </style>
+  </defs>
+
+  <rect width="1242" height="1656" fill="url(#bg)"/>
+  <rect width="1242" height="1656" fill="url(#grain)"/>
+
+  <!-- decorative scholarly lines -->
+  <g fill="none" stroke="#d8e7f6" stroke-width="3" opacity=".18">
+    <path d="M58 250 C120 192 118 102 192 57"/>
+    <path d="M1110 78 C1056 154 1100 225 1175 276"/>
+    <circle cx="92" cy="121" r="10"/><circle cx="1139" cy="121" r="10"/>
+  </g>
+
+  <rect x="62" y="64" width="1118" height="1528" rx="46" fill="#f8f4e9" filter="url(#shadow)"/>
+  <rect x="84" y="86" width="1074" height="1484" rx="32" fill="none" stroke="#d8cba9" stroke-width="2"/>
+
+  <!-- badge -->
+  <rect x="440" y="112" width="362" height="58" rx="29" fill="#e7eef6"/>
+  <circle cx="479" cy="141" r="9" fill="#c84b39"/>
+  <text x="620" y="151" text-anchor="middle" font-size="27" font-weight="700" fill="#315f98" letter-spacing="5">持续更新中</text>
+
+  <!-- title -->
+  <text x="621" y="287" text-anchor="middle" font-size="91" font-weight="900" fill="#173d6e" letter-spacing="-3">伤寒论398条</text>
+  <path d="M230 322 H1012" stroke="#c9b887" stroke-width="3"/>
+  <text x="621" y="392" text-anchor="middle" font-size="53" font-weight="800" fill="#171c24" letter-spacing="8">逐条拆解学习笔记</text>
+  <path d="M350 425 Q621 448 892 425" fill="none" stroke="#c84b39" stroke-width="7" stroke-linecap="round"/>
+
+  <!-- section 1 -->
+  <g transform="translate(130 487)">
+    <rect width="982" height="238" rx="28" fill="#fff" stroke="#d7d4cb" stroke-width="2"/>
+    <rect width="126" height="68" rx="26" fill="#315f98"/>
+    <text class="num" x="63" y="47" text-anchor="middle">01</text>
+    <text class="section" x="164" y="48">更新内容</text>
+    <line x1="165" y1="66" x2="925" y2="66" stroke="#d8d4ca" stroke-width="2"/>
+    <circle cx="47" cy="121" r="7" fill="#c84b39"/>
+    <text class="body" x="72" y="133">每天至少更新</text>
+    <text x="282" y="133" font-size="39" font-weight="900" fill="#c84b39">3个条文图片</text>
+    <circle cx="47" cy="184" r="7" fill="#315f98"/>
+    <text class="body" x="72" y="196">原文・辨证要点・病理解析</text>
+    <path d="M790 113 q31 -35 74 0 q31 25 68 4" fill="none" stroke="#6c91bd" stroke-width="8" stroke-linecap="round"/>
+    <path d="M912 101 l24 16 -26 12" fill="none" stroke="#6c91bd" stroke-width="8" stroke-linecap="round" stroke-linejoin="round"/>
+  </g>
+
+  <!-- section 2 -->
+  <g transform="translate(130 757)">
+    <rect width="982" height="238" rx="28" fill="#fff" stroke="#d7d4cb" stroke-width="2"/>
+    <rect width="126" height="68" rx="26" fill="#315f98"/>
+    <text class="num" x="63" y="47" text-anchor="middle">02</text>
+    <text class="section" x="164" y="48">每周汇总</text>
+    <line x1="165" y1="66" x2="925" y2="66" stroke="#d8d4ca" stroke-width="2"/>
+    <circle cx="47" cy="121" r="7" fill="#c84b39"/>
+    <text class="body" x="72" y="133">每周更新</text>
+    <text x="227" y="133" font-size="39" font-weight="900" fill="#c84b39">1次PDF</text>
+    <circle cx="47" cy="184" r="7" fill="#315f98"/>
+    <text class="body" x="72" y="196">PDF包含目前已更新全部条文</text>
+    <g transform="translate(824 101)">
+      <rect width="82" height="96" rx="8" fill="#e7eef6" stroke="#315f98" stroke-width="3"/>
+      <path d="M53 0 v29 h29" fill="#fff" stroke="#315f98" stroke-width="3"/>
+      <text x="41" y="69" text-anchor="middle" font-size="20" font-weight="900" fill="#315f98">PDF</text>
+    </g>
+  </g>
+
+  <!-- section 3 -->
+  <g transform="translate(130 1027)">
+    <rect width="982" height="238" rx="28" fill="#fff" stroke="#d7d4cb" stroke-width="2"/>
+    <rect width="126" height="68" rx="26" fill="#315f98"/>
+    <text class="num" x="63" y="47" text-anchor="middle">03</text>
+    <text class="section" x="164" y="48">获取方式</text>
+    <line x1="165" y1="66" x2="925" y2="66" stroke="#d8d4ca" stroke-width="2"/>
+    <circle cx="47" cy="121" r="7" fill="#c84b39"/>
+    <text class="body" x="72" y="133">网盘持续同步更新</text>
+    <circle cx="47" cy="184" r="7" fill="#315f98"/>
+    <text class="body" x="72" y="196">可选微信群陪伴学习</text>
+    <!-- book icon -->
+    <g transform="translate(773 103)" fill="none" stroke="#315f98" stroke-width="4" stroke-linejoin="round">
+      <path d="M0 21 q52 -28 103 0 v75 q-51 -25 -103 0z" fill="#edf2f7"/>
+      <path d="M103 21 q52 -28 103 0 v75 q-51 -25 -103 0z" fill="#f8f4e9"/>
+      <path d="M103 21 v75"/>
+      <path d="M27 41 q29 -11 55 0M27 57 q29 -11 55 0M126 41 q29 -11 55 0M126 57 q29 -11 55 0" stroke-width="2"/>
+    </g>
+  </g>
+
+  <!-- bottom slogan -->
+  <rect x="228" y="1326" width="786" height="112" rx="56" fill="url(#red)"/>
+  <text x="621" y="1398" text-anchor="middle" font-size="46" font-weight="900" fill="#fff" letter-spacing="5">一次获取・持续跟更</text>
+  <text x="621" y="1494" text-anchor="middle" font-size="27" font-weight="600" fill="#6b685f" letter-spacing="3">计划完整更新至398条</text>
+
+  <!-- small seal -->
+  <g transform="translate(1038 1437)">
+    <rect width="66" height="66" rx="5" fill="#b53c2e"/>
+    <text x="33" y="28" text-anchor="middle" font-size="17" font-weight="800" fill="#f8f4e9">伤寒</text>
+    <text x="33" y="51" text-anchor="middle" font-size="17" font-weight="800" fill="#f8f4e9">笔记</text>
+  </g>
+</svg>

@@ -18,7 +18,11 @@ export async function assistantChatStream(data, handlers = {}, signal) {
 
   if (res.status === 401) {
     localStorage.removeItem('token')
-    if (location.pathname !== '/login') location.href = '/login'
+    localStorage.removeItem('user')
+    if (location.pathname !== '/login') {
+      const redirect = `${location.pathname}${location.search}${location.hash}`
+      location.replace(`/login?redirect=${encodeURIComponent(redirect)}`)
+    }
     throw Object.assign(new Error('未登录'), { response: { status: 401 } })
   }
 

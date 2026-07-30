@@ -18,7 +18,11 @@ api.interceptors.response.use(
     const msg = err?.response?.data?.detail || err.message || '请求失败'
     if (err?.response?.status === 401) {
       localStorage.removeItem('token')
-      if (location.pathname !== '/login') location.href = '/login'
+      localStorage.removeItem('user')
+      if (location.pathname !== '/login') {
+        const redirect = `${location.pathname}${location.search}${location.hash}`
+        location.replace(`/login?redirect=${encodeURIComponent(redirect)}`)
+      }
     }
     if (!err?.config?.silent) {
       ElMessage.error(typeof msg === 'string' ? msg : '请求失败')

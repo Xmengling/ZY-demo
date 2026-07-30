@@ -4,9 +4,12 @@
 from __future__ import annotations
 
 import argparse
+import html
 import json
+import math
 import mimetypes
 import os
+import re
 import subprocess
 import sys
 import tempfile
@@ -26,6 +29,7 @@ URL = f"http://{HOST}:{PORT}"
 LEVELS = ["一级", "二级", "三级"]
 FOOTER_TEXT = "© 小小梦学中医｜学习资料，仅供中医学习交流，不作为诊疗依据。"
 CARD_FOOTER_HEIGHT = 74
+TOC_ROWS_PER_PAGE = 38
 
 sys.path.insert(0, str(BACKEND_ROOT))
 from app.services import shanghan_store  # noqa: E402
@@ -140,10 +144,197 @@ def launch_browser(playwright):
     return playwright.chromium.launch(**kwargs)
 
 
+def article_range_label(articles: list[dict]) -> str:
+    numbers = [number for article in articles if (number := article_number(article)) is not None]
+    if len(numbers) != len(articles):
+        return "、".join(f"第{article.get('number') or article.get('articleNo') or ''}条" for article in articles)
+
+    ranges: list[str] = []
+    start = end = numbers[0]
+    for number in numbers[1:]:
+        if number == end + 1:
+            end = number
+            continue
+        ranges.append(str(start) if start == end else f"{start}-{end}")
+        start = end = number
+    ranges.append(str(start) if start == end else f"{start}-{end}")
+    return "、".join(ranges) + "条"
+
+
+def clean_article_text(value: object) -> str:
+    text = str(value or "")
+    text = re.sub(r"\[\[\*\*|\*\*\]\]|\[\[|\]\]|\*\*", "", text)
+    text = re.sub(r"^\s*(?:顶格条文|低一格条文|低二格条文)\s*[：:]\s*", "", text)
+    return " ".join(text.split())
+
+
+def toc_page_count(articles: list[dict]) -> int:
+    return max(1, math.ceil(len(articles) / TOC_ROWS_PER_PAGE))
+
+
+def write_toc_pdf(
+    browser,
+    articles: list[dict],
+    page_index: int,
+    output_path: Path,
+    total_pages: int,
+) -> None:
+    start = page_index * TOC_ROWS_PER_PAGE
+    chunk = articles[start : start + TOC_ROWS_PER_PAGE]
+    rows = []
+    for article in chunk:
+        number = article.get("number") or article.get("articleNo") or ""
+        level = article.get("level") or "一级"
+        level_digit = {"一级": "1", "二级": "2", "三级": "3"}.get(level, "1")
+        summary = clean_article_text(article.get("original"))
+        if len(summary) > 55:
+            summary = summary[:55].rstrip() + "…"
+        rows.append(
+            '<div class="toc-row">'
+            f'<span class="toc-level level-{level_digit}">{level_digit}</span>'
+            f'<span class="toc-number">第{html.escape(str(number))}条</span>'
+            f'<span class="toc-summary">{html.escape(summary or "未填写条文原文")}</span>'
+            "</div>"
+        )
+    toc_pages = toc_page_count(articles)
+    page_num = page_index + 2
+    html_source = f"""<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <style>
+    @page {{ size: 1080px 1501px; margin: 0; }}
+    * {{ box-sizing: border-box; }}
+    body {{
+      margin: 0;
+      width: 1080px;
+      height: 1501px;
+      font-family: "Microsoft YaHei", "PingFang SC", "Noto Sans SC", Arial, sans-serif;
+      background: #f8fbff;
+      color: #172033;
+      -webkit-print-color-adjust: exact;
+      print-color-adjust: exact;
+    }}
+    .page {{
+      position: relative;
+      width: 1080px;
+      height: 1501px;
+      border: 5px solid #477cff;
+      border-radius: 12px;
+      background: #fff;
+      box-shadow: inset 0 0 0 20px #f8fbff, inset 0 0 0 23px #d8e5ff;
+      padding: 58px 76px 112px;
+    }}
+    .page::after {{
+      content: "小小梦学中医";
+      position: absolute;
+      left: 50%;
+      top: 52%;
+      transform: translate(-50%, -50%) rotate(-30deg);
+      color: rgba(36, 94, 214, .045);
+      font-size: 76px;
+      font-weight: 900;
+      white-space: nowrap;
+      pointer-events: none;
+    }}
+    h1 {{ position: relative; z-index: 1; margin: 0; font-size: 40px; }}
+    .subtitle {{
+      position: relative;
+      z-index: 1;
+      margin: 8px 0 10px;
+      color: #5a6880;
+      font-size: 15px;
+    }}
+    .legend {{
+      position: relative;
+      z-index: 1;
+      display: flex;
+      align-items: center;
+      gap: 18px;
+      margin-bottom: 12px;
+      color: #6b7890;
+      font-size: 14px;
+    }}
+    .legend-item {{ display: inline-flex; align-items: center; gap: 6px; }}
+    .toc-list {{ position: relative; z-index: 1; display: grid; gap: 3px; }}
+    .toc-row {{
+      min-height: 26px;
+      display: grid;
+      grid-template-columns: 25px 76px 1fr;
+      align-items: center;
+      gap: 8px;
+      padding: 3px 10px;
+      border: 1px solid #d8e5ff;
+      border-radius: 6px;
+      background: rgba(248, 251, 255, .96);
+    }}
+    .toc-level {{
+      width: 19px;
+      height: 19px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      border-radius: 50%;
+      color: #fff;
+      font-size: 12px;
+      line-height: 1;
+      font-weight: 900;
+    }}
+    .level-1 {{ background: #e04a3a; }}
+    .level-2 {{ background: #5b8def; }}
+    .level-3 {{ background: #9aadc4; }}
+    .toc-number {{ color: #245ed6; font-size: 14px; font-weight: 900; }}
+    .toc-summary {{
+      min-width: 0;
+      overflow: hidden;
+      color: #2b364a;
+      font-size: 14px;
+      line-height: 1.3;
+      white-space: nowrap;
+      text-overflow: ellipsis;
+    }}
+    .footer {{
+      position: absolute;
+      left: 96px;
+      right: 96px;
+      bottom: 82px;
+      display: flex;
+      justify-content: space-between;
+      color: #5a6880;
+      font-size: 16px;
+    }}
+  </style>
+</head>
+<body>
+  <main class="page">
+    <h1>条文目录</h1>
+    <div class="subtitle">点击任意条文，可直接跳转到对应卡片 · 目录 {page_index + 1}/{toc_pages}</div>
+    <div class="legend">
+      <span>条文格式：</span>
+      <span class="legend-item"><span class="toc-level level-1">1</span>顶格</span>
+      <span class="legend-item"><span class="toc-level level-2">2</span>降一格</span>
+      <span class="legend-item"><span class="toc-level level-3">3</span>降两格</span>
+    </div>
+    <div class="toc-list">{''.join(rows)}</div>
+    <div class="footer"><span>条文目录</span><span>第 {page_num} / {total_pages} 页</span></div>
+  </main>
+</body>
+</html>"""
+    page = browser.new_page(viewport={"width": 1080, "height": 1501}, locale="zh-CN")
+    page.set_content(html_source, wait_until="load")
+    page.pdf(
+        path=str(output_path),
+        width="1080px",
+        height="1501px",
+        margin={"top": "0", "right": "0", "bottom": "0", "left": "0"},
+        print_background=True,
+        prefer_css_page_size=True,
+    )
+    page.close()
+
+
 def write_cover_pdf(browser, articles: list[dict], output_path: Path, total_pages: int) -> None:
-    names = "、".join(f"第{article.get('number') or ''}条" for article in articles[:36])
-    if len(articles) > 36:
-        names = f"{names} 等共 {len(articles)} 条"
+    names = article_range_label(articles)
     exported_at = datetime.now().strftime("%Y-%m-%d %H:%M")
     html_source = f"""<!doctype html>
 <html lang="zh-CN">
@@ -203,6 +394,21 @@ def write_cover_pdf(browser, articles: list[dict], output_path: Path, total_page
     .value {{ font-size: 28px; font-weight: 800; }}
     .section-title {{ margin-top: 70px; font-size: 34px; font-weight: 900; }}
     .names {{ margin-top: 28px; font-size: 20px; line-height: 1.8; color: #5a6880; }}
+    .notice {{
+      position: relative;
+      z-index: 1;
+      margin-top: 54px;
+      padding: 28px 32px;
+      border: 2px solid #d8e5ff;
+      border-left: 7px solid #477cff;
+      border-radius: 12px;
+      background: #f8fbff;
+      color: #4a5870;
+      font-size: 19px;
+      line-height: 1.85;
+      text-align: justify;
+    }}
+    .notice strong {{ color: #245ed6; }}
     .footer {{
       position: absolute;
       left: 96px;
@@ -225,7 +431,8 @@ def write_cover_pdf(browser, articles: list[dict], output_path: Path, total_page
     <div class="row"><span class="label">资料定位</span><span class="value">中医条文学习资料</span></div>
     <div class="section-title">本次包含</div>
     <div class="names">{names}</div>
-    <div class="footer"><span>导出时间：{exported_at}　{FOOTER_TEXT}</span><span>第 1 / {total_pages} 页</span></div>
+    <div class="notice"><strong>说明：</strong>本资料内容为学习胡希恕和李冠杰老师体系心得，如有表述欠妥处，与李冠杰老师无关，是作者学习和领会不足所致。更全面的体系知识推荐大家学习胡希恕老师和李冠杰老师的《康平本伤寒论讲稿》和《金匮要略讲稿》。<strong>声明：</strong>以下内容仅是学习资料整理，不构成任何医学建议。</div>
+    <div class="footer"><span>更新时间：{exported_at}　{FOOTER_TEXT}</span><span>第 1 / {total_pages} 页</span></div>
   </main>
 </body>
 </html>"""
@@ -242,7 +449,13 @@ def write_cover_pdf(browser, articles: list[dict], output_path: Path, total_page
     page.close()
 
 
-def render_card_pdfs(browser, output_dir: Path, articles: list[dict], total_pages: int) -> list[Path]:
+def render_card_pdfs(
+    browser,
+    output_dir: Path,
+    articles: list[dict],
+    total_pages: int,
+    first_card_page: int,
+) -> list[Path]:
     paths: list[Path] = []
     for index, article in enumerate(articles):
         page = browser.new_page(viewport={"width": 1320, "height": 2600}, locale="zh-CN")
@@ -250,7 +463,7 @@ def render_card_pdfs(browser, output_dir: Path, articles: list[dict], total_page
         page.wait_for_selector("#article-card")
         page.wait_for_function("typeof state !== 'undefined' && state.articles && state.articles.length > 0", timeout=60000)
         result = page.evaluate(
-            """async ({ articleId, articleNumber, index, totalPages, footerHeight, footerText }) => {
+            """async ({ articleId, articleNumber, index, totalPages, firstCardPage, footerHeight, footerText }) => {
               const sourceIndex = state.articles.findIndex((item) => {
                 if (articleId && item.id === articleId) return true;
                 return articleNumber && String(item.number || item.articleNo || '') === String(articleNumber);
@@ -269,7 +482,11 @@ def render_card_pdfs(browser, output_dir: Path, articles: list[dict], total_page
               })));
               const card = document.querySelector('#article-card');
               card.style.transform = 'none';
-              const width = Math.ceil(card.scrollWidth || card.offsetWidth || 1080);
+              // Use the card's border-box width. scrollWidth also counts the
+              // decorative ::before circle positioned 160px outside the card,
+              // which makes Chromium create a wider PDF page with a blank strip
+              // on the right.
+              const width = Math.ceil(card.getBoundingClientRect().width || card.offsetWidth || 1080);
               const height = Math.ceil(Math.max(card.scrollHeight, card.offsetHeight, 1501));
               const clone = card.cloneNode(true);
               clone.querySelector('.card-footer')?.remove();
@@ -318,7 +535,7 @@ def render_card_pdfs(browser, output_dir: Path, articles: list[dict], total_page
               const footerLeft = document.createElement('span');
               footerLeft.textContent = footerText;
               const footerRight = document.createElement('span');
-              footerRight.textContent = `第 ${index + 2} / ${totalPages} 页`;
+              footerRight.textContent = `第 ${index + firstCardPage} / ${totalPages} 页`;
               footer.append(footerLeft, footerRight);
               clone.appendChild(footer);
               const style = document.createElement('style');
@@ -328,7 +545,7 @@ def render_card_pdfs(browser, output_dir: Path, articles: list[dict], total_page
                   print-color-adjust: exact !important;
                 }
                 #article-card {
-                  overflow: visible !important;
+                  overflow: hidden !important;
                   display: flex !important;
                   flex-direction: column !important;
                 }
@@ -368,7 +585,18 @@ def render_card_pdfs(browser, output_dir: Path, articles: list[dict], total_page
                 @page { margin: 0; size: ${width}px ${height}px; }
               `;
               document.head.appendChild(style);
-              const finalHeight = Math.ceil(Math.max(clone.scrollHeight, clone.offsetHeight, height));
+              // Chromium can omit the last flex item's margin/border from the
+              // card's reported scrollHeight. Measure the footer's physical
+              // bottom as well and keep a small rounding allowance; otherwise
+              // the footer may be pushed onto a second PDF page by a few pixels.
+              const footerBottom = footer.offsetTop + footer.offsetHeight;
+              const finalHeight = Math.ceil(Math.max(
+                clone.scrollHeight,
+                clone.offsetHeight,
+                footerBottom,
+                height,
+              ) + 8);
+              clone.style.minHeight = `${finalHeight}px`;
               document.documentElement.style.height = `${finalHeight}px`;
               document.body.style.height = `${finalHeight}px`;
               style.textContent = style.textContent.replace(`size: ${width}px ${height}px`, `size: ${width}px ${finalHeight}px`);
@@ -379,6 +607,7 @@ def render_card_pdfs(browser, output_dir: Path, articles: list[dict], total_page
                 "articleNumber": article.get("number") or article.get("articleNo"),
                 "index": index,
                 "totalPages": total_pages,
+                "firstCardPage": first_card_page,
                 "footerHeight": CARD_FOOTER_HEIGHT,
                 "footerText": FOOTER_TEXT,
             },
@@ -407,6 +636,41 @@ def merge_pdfs(inputs: list[Path], output_path: Path) -> None:
             merged.insert_pdf(doc)
     merged.save(str(output_path), garbage=4, deflate=True)
     merged.close()
+
+
+def add_toc_links(pdf_path: Path, articles: list[dict], toc_pages: int) -> int:
+    import fitz
+
+    tmp_path = pdf_path.with_suffix(".linked.pdf")
+    first_card_page_idx = 1 + toc_pages
+    link_count = 0
+    with fitz.open(str(pdf_path)) as doc:
+        for index, article in enumerate(articles):
+            toc_page_idx = 1 + index // TOC_ROWS_PER_PAGE
+            toc_page = doc[toc_page_idx]
+            number = article.get("number") or article.get("articleNo") or ""
+            matches = toc_page.search_for(f"第{number}条")
+            if not matches:
+                continue
+            rect = matches[0]
+            click_rect = fitz.Rect(
+                max(0, rect.x0 - 10),
+                max(0, rect.y0 - 10),
+                min(toc_page.rect.width - 36, toc_page.rect.width - 58),
+                min(toc_page.rect.height, rect.y1 + 10),
+            )
+            toc_page.insert_link(
+                {
+                    "kind": fitz.LINK_GOTO,
+                    "from": click_rect,
+                    "page": first_card_page_idx + index,
+                    "to": fitz.Point(0, 0),
+                }
+            )
+            link_count += 1
+        doc.save(str(tmp_path), garbage=4, deflate=True)
+    tmp_path.replace(pdf_path)
+    return link_count
 
 
 def main() -> None:
@@ -445,11 +709,25 @@ def main() -> None:
             with sync_playwright() as p:
                 browser = launch_browser(p)
                 cover_path = tmp / "00_cover.pdf"
-                total_pages = len(articles) + 1
+                toc_pages = toc_page_count(articles)
+                total_pages = len(articles) + 1 + toc_pages
                 write_cover_pdf(browser, articles, cover_path, total_pages)
-                card_paths = render_card_pdfs(browser, tmp, articles, total_pages)
+                toc_paths = []
+                for page_index in range(toc_pages):
+                    toc_path = tmp / f"01_toc_{page_index + 1:02d}.pdf"
+                    write_toc_pdf(browser, articles, page_index, toc_path, total_pages)
+                    toc_paths.append(toc_path)
+                first_card_page = 2 + toc_pages
+                card_paths = render_card_pdfs(
+                    browser,
+                    tmp,
+                    articles,
+                    total_pages,
+                    first_card_page,
+                )
                 browser.close()
-            merge_pdfs([cover_path, *card_paths], output_path)
+            merge_pdfs([cover_path, *toc_paths, *card_paths], output_path)
+            link_count = add_toc_links(output_path, articles, toc_pages)
     finally:
         server.shutdown()
         thread.join(timeout=5)
@@ -462,6 +740,7 @@ def main() -> None:
         print(f"导出条文：{len(articles)} 条")
         print(f"PDF：{output_path}")
         print(f"页数：{doc.page_count}")
+        print(f"目录链接：{link_count} 个")
         print(f"文本层示例：{sample_text}")
 
 
