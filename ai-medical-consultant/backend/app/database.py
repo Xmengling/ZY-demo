@@ -41,6 +41,16 @@ def _run_lightweight_migrations() -> None:
     inspector = inspect(engine)
     table_names = set(inspector.get_table_names())
 
+    if "users" in table_names:
+        columns = {c["name"] for c in inspector.get_columns("users")}
+        if "role" not in columns:
+            with engine.begin() as conn:
+                conn.execute(
+                    text("ALTER TABLE users ADD COLUMN role VARCHAR(16) DEFAULT 'viewer'")
+                )
+                # 旧系统中所有已登录用户原本都拥有编辑权限，迁移时保留原权限。
+                conn.execute(text("UPDATE users SET role = 'admin'"))
+
     if "consult_sessions" in table_names:
         columns = {c["name"] for c in inspector.get_columns("consult_sessions")}
         consult_columns = {

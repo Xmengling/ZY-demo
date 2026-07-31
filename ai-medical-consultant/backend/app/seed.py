@@ -16,6 +16,7 @@ def seed_demo_user(db) -> None:
                 username="demo",
                 password_hash=hash_password("demo123"),
                 full_name="演示用户",
+                role="admin",
             )
         )
         db.commit()

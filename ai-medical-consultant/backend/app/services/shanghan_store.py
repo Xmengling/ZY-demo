@@ -16,6 +16,21 @@ def _db_path() -> Path:
     return Path(settings.jingfang_db_path)
 
 
+def _kangping_levels_path() -> Path:
+    return _db_path().with_name("shanghan_kangping_levels.json")
+
+
+def _load_kangping_levels() -> list[dict]:
+    path = _kangping_levels_path()
+    if not path.exists():
+        return []
+    payload = json.loads(path.read_text(encoding="utf-8"))
+    if isinstance(payload, dict):
+        items = payload.get("items")
+        return items if isinstance(items, list) else []
+    return payload if isinstance(payload, list) else []
+
+
 SEED_ARTICLES = [
     {
         "id": "shl-001",
@@ -78,6 +93,26 @@ def ensure_ready() -> None:
                 """,
                 (article["id"], json.dumps(article, ensure_ascii=False), now),
             )
+        for item in _load_kangping_levels():
+            conn.execute(
+                """
+                insert into shanghan_kangping_levels(
+                    number, classification, levels, note, updated_at
+                ) values(?, ?, ?, ?, ?)
+                on conflict(number) do update set
+                    classification = excluded.classification,
+                    levels = excluded.levels,
+                    note = excluded.note,
+                    updated_at = excluded.updated_at
+                """,
+                (
+                    int(item["number"]),
+                    str(item["classification"]),
+                    json.dumps(item.get("levels") or [], ensure_ascii=False),
+                    str(item.get("note") or ""),
+                    now,
+                ),
+            )
         conn.commit()
 
 
@@ -100,6 +135,17 @@ def db() -> sqlite3.Connection:
         create table if not exists shanghan_study_progress (
             user_id text primary key,
             payload text not null,
+            updated_at integer not null
+        )
+        """
+    )
+    conn.execute(
+        """
+        create table if not exists shanghan_kangping_levels (
+            number integer primary key,
+            classification text not null,
+            levels text not null,
+            note text not null default '',
             updated_at integer not null
         )
         """
@@ -133,7 +179,24 @@ def list_articles() -> list[dict]:
         rows = conn.execute(
             "select payload from shanghan_articles order by updated_at desc"
         ).fetchall()
+        level_rows = conn.execute(
+            "select number, classification, levels, note from shanghan_kangping_levels"
+        ).fetchall()
     articles = [json.loads(row["payload"]) for row in rows]
+    levels_by_number = {
+        int(row["number"]): {
+            "kangpingLevel": row["classification"],
+            "kangpingLevels": json.loads(row["levels"]),
+            "kangpingLevelNote": row["note"],
+        }
+        for row in level_rows
+    }
+    for article in articles:
+        try:
+            number = int(str(article.get("number") or "").strip())
+        except ValueError:
+            continue
+        article.update(levels_by_number.get(number, {}))
 
     def sort_key(article: dict) -> tuple[int, int, str]:
         raw_number = str(article.get("number") or "").strip()
@@ -144,6 +207,26 @@ def list_articles() -> list[dict]:
             return (1, 0, article.get("level") or raw_number)
 
     return sorted(articles, key=sort_key)
+
+
+def list_kangping_levels() -> list[dict]:
+    with db() as conn:
+        rows = conn.execute(
+            """
+            select number, classification, levels, note
+            from shanghan_kangping_levels
+            order by number
+            """
+        ).fetchall()
+    return [
+        {
+            "number": int(row["number"]),
+            "classification": row["classification"],
+            "levels": json.loads(row["levels"]),
+            "note": row["note"],
+        }
+        for row in rows
+    ]
 
 
 def save_article(payload: dict) -> dict:

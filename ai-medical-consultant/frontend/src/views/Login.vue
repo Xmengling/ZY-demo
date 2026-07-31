@@ -3,13 +3,15 @@
     <div class="login-card">
       <div class="brand">
         <el-icon :size="40" color="#18a058"><FirstAidKit /></el-icon>
-        <h1>AI 智能问诊系统</h1>
-        <p class="text-muted">LLM + Agent + RAG 驱动的 7×24 智能健康助手</p>
+        <h1>{{ route.query.redirect === '/formulas' ? '方剂卡片管理' : 'AI 智能问诊系统' }}</h1>
+        <p class="text-muted">
+          {{ route.query.redirect === '/formulas' ? '管理员登录后可编辑方剂卡片' : 'LLM + Agent + RAG 驱动的 7×24 智能健康助手' }}
+        </p>
       </div>
 
       <el-tabs v-model="tab" stretch>
         <el-tab-pane label="登录" name="login" />
-        <el-tab-pane label="注册" name="register" />
+        <el-tab-pane label="普通用户注册" name="register" />
       </el-tabs>
 
       <el-form :model="form" @submit.prevent>
@@ -29,7 +31,7 @@
 
       <div class="demo-tip">
         <el-icon><InfoFilled /></el-icon>
-        演示账号：<b>demo</b> / <b>demo123</b>
+        管理员演示账号：<b>demo</b> / <b>demo123</b>
       </div>
     </div>
   </div>

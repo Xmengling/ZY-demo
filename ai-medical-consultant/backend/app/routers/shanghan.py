@@ -237,6 +237,11 @@ def list_articles():
     return {"articles": shanghan_store.list_articles()}
 
 
+@router.get("/kangping-levels")
+def list_kangping_levels():
+    return {"items": shanghan_store.list_kangping_levels()}
+
+
 @router.post("/export/pdf")
 def export_all_articles_pdf(
     levels: str | None = Query(default=None),

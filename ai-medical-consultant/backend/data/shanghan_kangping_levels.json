@@ -1,0 +1,3225 @@
+{
+  "schemaVersion": 1,
+  "title": "《伤寒论》398条康平本排版层级",
+  "scope": "宋本第1—398条对应的康平本条文正文；不把方剂组成、方后注缩进并入条文层级。",
+  "levelAliases": {
+    "顶格": "一级",
+    "降一格": "二级",
+    "降二格": "三级"
+  },
+  "statistics": {
+    "articles": 398,
+    "topOnly": 162,
+    "levelOneOnly": 85,
+    "levelTwoOnly": 138,
+    "mixed": 13,
+    "containsTop": 173,
+    "containsLevelOne": 98,
+    "containsLevelTwo": 140
+  },
+  "sources": [
+    "本地《伤寒论-上册_胡希恕_李冠杰讲稿合订本-原文标注》",
+    "本地《伤寒论-下册_胡希恕_李冠杰讲稿合订本-原文标注》",
+    "按李冠杰整理、郭明校对的《康平本伤寒论条文背诵版》：https://www.jfqmbz.com/jingfang/2024/shanghanlunyuanwen_0908/22486.html",
+    "《古本康平伤寒论》重排本的缩进结构：https://jicheng.tw/tcm/book/古本康平傷寒論/index.html"
+  ],
+  "items": [
+    {
+      "number": 1,
+      "classification": "顶格",
+      "levels": [
+        "顶格"
+      ],
+      "note": ""
+    },
+    {
+      "number": 2,
+      "classification": "顶格",
+      "levels": [
+        "顶格"
+      ],
+      "note": ""
+    },
+    {
+      "number": 3,
+      "classification": "顶格",
+      "levels": [
+        "顶格"
+      ],
+      "note": ""
+    },
+    {
+      "number": 4,
+      "classification": "降二格",
+      "levels": [
+        "降二格"
+      ],
+      "note": ""
+    },
+    {
+      "number": 5,
+      "classification": "降二格",
+      "levels": [
+        "降二格"
+      ],
+      "note": ""
+    },
+    {
+      "number": 6,
+      "classification": "顶格 + 降一格",
+      "levels": [
+        "顶格",
+        "降一格"
+      ],
+      "note": "条内多段，顶格与降一格交替排版。"
+    },
+    {
+      "number": 7,
+      "classification": "降二格",
+      "levels": [
+        "降二格"
+      ],
+      "note": ""
+    },
+    {
+      "number": 8,
+      "classification": "降二格",
+      "levels": [
+        "降二格"
+      ],
+      "note": ""
+    },
+    {
+      "number": 9,
+      "classification": "降二格",
+      "levels": [
+        "降二格"
+      ],
+      "note": ""
+    },
+    {
+      "number": 10,
+      "classification": "降二格",
+      "levels": [
+        "降二格"
+      ],
+      "note": ""
+    },
+    {
+      "number": 11,
+      "classification": "降一格",
+      "levels": [
+        "降一格"
+      ],
+      "note": ""
+    },
+    {
+      "number": 12,
+      "classification": "顶格",
+      "levels": [
+        "顶格"
+      ],
+      "note": ""
+    },
+    {
+      "number": 13,
+      "classification": "顶格",
+      "levels": [
+        "顶格"
+      ],
+      "note": ""
+    },
+    {
+      "number": 14,
+      "classification": "顶格",
+      "levels": [
+        "顶格"
+      ],
+      "note": ""
+    },
+    {
+      "number": 15,
+      "classification": "顶格",
+      "levels": [
+        "顶格"
+      ],
+      "note": ""
+    },
+    {
+      "number": 16,
+      "classification": "顶格 + 降一格",
+      "levels": [
+        "顶格",
+        "降一格"
+      ],
+      "note": "主体为顶格；“桂枝本为解肌……”一段为降一格。"
+    },
+    {
+      "number": 17,
+      "classification": "降二格",
+      "levels": [
+        "降二格"
+      ],
+      "note": ""
+    },
+    {
+      "number": 18,
+      "classification": "降一格",
+      "levels": [
+        "降一格"
+      ],
+      "note": ""
+    },
+    {
+      "number": 19,
+      "classification": "降一格",
+      "levels": [
+        "降一格"
+      ],
+      "note": ""
+    },
+    {
+      "number": 20,
+      "classification": "顶格",
+      "levels": [
+        "顶格"
+      ],
+      "note": ""
+    },
+    {
+      "number": 21,
+      "classification": "顶格",
+      "levels": [
+        "顶格"
+      ],
+      "note": ""
+    },
+    {
+      "number": 22,
+      "classification": "顶格",
+      "levels": [
+        "顶格"
+      ],
+      "note": ""
+    },
+    {
+      "number": 23,
+      "classification": "顶格",
+      "levels": [
+        "顶格"
+      ],
+      "note": ""
+    },
+    {
+      "number": 24,
+      "classification": "顶格",
+      "levels": [
+        "顶格"
+      ],
+      "note": ""
+    },
+    {
+      "number": 25,
+      "classification": "顶格",
+      "levels": [
+        "顶格"
+      ],
+      "note": ""
+    },
+    {
+      "number": 26,
+      "classification": "顶格",
+      "levels": [
+        "顶格"
+      ],
+      "note": ""
+    },
+    {
+      "number": 27,
+      "classification": "顶格",
+      "levels": [
+        "顶格"
+      ],
+      "note": ""
+    },
+    {
+      "number": 28,
+      "classification": "顶格",
+      "levels": [
+        "顶格"
+      ],
+      "note": ""
+    },
+    {
+      "number": 29,
+      "classification": "顶格",
+      "levels": [
+        "顶格"
+      ],
+      "note": ""
+    },
+    {
+      "number": 30,
+      "classification": "降二格",
+      "levels": [
+        "降二格"
+      ],
+      "note": ""
+    },
+    {
+      "number": 31,
+      "classification": "顶格",
+      "levels": [
+        "顶格"
+      ],
+      "note": ""
+    },
+    {
+      "number": 32,
+      "classification": "顶格",
+      "levels": [
+        "顶格"
+      ],
+      "note": ""
+    },
+    {
+      "number": 33,
+      "classification": "顶格",
+      "levels": [
+        "顶格"
+      ],
+      "note": ""
+    },
+    {
+      "number": 34,
+      "classification": "顶格",
+      "levels": [
+        "顶格"
+      ],
+      "note": ""
+    },
+    {
+      "number": 35,
+      "classification": "顶格",
+      "levels": [
+        "顶格"
+      ],
+      "note": ""
+    },
+    {
+      "number": 36,
+      "classification": "降二格",
+      "levels": [
+        "降二格"
+      ],
+      "note": ""
+    },
+    {
+      "number": 37,
+      "classification": "降二格",
+      "levels": [
+        "降二格"
+      ],
+      "note": ""
+    },
+    {
+      "number": 38,
+      "classification": "顶格",
+      "levels": [
+        "顶格"
+      ],
+      "note": ""
+    },
+    {
+      "number": 39,
+      "classification": "顶格",
+      "levels": [
+        "顶格"
+      ],
+      "note": ""
+    },
+    {
+      "number": 40,
+      "classification": "顶格",
+      "levels": [
+        "顶格"
+      ],
+      "note": ""
+    },
+    {
+      "number": 41,
+      "classification": "顶格",
+      "levels": [
+        "顶格"
+      ],
+      "note": ""
+    },
+    {
+      "number": 42,
+      "classification": "顶格",
+      "levels": [
+        "顶格"
+      ],
+      "note": ""
+    },
+    {
+      "number": 43,
+      "classification": "顶格",
+      "levels": [
+        "顶格"
+      ],
+      "note": ""
+    },
+    {
+      "number": 44,
+      "classification": "顶格",
+      "levels": [
+        "顶格"
+      ],
+      "note": ""
+    },
+    {
+      "number": 45,
+      "classification": "降二格",
+      "levels": [
+        "降二格"
+      ],
+      "note": ""
+    },
+    {
+      "number": 46,
+      "classification": "顶格",
+      "levels": [
+        "顶格"
+      ],
+      "note": ""
+    },
+    {
+      "number": 47,
+      "classification": "降一格",
+      "levels": [
+        "降一格"
+      ],
+      "note": ""
+    },
+    {
+      "number": 48,
+      "classification": "顶格",
+      "levels": [
+        "顶格"
+      ],
+      "note": ""
+    },
+    {
+      "number": 49,
+      "classification": "降一格",
+      "levels": [
+        "降一格"
+      ],
+      "note": ""
+    },
+    {
+      "number": 50,
+      "classification": "降一格",
+      "levels": [
+        "降一格"
+      ],
+      "note": ""
+    },
+    {
+      "number": 51,
+      "classification": "降二格",
+      "levels": [
+        "降二格"
+      ],
+      "note": ""
+    },
+    {
+      "number": 52,
+      "classification": "降二格",
+      "levels": [
+        "降二格"
+      ],
+      "note": ""
+    },
+    {
+      "number": 53,
+      "classification": "降一格",
+      "levels": [
+        "降一格"
+      ],
+      "note": ""
+    },
+    {
+      "number": 54,
+      "classification": "降二格",
+      "levels": [
+        "降二格"
+      ],
+      "note": ""
+    },
+    {
+      "number": 55,
+      "classification": "顶格",
+      "levels": [
+        "顶格"
+      ],
+      "note": ""
+    },
+    {
+      "number": 56,
+      "classification": "降二格",
+      "levels": [
+        "降二格"
+      ],
+      "note": ""
+    },
+    {
+      "number": 57,
+      "classification": "降一格",
+      "levels": [
+        "降一格"
+      ],
+      "note": ""
+    },
+    {
+      "number": 58,
+      "classification": "降一格",
+      "levels": [
+        "降一格"
+      ],
+      "note": ""
+    },
+    {
+      "number": 59,
+      "classification": "顶格",
+      "levels": [
+        "顶格"
+      ],
+      "note": ""
+    },
+    {
+      "number": 60,
+      "classification": "顶格",
+      "levels": [
+        "顶格"
+      ],
+      "note": ""
+    },
+    {
+      "number": 61,
+      "classification": "顶格",
+      "levels": [
+        "顶格"
+      ],
+      "note": ""
+    },
+    {
+      "number": 62,
+      "classification": "降一格",
+      "levels": [
+        "降一格"
+      ],
+      "note": ""
+    },
+    {
+      "number": 63,
+      "classification": "降一格",
+      "levels": [
+        "降一格"
+      ],
+      "note": ""
+    },
+    {
+      "number": 64,
+      "classification": "降二格",
+      "levels": [
+        "降二格"
+      ],
+      "note": ""
+    },
+    {
+      "number": 65,
+      "classification": "降二格",
+      "levels": [
+        "降二格"
+      ],
+      "note": ""
+    },
+    {
+      "number": 66,
+      "classification": "降一格",
+      "levels": [
+        "降一格"
+      ],
+      "note": ""
+    },
+    {
+      "number": 67,
+      "classification": "顶格",
+      "levels": [
+        "顶格"
+      ],
+      "note": ""
+    },
+    {
+      "number": 68,
+      "classification": "顶格",
+      "levels": [
+        "顶格"
+      ],
+      "note": ""
+    },
+    {
+      "number": 69,
+      "classification": "顶格",
+      "levels": [
+        "顶格"
+      ],
+      "note": ""
+    },
+    {
+      "number": 70,
+      "classification": "顶格",
+      "levels": [
+        "顶格"
+      ],
+      "note": ""
+    },
+    {
+      "number": 71,
+      "classification": "顶格",
+      "levels": [
+        "顶格"
+      ],
+      "note": ""
+    },
+    {
+      "number": 72,
+      "classification": "顶格",
+      "levels": [
+        "顶格"
+      ],
+      "note": ""
+    },
+    {
+      "number": 73,
+      "classification": "顶格",
+      "levels": [
+        "顶格"
+      ],
+      "note": ""
+    },
+    {
+      "number": 74,
+      "classification": "顶格",
+      "levels": [
+        "顶格"
+      ],
+      "note": ""
+    },
+    {
+      "number": 75,
+      "classification": "降二格",
+      "levels": [
+        "降二格"
+      ],
+      "note": ""
+    },
+    {
+      "number": 76,
+      "classification": "顶格",
+      "levels": [
+        "顶格"
+      ],
+      "note": ""
+    },
+    {
+      "number": 77,
+      "classification": "顶格",
+      "levels": [
+        "顶格"
+      ],
+      "note": ""
+    },
+    {
+      "number": 78,
+      "classification": "顶格",
+      "levels": [
+        "顶格"
+      ],
+      "note": ""
+    },
+    {
+      "number": 79,
+      "classification": "顶格",
+      "levels": [
+        "顶格"
+      ],
+      "note": ""
+    },
+    {
+      "number": 80,
+      "classification": "顶格",
+      "levels": [
+        "顶格"
+      ],
+      "note": ""
+    },
+    {
+      "number": 81,
+      "classification": "降二格",
+      "levels": [
+        "降二格"
+      ],
+      "note": ""
+    },
+    {
+      "number": 82,
+      "classification": "顶格",
+      "levels": [
+        "顶格"
+      ],
+      "note": ""
+    },
+    {
+      "number": 83,
+      "classification": "降一格",
+      "levels": [
+        "降一格"
+      ],
+      "note": ""
+    },
+    {
+      "number": 84,
+      "classification": "降一格",
+      "levels": [
+        "降一格"
+      ],
+      "note": ""
+    },
+    {
+      "number": 85,
+      "classification": "降一格",
+      "levels": [
+        "降一格"
+      ],
+      "note": ""
+    },
+    {
+      "number": 86,
+      "classification": "降一格",
+      "levels": [
+        "降一格"
+      ],
+      "note": ""
+    },
+    {
+      "number": 87,
+      "classification": "降一格",
+      "levels": [
+        "降一格"
+      ],
+      "note": ""
+    },
+    {
+      "number": 88,
+      "classification": "降一格",
+      "levels": [
+        "降一格"
+      ],
+      "note": ""
+    },
+    {
+      "number": 89,
+      "classification": "降一格",
+      "levels": [
+        "降一格"
+      ],
+      "note": ""
+    },
+    {
+      "number": 90,
+      "classification": "降二格",
+      "levels": [
+        "降二格"
+      ],
+      "note": ""
+    },
+    {
+      "number": 91,
+      "classification": "顶格",
+      "levels": [
+        "顶格"
+      ],
+      "note": ""
+    },
+    {
+      "number": 92,
+      "classification": "降一格",
+      "levels": [
+        "降一格"
+      ],
+      "note": ""
+    },
+    {
+      "number": 93,
+      "classification": "顶格 + 降一格",
+      "levels": [
+        "顶格",
+        "降一格"
+      ],
+      "note": "顶格正文后接降一格补充。"
+    },
+    {
+      "number": 94,
+      "classification": "顶格",
+      "levels": [
+        "顶格"
+      ],
+      "note": ""
+    },
+    {
+      "number": 95,
+      "classification": "降二格",
+      "levels": [
+        "降二格"
+      ],
+      "note": ""
+    },
+    {
+      "number": 96,
+      "classification": "顶格",
+      "levels": [
+        "顶格"
+      ],
+      "note": ""
+    },
+    {
+      "number": 97,
+      "classification": "降一格",
+      "levels": [
+        "降一格"
+      ],
+      "note": ""
+    },
+    {
+      "number": 98,
+      "classification": "降一格 + 顶格",
+      "levels": [
+        "顶格",
+        "降一格"
+      ],
+      "note": "先为降一格，转行后变为顶格；李冠杰认为排版存在传抄错误，不宜硬判为单一层级。"
+    },
+    {
+      "number": 99,
+      "classification": "顶格",
+      "levels": [
+        "顶格"
+      ],
+      "note": ""
+    },
+    {
+      "number": 100,
+      "classification": "顶格",
+      "levels": [
+        "顶格"
+      ],
+      "note": ""
+    },
+    {
+      "number": 101,
+      "classification": "降一格",
+      "levels": [
+        "降一格"
+      ],
+      "note": ""
+    },
+    {
+      "number": 102,
+      "classification": "顶格",
+      "levels": [
+        "顶格"
+      ],
+      "note": ""
+    },
+    {
+      "number": 103,
+      "classification": "顶格",
+      "levels": [
+        "顶格"
+      ],
+      "note": ""
+    },
+    {
+      "number": 104,
+      "classification": "顶格",
+      "levels": [
+        "顶格"
+      ],
+      "note": ""
+    },
+    {
+      "number": 105,
+      "classification": "顶格 + 降一格",
+      "levels": [
+        "顶格",
+        "降一格"
+      ],
+      "note": "同一宋本条号内含顶格正文与降一格补充。"
+    },
+    {
+      "number": 106,
+      "classification": "顶格",
+      "levels": [
+        "顶格"
+      ],
+      "note": ""
+    },
+    {
+      "number": 107,
+      "classification": "顶格",
+      "levels": [
+        "顶格"
+      ],
+      "note": ""
+    },
+    {
+      "number": 108,
+      "classification": "降二格",
+      "levels": [
+        "降二格"
+      ],
+      "note": ""
+    },
+    {
+      "number": 109,
+      "classification": "降二格",
+      "levels": [
+        "降二格"
+      ],
+      "note": ""
+    },
+    {
+      "number": 110,
+      "classification": "顶格",
+      "levels": [
+        "顶格"
+      ],
+      "note": ""
+    },
+    {
+      "number": 111,
+      "classification": "顶格",
+      "levels": [
+        "顶格"
+      ],
+      "note": ""
+    },
+    {
+      "number": 112,
+      "classification": "顶格",
+      "levels": [
+        "顶格"
+      ],
+      "note": ""
+    },
+    {
+      "number": 113,
+      "classification": "降一格",
+      "levels": [
+        "降一格"
+      ],
+      "note": ""
+    },
+    {
+      "number": 114,
+      "classification": "顶格",
+      "levels": [
+        "顶格"
+      ],
+      "note": ""
+    },
+    {
+      "number": 115,
+      "classification": "降一格",
+      "levels": [
+        "降一格"
+      ],
+      "note": ""
+    },
+    {
+      "number": 116,
+      "classification": "降一格",
+      "levels": [
+        "降一格"
+      ],
+      "note": ""
+    },
+    {
+      "number": 117,
+      "classification": "顶格",
+      "levels": [
+        "顶格"
+      ],
+      "note": ""
+    },
+    {
+      "number": 118,
+      "classification": "顶格",
+      "levels": [
+        "顶格"
+      ],
+      "note": ""
+    },
+    {
+      "number": 119,
+      "classification": "降一格",
+      "levels": [
+        "降一格"
+      ],
+      "note": ""
+    },
+    {
+      "number": 120,
+      "classification": "顶格 + 降一格",
+      "levels": [
+        "顶格",
+        "降一格"
+      ],
+      "note": "同一宋本条号内含顶格正文与降一格补充。"
+    },
+    {
+      "number": 121,
+      "classification": "降一格",
+      "levels": [
+        "降一格"
+      ],
+      "note": ""
+    },
+    {
+      "number": 122,
+      "classification": "降一格",
+      "levels": [
+        "降一格"
+      ],
+      "note": ""
+    },
+    {
+      "number": 123,
+      "classification": "顶格",
+      "levels": [
+        "顶格"
+      ],
+      "note": ""
+    },
+    {
+      "number": 124,
+      "classification": "顶格",
+      "levels": [
+        "顶格"
+      ],
+      "note": ""
+    },
+    {
+      "number": 125,
+      "classification": "顶格",
+      "levels": [
+        "顶格"
+      ],
+      "note": ""
+    },
+    {
+      "number": 126,
+      "classification": "顶格",
+      "levels": [
+        "顶格"
+      ],
+      "note": ""
+    },
+    {
+      "number": 127,
+      "classification": "降二格",
+      "levels": [
+        "降二格"
+      ],
+      "note": ""
+    },
+    {
+      "number": 128,
+      "classification": "降二格",
+      "levels": [
+        "降二格"
+      ],
+      "note": ""
+    },
+    {
+      "number": 129,
+      "classification": "降二格",
+      "levels": [
+        "降二格"
+      ],
+      "note": ""
+    },
+    {
+      "number": 130,
+      "classification": "降二格",
+      "levels": [
+        "降二格"
+      ],
+      "note": ""
+    },
+    {
+      "number": 131,
+      "classification": "降一格",
+      "levels": [
+        "降一格"
+      ],
+      "note": ""
+    },
+    {
+      "number": 132,
+      "classification": "降一格",
+      "levels": [
+        "降一格"
+      ],
+      "note": ""
+    },
+    {
+      "number": 133,
+      "classification": "降一格",
+      "levels": [
+        "降一格"
+      ],
+      "note": ""
+    },
+    {
+      "number": 134,
+      "classification": "顶格",
+      "levels": [
+        "顶格"
+      ],
+      "note": ""
+    },
+    {
+      "number": 135,
+      "classification": "顶格",
+      "levels": [
+        "顶格"
+      ],
+      "note": ""
+    },
+    {
+      "number": 136,
+      "classification": "顶格",
+      "levels": [
+        "顶格"
+      ],
+      "note": ""
+    },
+    {
+      "number": 137,
+      "classification": "顶格",
+      "levels": [
+        "顶格"
+      ],
+      "note": ""
+    },
+    {
+      "number": 138,
+      "classification": "顶格",
+      "levels": [
+        "顶格"
+      ],
+      "note": ""
+    },
+    {
+      "number": 139,
+      "classification": "顶格",
+      "levels": [
+        "顶格"
+      ],
+      "note": ""
+    },
+    {
+      "number": 140,
+      "classification": "顶格 + 降一格",
+      "levels": [
+        "顶格",
+        "降一格"
+      ],
+      "note": "顶格残文与降一格补充并存。"
+    },
+    {
+      "number": 141,
+      "classification": "顶格 + 降一格",
+      "levels": [
+        "顶格",
+        "降一格"
+      ],
+      "note": "“病在阳……”正文为顶格；“身热、皮粟不解……”为降一格。白散方另为降二格，但方剂版式不计入条文层级。"
+    },
+    {
+      "number": 142,
+      "classification": "降二格",
+      "levels": [
+        "降二格"
+      ],
+      "note": ""
+    },
+    {
+      "number": 143,
+      "classification": "降二格",
+      "levels": [
+        "降二格"
+      ],
+      "note": ""
+    },
+    {
+      "number": 144,
+      "classification": "顶格",
+      "levels": [
+        "顶格"
+      ],
+      "note": ""
+    },
+    {
+      "number": 145,
+      "classification": "降一格",
+      "levels": [
+        "降一格"
+      ],
+      "note": ""
+    },
+    {
+      "number": 146,
+      "classification": "顶格",
+      "levels": [
+        "顶格"
+      ],
+      "note": ""
+    },
+    {
+      "number": 147,
+      "classification": "顶格",
+      "levels": [
+        "顶格"
+      ],
+      "note": ""
+    },
+    {
+      "number": 148,
+      "classification": "顶格",
+      "levels": [
+        "顶格"
+      ],
+      "note": ""
+    },
+    {
+      "number": 149,
+      "classification": "顶格",
+      "levels": [
+        "顶格"
+      ],
+      "note": ""
+    },
+    {
+      "number": 150,
+      "classification": "顶格",
+      "levels": [
+        "顶格"
+      ],
+      "note": ""
+    },
+    {
+      "number": 151,
+      "classification": "降一格",
+      "levels": [
+        "降一格"
+      ],
+      "note": ""
+    },
+    {
+      "number": 152,
+      "classification": "顶格",
+      "levels": [
+        "顶格"
+      ],
+      "note": ""
+    },
+    {
+      "number": 153,
+      "classification": "顶格",
+      "levels": [
+        "顶格"
+      ],
+      "note": ""
+    },
+    {
+      "number": 154,
+      "classification": "顶格",
+      "levels": [
+        "顶格"
+      ],
+      "note": ""
+    },
+    {
+      "number": 155,
+      "classification": "顶格",
+      "levels": [
+        "顶格"
+      ],
+      "note": ""
+    },
+    {
+      "number": 156,
+      "classification": "顶格",
+      "levels": [
+        "顶格"
+      ],
+      "note": ""
+    },
+    {
+      "number": 157,
+      "classification": "顶格",
+      "levels": [
+        "顶格"
+      ],
+      "note": ""
+    },
+    {
+      "number": 158,
+      "classification": "顶格",
+      "levels": [
+        "顶格"
+      ],
+      "note": ""
+    },
+    {
+      "number": 159,
+      "classification": "顶格",
+      "levels": [
+        "顶格"
+      ],
+      "note": ""
+    },
+    {
+      "number": 160,
+      "classification": "降一格",
+      "levels": [
+        "降一格"
+      ],
+      "note": ""
+    },
+    {
+      "number": 161,
+      "classification": "顶格",
+      "levels": [
+        "顶格"
+      ],
+      "note": ""
+    },
+    {
+      "number": 162,
+      "classification": "降一格",
+      "levels": [
+        "降一格"
+      ],
+      "note": ""
+    },
+    {
+      "number": 163,
+      "classification": "顶格",
+      "levels": [
+        "顶格"
+      ],
+      "note": ""
+    },
+    {
+      "number": 164,
+      "classification": "顶格",
+      "levels": [
+        "顶格"
+      ],
+      "note": ""
+    },
+    {
+      "number": 165,
+      "classification": "顶格",
+      "levels": [
+        "顶格"
+      ],
+      "note": ""
+    },
+    {
+      "number": 166,
+      "classification": "降一格",
+      "levels": [
+        "降一格"
+      ],
+      "note": ""
+    },
+    {
+      "number": 167,
+      "classification": "降二格",
+      "levels": [
+        "降二格"
+      ],
+      "note": ""
+    },
+    {
+      "number": 168,
+      "classification": "顶格",
+      "levels": [
+        "顶格"
+      ],
+      "note": ""
+    },
+    {
+      "number": 169,
+      "classification": "顶格",
+      "levels": [
+        "顶格"
+      ],
+      "note": ""
+    },
+    {
+      "number": 170,
+      "classification": "顶格",
+      "levels": [
+        "顶格"
+      ],
+      "note": ""
+    },
+    {
+      "number": 171,
+      "classification": "降二格",
+      "levels": [
+        "降二格"
+      ],
+      "note": ""
+    },
+    {
+      "number": 172,
+      "classification": "顶格",
+      "levels": [
+        "顶格"
+      ],
+      "note": ""
+    },
+    {
+      "number": 173,
+      "classification": "顶格",
+      "levels": [
+        "顶格"
+      ],
+      "note": ""
+    },
+    {
+      "number": 174,
+      "classification": "顶格",
+      "levels": [
+        "顶格"
+      ],
+      "note": ""
+    },
+    {
+      "number": 175,
+      "classification": "顶格",
+      "levels": [
+        "顶格"
+      ],
+      "note": ""
+    },
+    {
+      "number": 176,
+      "classification": "顶格",
+      "levels": [
+        "顶格"
+      ],
+      "note": ""
+    },
+    {
+      "number": 177,
+      "classification": "顶格",
+      "levels": [
+        "顶格"
+      ],
+      "note": ""
+    },
+    {
+      "number": 178,
+      "classification": "降二格",
+      "levels": [
+        "降二格"
+      ],
+      "note": ""
+    },
+    {
+      "number": 179,
+      "classification": "降二格",
+      "levels": [
+        "降二格"
+      ],
+      "note": ""
+    },
+    {
+      "number": 180,
+      "classification": "顶格",
+      "levels": [
+        "顶格"
+      ],
+      "note": ""
+    },
+    {
+      "number": 181,
+      "classification": "降二格",
+      "levels": [
+        "降二格"
+      ],
+      "note": ""
+    },
+    {
+      "number": 182,
+      "classification": "降二格",
+      "levels": [
+        "降二格"
+      ],
+      "note": ""
+    },
+    {
+      "number": 183,
+      "classification": "降二格",
+      "levels": [
+        "降二格"
+      ],
+      "note": ""
+    },
+    {
+      "number": 184,
+      "classification": "降二格",
+      "levels": [
+        "降二格"
+      ],
+      "note": ""
+    },
+    {
+      "number": 185,
+      "classification": "降一格",
+      "levels": [
+        "降一格"
+      ],
+      "note": ""
+    },
+    {
+      "number": 186,
+      "classification": "降二格",
+      "levels": [
+        "降二格"
+      ],
+      "note": ""
+    },
+    {
+      "number": 187,
+      "classification": "降二格",
+      "levels": [
+        "降二格"
+      ],
+      "note": ""
+    },
+    {
+      "number": 188,
+      "classification": "降二格",
+      "levels": [
+        "降二格"
+      ],
+      "note": ""
+    },
+    {
+      "number": 189,
+      "classification": "降二格",
+      "levels": [
+        "降二格"
+      ],
+      "note": ""
+    },
+    {
+      "number": 190,
+      "classification": "降二格",
+      "levels": [
+        "降二格"
+      ],
+      "note": ""
+    },
+    {
+      "number": 191,
+      "classification": "降一格",
+      "levels": [
+        "降一格"
+      ],
+      "note": ""
+    },
+    {
+      "number": 192,
+      "classification": "降一格",
+      "levels": [
+        "降一格"
+      ],
+      "note": ""
+    },
+    {
+      "number": 193,
+      "classification": "降二格",
+      "levels": [
+        "降二格"
+      ],
+      "note": ""
+    },
+    {
+      "number": 194,
+      "classification": "降一格",
+      "levels": [
+        "降一格"
+      ],
+      "note": ""
+    },
+    {
+      "number": 195,
+      "classification": "降一格",
+      "levels": [
+        "降一格"
+      ],
+      "note": ""
+    },
+    {
+      "number": 196,
+      "classification": "降二格",
+      "levels": [
+        "降二格"
+      ],
+      "note": ""
+    },
+    {
+      "number": 197,
+      "classification": "降二格",
+      "levels": [
+        "降二格"
+      ],
+      "note": ""
+    },
+    {
+      "number": 198,
+      "classification": "降二格",
+      "levels": [
+        "降二格"
+      ],
+      "note": ""
+    },
+    {
+      "number": 199,
+      "classification": "降一格",
+      "levels": [
+        "降一格"
+      ],
+      "note": ""
+    },
+    {
+      "number": 200,
+      "classification": "降一格",
+      "levels": [
+        "降一格"
+      ],
+      "note": ""
+    },
+    {
+      "number": 201,
+      "classification": "降二格",
+      "levels": [
+        "降二格"
+      ],
+      "note": ""
+    },
+    {
+      "number": 202,
+      "classification": "降二格",
+      "levels": [
+        "降二格"
+      ],
+      "note": ""
+    },
+    {
+      "number": 203,
+      "classification": "降一格",
+      "levels": [
+        "降一格"
+      ],
+      "note": ""
+    },
+    {
+      "number": 204,
+      "classification": "降一格",
+      "levels": [
+        "降一格"
+      ],
+      "note": ""
+    },
+    {
+      "number": 205,
+      "classification": "降二格",
+      "levels": [
+        "降二格"
+      ],
+      "note": ""
+    },
+    {
+      "number": 206,
+      "classification": "降二格",
+      "levels": [
+        "降二格"
+      ],
+      "note": ""
+    },
+    {
+      "number": 207,
+      "classification": "降二格",
+      "levels": [
+        "降二格"
+      ],
+      "note": ""
+    },
+    {
+      "number": 208,
+      "classification": "顶格 + 降一格",
+      "levels": [
+        "顶格",
+        "降一格"
+      ],
+      "note": "“阳明病……”至“大承气汤主之”为顶格；“若汗出多……”为降一格。"
+    },
+    {
+      "number": 209,
+      "classification": "顶格 + 降一格",
+      "levels": [
+        "顶格",
+        "降一格"
+      ],
+      "note": "前一自然段为顶格，后一自然段为降一格。"
+    },
+    {
+      "number": 210,
+      "classification": "降一格",
+      "levels": [
+        "降一格"
+      ],
+      "note": ""
+    },
+    {
+      "number": 211,
+      "classification": "降一格",
+      "levels": [
+        "降一格"
+      ],
+      "note": ""
+    },
+    {
+      "number": 212,
+      "classification": "顶格",
+      "levels": [
+        "顶格"
+      ],
+      "note": ""
+    },
+    {
+      "number": 213,
+      "classification": "降一格",
+      "levels": [
+        "降一格"
+      ],
+      "note": ""
+    },
+    {
+      "number": 214,
+      "classification": "降一格 + 降二格",
+      "levels": [
+        "降一格",
+        "降二格"
+      ],
+      "note": "“小承气汤主之”以前为降一格，之后为降二格。"
+    },
+    {
+      "number": 215,
+      "classification": "降二格",
+      "levels": [
+        "降二格"
+      ],
+      "note": ""
+    },
+    {
+      "number": 216,
+      "classification": "降二格",
+      "levels": [
+        "降二格"
+      ],
+      "note": ""
+    },
+    {
+      "number": 217,
+      "classification": "降一格",
+      "levels": [
+        "降一格"
+      ],
+      "note": ""
+    },
+    {
+      "number": 218,
+      "classification": "降一格",
+      "levels": [
+        "降一格"
+      ],
+      "note": ""
+    },
+    {
+      "number": 219,
+      "classification": "顶格",
+      "levels": [
+        "顶格"
+      ],
+      "note": ""
+    },
+    {
+      "number": 220,
+      "classification": "顶格",
+      "levels": [
+        "顶格"
+      ],
+      "note": ""
+    },
+    {
+      "number": 221,
+      "classification": "顶格",
+      "levels": [
+        "顶格"
+      ],
+      "note": ""
+    },
+    {
+      "number": 222,
+      "classification": "顶格",
+      "levels": [
+        "顶格"
+      ],
+      "note": ""
+    },
+    {
+      "number": 223,
+      "classification": "顶格",
+      "levels": [
+        "顶格"
+      ],
+      "note": ""
+    },
+    {
+      "number": 224,
+      "classification": "降二格",
+      "levels": [
+        "降二格"
+      ],
+      "note": ""
+    },
+    {
+      "number": 225,
+      "classification": "降一格",
+      "levels": [
+        "降一格"
+      ],
+      "note": ""
+    },
+    {
+      "number": 226,
+      "classification": "降二格",
+      "levels": [
+        "降二格"
+      ],
+      "note": ""
+    },
+    {
+      "number": 227,
+      "classification": "降二格",
+      "levels": [
+        "降二格"
+      ],
+      "note": ""
+    },
+    {
+      "number": 228,
+      "classification": "顶格",
+      "levels": [
+        "顶格"
+      ],
+      "note": ""
+    },
+    {
+      "number": 229,
+      "classification": "顶格",
+      "levels": [
+        "顶格"
+      ],
+      "note": ""
+    },
+    {
+      "number": 230,
+      "classification": "降一格",
+      "levels": [
+        "降一格"
+      ],
+      "note": ""
+    },
+    {
+      "number": 231,
+      "classification": "顶格",
+      "levels": [
+        "顶格"
+      ],
+      "note": ""
+    },
+    {
+      "number": 232,
+      "classification": "顶格",
+      "levels": [
+        "顶格"
+      ],
+      "note": ""
+    },
+    {
+      "number": 233,
+      "classification": "降一格",
+      "levels": [
+        "降一格"
+      ],
+      "note": ""
+    },
+    {
+      "number": 234,
+      "classification": "降二格",
+      "levels": [
+        "降二格"
+      ],
+      "note": ""
+    },
+    {
+      "number": 235,
+      "classification": "降二格",
+      "levels": [
+        "降二格"
+      ],
+      "note": ""
+    },
+    {
+      "number": 236,
+      "classification": "顶格",
+      "levels": [
+        "顶格"
+      ],
+      "note": ""
+    },
+    {
+      "number": 237,
+      "classification": "顶格",
+      "levels": [
+        "顶格"
+      ],
+      "note": ""
+    },
+    {
+      "number": 238,
+      "classification": "顶格",
+      "levels": [
+        "顶格"
+      ],
+      "note": ""
+    },
+    {
+      "number": 239,
+      "classification": "降一格",
+      "levels": [
+        "降一格"
+      ],
+      "note": ""
+    },
+    {
+      "number": 240,
+      "classification": "降一格",
+      "levels": [
+        "降一格"
+      ],
+      "note": ""
+    },
+    {
+      "number": 241,
+      "classification": "顶格",
+      "levels": [
+        "顶格"
+      ],
+      "note": ""
+    },
+    {
+      "number": 242,
+      "classification": "降一格",
+      "levels": [
+        "降一格"
+      ],
+      "note": ""
+    },
+    {
+      "number": 243,
+      "classification": "顶格",
+      "levels": [
+        "顶格"
+      ],
+      "note": ""
+    },
+    {
+      "number": 244,
+      "classification": "降一格",
+      "levels": [
+        "降一格"
+      ],
+      "note": ""
+    },
+    {
+      "number": 245,
+      "classification": "降二格",
+      "levels": [
+        "降二格"
+      ],
+      "note": ""
+    },
+    {
+      "number": 246,
+      "classification": "降二格",
+      "levels": [
+        "降二格"
+      ],
+      "note": ""
+    },
+    {
+      "number": 247,
+      "classification": "降二格",
+      "levels": [
+        "降二格"
+      ],
+      "note": ""
+    },
+    {
+      "number": 248,
+      "classification": "顶格",
+      "levels": [
+        "顶格"
+      ],
+      "note": ""
+    },
+    {
+      "number": 249,
+      "classification": "降一格",
+      "levels": [
+        "降一格"
+      ],
+      "note": ""
+    },
+    {
+      "number": 250,
+      "classification": "降一格",
+      "levels": [
+        "降一格"
+      ],
+      "note": ""
+    },
+    {
+      "number": 251,
+      "classification": "降二格",
+      "levels": [
+        "降二格"
+      ],
+      "note": ""
+    },
+    {
+      "number": 252,
+      "classification": "降一格",
+      "levels": [
+        "降一格"
+      ],
+      "note": ""
+    },
+    {
+      "number": 253,
+      "classification": "降二格",
+      "levels": [
+        "降二格"
+      ],
+      "note": ""
+    },
+    {
+      "number": 254,
+      "classification": "降二格",
+      "levels": [
+        "降二格"
+      ],
+      "note": ""
+    },
+    {
+      "number": 255,
+      "classification": "降二格",
+      "levels": [
+        "降二格"
+      ],
+      "note": ""
+    },
+    {
+      "number": 256,
+      "classification": "降一格",
+      "levels": [
+        "降一格"
+      ],
+      "note": ""
+    },
+    {
+      "number": 257,
+      "classification": "降二格",
+      "levels": [
+        "降二格"
+      ],
+      "note": ""
+    },
+    {
+      "number": 258,
+      "classification": "降二格",
+      "levels": [
+        "降二格"
+      ],
+      "note": ""
+    },
+    {
+      "number": 259,
+      "classification": "降一格",
+      "levels": [
+        "降一格"
+      ],
+      "note": ""
+    },
+    {
+      "number": 260,
+      "classification": "顶格",
+      "levels": [
+        "顶格"
+      ],
+      "note": ""
+    },
+    {
+      "number": 261,
+      "classification": "顶格",
+      "levels": [
+        "顶格"
+      ],
+      "note": ""
+    },
+    {
+      "number": 262,
+      "classification": "降一格",
+      "levels": [
+        "降一格"
+      ],
+      "note": ""
+    },
+    {
+      "number": 263,
+      "classification": "顶格",
+      "levels": [
+        "顶格"
+      ],
+      "note": ""
+    },
+    {
+      "number": 264,
+      "classification": "降一格",
+      "levels": [
+        "降一格"
+      ],
+      "note": ""
+    },
+    {
+      "number": 265,
+      "classification": "降一格",
+      "levels": [
+        "降一格"
+      ],
+      "note": ""
+    },
+    {
+      "number": 266,
+      "classification": "顶格",
+      "levels": [
+        "顶格"
+      ],
+      "note": ""
+    },
+    {
+      "number": 267,
+      "classification": "顶格",
+      "levels": [
+        "顶格"
+      ],
+      "note": ""
+    },
+    {
+      "number": 268,
+      "classification": "降一格",
+      "levels": [
+        "降一格"
+      ],
+      "note": ""
+    },
+    {
+      "number": 269,
+      "classification": "降二格",
+      "levels": [
+        "降二格"
+      ],
+      "note": ""
+    },
+    {
+      "number": 270,
+      "classification": "降二格",
+      "levels": [
+        "降二格"
+      ],
+      "note": ""
+    },
+    {
+      "number": 271,
+      "classification": "降二格",
+      "levels": [
+        "降二格"
+      ],
+      "note": ""
+    },
+    {
+      "number": 272,
+      "classification": "降二格",
+      "levels": [
+        "降二格"
+      ],
+      "note": ""
+    },
+    {
+      "number": 273,
+      "classification": "顶格",
+      "levels": [
+        "顶格"
+      ],
+      "note": ""
+    },
+    {
+      "number": 274,
+      "classification": "降二格",
+      "levels": [
+        "降二格"
+      ],
+      "note": ""
+    },
+    {
+      "number": 275,
+      "classification": "降二格",
+      "levels": [
+        "降二格"
+      ],
+      "note": ""
+    },
+    {
+      "number": 276,
+      "classification": "降一格",
+      "levels": [
+        "降一格"
+      ],
+      "note": ""
+    },
+    {
+      "number": 277,
+      "classification": "降一格",
+      "levels": [
+        "降一格"
+      ],
+      "note": ""
+    },
+    {
+      "number": 278,
+      "classification": "降一格",
+      "levels": [
+        "降一格"
+      ],
+      "note": ""
+    },
+    {
+      "number": 279,
+      "classification": "顶格",
+      "levels": [
+        "顶格"
+      ],
+      "note": ""
+    },
+    {
+      "number": 280,
+      "classification": "降二格",
+      "levels": [
+        "降二格"
+      ],
+      "note": ""
+    },
+    {
+      "number": 281,
+      "classification": "顶格",
+      "levels": [
+        "顶格"
+      ],
+      "note": ""
+    },
+    {
+      "number": 282,
+      "classification": "降一格",
+      "levels": [
+        "降一格"
+      ],
+      "note": ""
+    },
+    {
+      "number": 283,
+      "classification": "降二格",
+      "levels": [
+        "降二格"
+      ],
+      "note": ""
+    },
+    {
+      "number": 284,
+      "classification": "降二格",
+      "levels": [
+        "降二格"
+      ],
+      "note": ""
+    },
+    {
+      "number": 285,
+      "classification": "降二格",
+      "levels": [
+        "降二格"
+      ],
+      "note": ""
+    },
+    {
+      "number": 286,
+      "classification": "降二格",
+      "levels": [
+        "降二格"
+      ],
+      "note": ""
+    },
+    {
+      "number": 287,
+      "classification": "降二格",
+      "levels": [
+        "降二格"
+      ],
+      "note": ""
+    },
+    {
+      "number": 288,
+      "classification": "降二格",
+      "levels": [
+        "降二格"
+      ],
+      "note": ""
+    },
+    {
+      "number": 289,
+      "classification": "降二格",
+      "levels": [
+        "降二格"
+      ],
+      "note": ""
+    },
+    {
+      "number": 290,
+      "classification": "降二格",
+      "levels": [
+        "降二格"
+      ],
+      "note": ""
+    },
+    {
+      "number": 291,
+      "classification": "降二格",
+      "levels": [
+        "降二格"
+      ],
+      "note": ""
+    },
+    {
+      "number": 292,
+      "classification": "降二格",
+      "levels": [
+        "降二格"
+      ],
+      "note": ""
+    },
+    {
+      "number": 293,
+      "classification": "降二格",
+      "levels": [
+        "降二格"
+      ],
+      "note": ""
+    },
+    {
+      "number": 294,
+      "classification": "降二格",
+      "levels": [
+        "降二格"
+      ],
+      "note": ""
+    },
+    {
+      "number": 295,
+      "classification": "降二格",
+      "levels": [
+        "降二格"
+      ],
+      "note": ""
+    },
+    {
+      "number": 296,
+      "classification": "降二格",
+      "levels": [
+        "降二格"
+      ],
+      "note": ""
+    },
+    {
+      "number": 297,
+      "classification": "降二格",
+      "levels": [
+        "降二格"
+      ],
+      "note": ""
+    },
+    {
+      "number": 298,
+      "classification": "降二格",
+      "levels": [
+        "降二格"
+      ],
+      "note": ""
+    },
+    {
+      "number": 299,
+      "classification": "降二格",
+      "levels": [
+        "降二格"
+      ],
+      "note": ""
+    },
+    {
+      "number": 300,
+      "classification": "降二格",
+      "levels": [
+        "降二格"
+      ],
+      "note": ""
+    },
+    {
+      "number": 301,
+      "classification": "顶格",
+      "levels": [
+        "顶格"
+      ],
+      "note": ""
+    },
+    {
+      "number": 302,
+      "classification": "顶格",
+      "levels": [
+        "顶格"
+      ],
+      "note": ""
+    },
+    {
+      "number": 303,
+      "classification": "顶格",
+      "levels": [
+        "顶格"
+      ],
+      "note": ""
+    },
+    {
+      "number": 304,
+      "classification": "顶格",
+      "levels": [
+        "顶格"
+      ],
+      "note": ""
+    },
+    {
+      "number": 305,
+      "classification": "顶格",
+      "levels": [
+        "顶格"
+      ],
+      "note": ""
+    },
+    {
+      "number": 306,
+      "classification": "顶格",
+      "levels": [
+        "顶格"
+      ],
+      "note": ""
+    },
+    {
+      "number": 307,
+      "classification": "顶格",
+      "levels": [
+        "顶格"
+      ],
+      "note": ""
+    },
+    {
+      "number": 308,
+      "classification": "降一格",
+      "levels": [
+        "降一格"
+      ],
+      "note": ""
+    },
+    {
+      "number": 309,
+      "classification": "顶格",
+      "levels": [
+        "顶格"
+      ],
+      "note": ""
+    },
+    {
+      "number": 310,
+      "classification": "顶格",
+      "levels": [
+        "顶格"
+      ],
+      "note": ""
+    },
+    {
+      "number": 311,
+      "classification": "顶格",
+      "levels": [
+        "顶格"
+      ],
+      "note": ""
+    },
+    {
+      "number": 312,
+      "classification": "降一格",
+      "levels": [
+        "降一格"
+      ],
+      "note": ""
+    },
+    {
+      "number": 313,
+      "classification": "降一格",
+      "levels": [
+        "降一格"
+      ],
+      "note": ""
+    },
+    {
+      "number": 314,
+      "classification": "顶格",
+      "levels": [
+        "顶格"
+      ],
+      "note": ""
+    },
+    {
+      "number": 315,
+      "classification": "顶格",
+      "levels": [
+        "顶格"
+      ],
+      "note": ""
+    },
+    {
+      "number": 316,
+      "classification": "降一格 + 顶格",
+      "levels": [
+        "顶格",
+        "降一格"
+      ],
+      "note": "正文为降一格；末尾“武汤主之”转行后误排成顶格，李冠杰明确判断为传抄笔误。"
+    },
+    {
+      "number": 317,
+      "classification": "顶格",
+      "levels": [
+        "顶格"
+      ],
+      "note": ""
+    },
+    {
+      "number": 318,
+      "classification": "顶格",
+      "levels": [
+        "顶格"
+      ],
+      "note": ""
+    },
+    {
+      "number": 319,
+      "classification": "顶格",
+      "levels": [
+        "顶格"
+      ],
+      "note": ""
+    },
+    {
+      "number": 320,
+      "classification": "顶格",
+      "levels": [
+        "顶格"
+      ],
+      "note": ""
+    },
+    {
+      "number": 321,
+      "classification": "顶格",
+      "levels": [
+        "顶格"
+      ],
+      "note": ""
+    },
+    {
+      "number": 322,
+      "classification": "降二格",
+      "levels": [
+        "降二格"
+      ],
+      "note": ""
+    },
+    {
+      "number": 323,
+      "classification": "顶格",
+      "levels": [
+        "顶格"
+      ],
+      "note": ""
+    },
+    {
+      "number": 324,
+      "classification": "顶格",
+      "levels": [
+        "顶格"
+      ],
+      "note": ""
+    },
+    {
+      "number": 325,
+      "classification": "降二格",
+      "levels": [
+        "降二格"
+      ],
+      "note": ""
+    },
+    {
+      "number": 326,
+      "classification": "顶格",
+      "levels": [
+        "顶格"
+      ],
+      "note": ""
+    },
+    {
+      "number": 327,
+      "classification": "降二格",
+      "levels": [
+        "降二格"
+      ],
+      "note": ""
+    },
+    {
+      "number": 328,
+      "classification": "降二格",
+      "levels": [
+        "降二格"
+      ],
+      "note": ""
+    },
+    {
+      "number": 329,
+      "classification": "降二格",
+      "levels": [
+        "降二格"
+      ],
+      "note": ""
+    },
+    {
+      "number": 330,
+      "classification": "降二格",
+      "levels": [
+        "降二格"
+      ],
+      "note": ""
+    },
+    {
+      "number": 331,
+      "classification": "降二格",
+      "levels": [
+        "降二格"
+      ],
+      "note": ""
+    },
+    {
+      "number": 332,
+      "classification": "降二格",
+      "levels": [
+        "降二格"
+      ],
+      "note": ""
+    },
+    {
+      "number": 333,
+      "classification": "降二格",
+      "levels": [
+        "降二格"
+      ],
+      "note": ""
+    },
+    {
+      "number": 334,
+      "classification": "降二格",
+      "levels": [
+        "降二格"
+      ],
+      "note": ""
+    },
+    {
+      "number": 335,
+      "classification": "降二格",
+      "levels": [
+        "降二格"
+      ],
+      "note": ""
+    },
+    {
+      "number": 336,
+      "classification": "降二格",
+      "levels": [
+        "降二格"
+      ],
+      "note": ""
+    },
+    {
+      "number": 337,
+      "classification": "降一格",
+      "levels": [
+        "降一格"
+      ],
+      "note": ""
+    },
+    {
+      "number": 338,
+      "classification": "降一格",
+      "levels": [
+        "降一格"
+      ],
+      "note": ""
+    },
+    {
+      "number": 339,
+      "classification": "降二格",
+      "levels": [
+        "降二格"
+      ],
+      "note": ""
+    },
+    {
+      "number": 340,
+      "classification": "降二格",
+      "levels": [
+        "降二格"
+      ],
+      "note": ""
+    },
+    {
+      "number": 341,
+      "classification": "降二格",
+      "levels": [
+        "降二格"
+      ],
+      "note": ""
+    },
+    {
+      "number": 342,
+      "classification": "降二格",
+      "levels": [
+        "降二格"
+      ],
+      "note": ""
+    },
+    {
+      "number": 343,
+      "classification": "降二格",
+      "levels": [
+        "降二格"
+      ],
+      "note": ""
+    },
+    {
+      "number": 344,
+      "classification": "降二格",
+      "levels": [
+        "降二格"
+      ],
+      "note": ""
+    },
+    {
+      "number": 345,
+      "classification": "降二格",
+      "levels": [
+        "降二格"
+      ],
+      "note": ""
+    },
+    {
+      "number": 346,
+      "classification": "降二格",
+      "levels": [
+        "降二格"
+      ],
+      "note": ""
+    },
+    {
+      "number": 347,
+      "classification": "降二格",
+      "levels": [
+        "降二格"
+      ],
+      "note": ""
+    },
+    {
+      "number": 348,
+      "classification": "降二格",
+      "levels": [
+        "降二格"
+      ],
+      "note": ""
+    },
+    {
+      "number": 349,
+      "classification": "降二格",
+      "levels": [
+        "降二格"
+      ],
+      "note": ""
+    },
+    {
+      "number": 350,
+      "classification": "顶格",
+      "levels": [
+        "顶格"
+      ],
+      "note": ""
+    },
+    {
+      "number": 351,
+      "classification": "顶格",
+      "levels": [
+        "顶格"
+      ],
+      "note": ""
+    },
+    {
+      "number": 352,
+      "classification": "顶格",
+      "levels": [
+        "顶格"
+      ],
+      "note": ""
+    },
+    {
+      "number": 353,
+      "classification": "降二格",
+      "levels": [
+        "降二格"
+      ],
+      "note": ""
+    },
+    {
+      "number": 354,
+      "classification": "降一格",
+      "levels": [
+        "降一格"
+      ],
+      "note": ""
+    },
+    {
+      "number": 355,
+      "classification": "降一格",
+      "levels": [
+        "降一格"
+      ],
+      "note": ""
+    },
+    {
+      "number": 356,
+      "classification": "降一格",
+      "levels": [
+        "降一格"
+      ],
+      "note": ""
+    },
+    {
+      "number": 357,
+      "classification": "降一格",
+      "levels": [
+        "降一格"
+      ],
+      "note": ""
+    },
+    {
+      "number": 358,
+      "classification": "降二格",
+      "levels": [
+        "降二格"
+      ],
+      "note": ""
+    },
+    {
+      "number": 359,
+      "classification": "顶格",
+      "levels": [
+        "顶格"
+      ],
+      "note": ""
+    },
+    {
+      "number": 360,
+      "classification": "降二格",
+      "levels": [
+        "降二格"
+      ],
+      "note": ""
+    },
+    {
+      "number": 361,
+      "classification": "降二格",
+      "levels": [
+        "降二格"
+      ],
+      "note": ""
+    },
+    {
+      "number": 362,
+      "classification": "降二格",
+      "levels": [
+        "降二格"
+      ],
+      "note": ""
+    },
+    {
+      "number": 363,
+      "classification": "降二格",
+      "levels": [
+        "降二格"
+      ],
+      "note": ""
+    },
+    {
+      "number": 364,
+      "classification": "降二格",
+      "levels": [
+        "降二格"
+      ],
+      "note": ""
+    },
+    {
+      "number": 365,
+      "classification": "降二格",
+      "levels": [
+        "降二格"
+      ],
+      "note": ""
+    },
+    {
+      "number": 366,
+      "classification": "降二格 + 降一格",
+      "levels": [
+        "降一格",
+        "降二格"
+      ],
+      "note": "“下利，脉沉而迟……”为降二格；“病人必微厥……”为降一格。"
+    },
+    {
+      "number": 367,
+      "classification": "降二格",
+      "levels": [
+        "降二格"
+      ],
+      "note": ""
+    },
+    {
+      "number": 368,
+      "classification": "降二格",
+      "levels": [
+        "降二格"
+      ],
+      "note": ""
+    },
+    {
+      "number": 369,
+      "classification": "降二格",
+      "levels": [
+        "降二格"
+      ],
+      "note": ""
+    },
+    {
+      "number": 370,
+      "classification": "降一格",
+      "levels": [
+        "降一格"
+      ],
+      "note": ""
+    },
+    {
+      "number": 371,
+      "classification": "降一格",
+      "levels": [
+        "降一格"
+      ],
+      "note": ""
+    },
+    {
+      "number": 372,
+      "classification": "降二格",
+      "levels": [
+        "降二格"
+      ],
+      "note": ""
+    },
+    {
+      "number": 373,
+      "classification": "降二格",
+      "levels": [
+        "降二格"
+      ],
+      "note": ""
+    },
+    {
+      "number": 374,
+      "classification": "降二格",
+      "levels": [
+        "降二格"
+      ],
+      "note": ""
+    },
+    {
+      "number": 375,
+      "classification": "降二格",
+      "levels": [
+        "降二格"
+      ],
+      "note": ""
+    },
+    {
+      "number": 376,
+      "classification": "降二格",
+      "levels": [
+        "降二格"
+      ],
+      "note": ""
+    },
+    {
+      "number": 377,
+      "classification": "降二格",
+      "levels": [
+        "降二格"
+      ],
+      "note": ""
+    },
+    {
+      "number": 378,
+      "classification": "降一格",
+      "levels": [
+        "降一格"
+      ],
+      "note": ""
+    },
+    {
+      "number": 379,
+      "classification": "降一格",
+      "levels": [
+        "降一格"
+      ],
+      "note": ""
+    },
+    {
+      "number": 380,
+      "classification": "降二格",
+      "levels": [
+        "降二格"
+      ],
+      "note": ""
+    },
+    {
+      "number": 381,
+      "classification": "降二格",
+      "levels": [
+        "降二格"
+      ],
+      "note": ""
+    },
+    {
+      "number": 382,
+      "classification": "降二格",
+      "levels": [
+        "降二格"
+      ],
+      "note": ""
+    },
+    {
+      "number": 383,
+      "classification": "降二格",
+      "levels": [
+        "降二格"
+      ],
+      "note": ""
+    },
+    {
+      "number": 384,
+      "classification": "降二格",
+      "levels": [
+        "降二格"
+      ],
+      "note": ""
+    },
+    {
+      "number": 385,
+      "classification": "顶格",
+      "levels": [
+        "顶格"
+      ],
+      "note": ""
+    },
+    {
+      "number": 386,
+      "classification": "顶格",
+      "levels": [
+        "顶格"
+      ],
+      "note": ""
+    },
+    {
+      "number": 387,
+      "classification": "降一格",
+      "levels": [
+        "降一格"
+      ],
+      "note": ""
+    },
+    {
+      "number": 388,
+      "classification": "顶格",
+      "levels": [
+        "顶格"
+      ],
+      "note": ""
+    },
+    {
+      "number": 389,
+      "classification": "顶格",
+      "levels": [
+        "顶格"
+      ],
+      "note": ""
+    },
+    {
+      "number": 390,
+      "classification": "顶格",
+      "levels": [
+        "顶格"
+      ],
+      "note": ""
+    },
+    {
+      "number": 391,
+      "classification": "顶格",
+      "levels": [
+        "顶格"
+      ],
+      "note": "康平本版式为顶格；李冠杰从语韵和内容判断，怀疑原本可能是降二格。"
+    },
+    {
+      "number": 392,
+      "classification": "降一格",
+      "levels": [
+        "降一格"
+      ],
+      "note": ""
+    },
+    {
+      "number": 393,
+      "classification": "顶格",
+      "levels": [
+        "顶格"
+      ],
+      "note": ""
+    },
+    {
+      "number": 394,
+      "classification": "顶格",
+      "levels": [
+        "顶格"
+      ],
+      "note": "康平本两个自然段均为顶格；李冠杰认为“脉浮者……”以下第二段可能原为降二格。"
+    },
+    {
+      "number": 395,
+      "classification": "顶格",
+      "levels": [
+        "顶格"
+      ],
+      "note": ""
+    },
+    {
+      "number": 396,
+      "classification": "顶格",
+      "levels": [
+        "顶格"
+      ],
+      "note": ""
+    },
+    {
+      "number": 397,
+      "classification": "顶格",
+      "levels": [
+        "顶格"
+      ],
+      "note": ""
+    },
+    {
+      "number": 398,
+      "classification": "降二格",
+      "levels": [
+        "降二格"
+      ],
+      "note": ""
+    }
+  ]
+}

@@ -19,7 +19,10 @@
         <el-menu-item index="/consult"><el-icon><ChatDotRound /></el-icon><span>{{ consultMenuLabel }}</span></el-menu-item>
         <el-menu-item index="/records"><el-icon><Tickets /></el-icon><span>医案记录</span></el-menu-item>
         <el-menu-item index="/knowledge"><el-icon><Reading /></el-icon><span>知识库</span></el-menu-item>
-        <el-menu-item index="/formulas"><el-icon><Collection /></el-icon><span>方剂梳理</span></el-menu-item>
+        <el-menu-item :index="formulaMenuPath">
+          <el-icon><Collection /></el-icon>
+          <span>{{ auth.isAdmin ? '方剂卡片管理' : '方剂卡片馆' }}</span>
+        </el-menu-item>
         <el-menu-item index="/shanghan"><el-icon><Reading /></el-icon><span>伤寒论条文解读</span></el-menu-item>
         <el-menu-item index="/shanghan-study"><el-icon><Notebook /></el-icon><span>伤寒论读书课堂</span></el-menu-item>
       </el-menu>
@@ -105,6 +108,7 @@ const activeMenu = computed(() => {
   if (route.path.startsWith('/consult')) return '/consult'
   return route.path
 })
+const formulaMenuPath = computed(() => (auth.isAdmin ? '/formulas' : '/cards'))
 const avatarChar = computed(() => (auth.user?.full_name || auth.user?.username || 'U').charAt(0).toUpperCase())
 
 function onCommand(cmd) {

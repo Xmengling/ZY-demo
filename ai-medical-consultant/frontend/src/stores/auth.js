@@ -24,7 +24,8 @@ export const useAuthStore = defineStore('auth', {
     user: JSON.parse(localStorage.getItem('user') || 'null')
   }),
   getters: {
-    isLoggedIn: (s) => !!s.token
+    isLoggedIn: (s) => !!s.token,
+    isAdmin: (s) => s.user?.role === 'admin'
   },
   actions: {
     async login(username, password) {
@@ -36,6 +37,17 @@ export const useAuthStore = defineStore('auth', {
       const data = await authApi.register({ username, password, full_name: fullName })
       this._save(data)
       return data
+    },
+    async refreshUser() {
+      if (!this.token) return null
+      try {
+        const user = await authApi.me()
+        this.user = user
+        localStorage.setItem('user', JSON.stringify(user))
+        return user
+      } catch {
+        return null
+      }
     },
     _save(data) {
       this.token = data.access_token

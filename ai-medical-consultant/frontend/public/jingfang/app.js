@@ -55,6 +55,8 @@ const state = {
   categories: [],
   formulas: [],
   herbs: [],
+  canEdit: false,
+  accessMode: "viewer",
   shanghanLevels: {},
   selectedId: null,
   accordionOpen: {},
@@ -1096,6 +1098,12 @@ function updateFormulaListSummary() {
     summary.textContent = "";
     return;
   }
+  if (!state.canEdit) {
+    summary.textContent = query
+      ? `找到 ${visible.length} / ${total} 首方剂`
+      : `馆藏 ${total} 首方剂`;
+    return;
+  }
   if (state.proofreadFilterOnly) {
     summary.textContent = query
       ? `未校对 ${visible.length} / ${unproofread} 首（共 ${total} 首）`
@@ -1238,7 +1246,7 @@ function getFormulaPreviewMaxWidth() {
     ? parseFloat(getComputedStyle(workspace).paddingLeft) + parseFloat(getComputedStyle(workspace).paddingRight)
     : 24;
   const listWidth = collapsed ? 0 : (listEl?.offsetWidth || 280);
-  const editorWidth = editorEl?.offsetWidth || (collapsed ? 520 : 500);
+  const editorWidth = state.canEdit ? (editorEl?.offsetWidth || (collapsed ? 520 : 500)) : 0;
   const gridGap = collapsed ? 12 : 12;
   return Math.max(
     240,
@@ -1520,6 +1528,7 @@ function startPreviewInlineEdit(source, targetKey) {
 }
 
 function handlePreviewTargetClick(event) {
+  if (!state.canEdit) return;
   if (event.target.closest?.(".preview-inline-editor")) return;
   const source = event.target.closest?.("[data-edit-target]");
   if (!source || !$("#formula-card")?.contains(source)) return;
@@ -1534,6 +1543,7 @@ function handlePreviewTargetClick(event) {
 }
 
 function handlePreviewTargetDblClick(event) {
+  if (!state.canEdit) return;
   if (event.target.closest?.(".preview-inline-editor")) return;
   const source = event.target.closest?.("[data-edit-target]");
   if (!source || !$("#formula-card")?.contains(source)) return;
@@ -1563,12 +1573,42 @@ async function loadShanghanLevels() {
   }
 }
 
+async function resolveAccessMode() {
+  const requestedMode = new URLSearchParams(window.location.search).get("mode");
+  state.accessMode = requestedMode === "admin" ? "admin" : "viewer";
+  state.canEdit = false;
+
+  if (state.accessMode === "admin") {
+    const token = localStorage.getItem("token");
+    if (token) {
+      try {
+        const response = await fetch("/api/v1/user/me", { headers: authHeaders() });
+        if (response.ok) {
+          const user = await response.json();
+          state.canEdit = user?.role === "admin";
+          localStorage.setItem("user", JSON.stringify(user));
+        }
+      } catch {
+        state.canEdit = false;
+      }
+    }
+  }
+
+  document.body.classList.toggle("viewer-mode", !state.canEdit);
+  document.body.classList.toggle("admin-mode", state.canEdit);
+  document.title = state.canEdit ? "方剂卡片管理" : "经方卡片馆";
+
+  const heading = document.querySelector(".filter-card h1");
+  if (heading) heading.textContent = state.canEdit ? "方剂梳理" : "经方卡片";
+  const exportButton = $("#export-all-pdf");
+  if (exportButton && !state.canEdit) {
+    exportButton.textContent = "下载PDF";
+    exportButton.title = "按字段和病理筛选下载方剂卡片 PDF";
+  }
+}
+
 async function loadData() {
   const res = await fetch(API_BASE, { headers: authHeaders() });
-  if (res.status === 401) {
-    redirectToLogin();
-    return;
-  }
   if (!res.ok) throw new Error("数据加载失败");
   const data = await res.json();
   state.categories = data.categories;
@@ -1577,11 +1617,15 @@ async function loadData() {
   await loadShanghanLevels();
   renderEditorCategories();
   renderFormulaList();
-  fillForm(state.formulas[0]);
+  if (state.formulas.length) fillForm(state.formulas[0]);
   requestAnimationFrame(fitFormulaCardPreview);
 }
 
 async function persistFormula(formula, { successMessage = "已保存到 SQLite 数据库", refreshForm = true } = {}) {
+  if (!state.canEdit) {
+    toast("当前为只读模式，仅管理员可以编辑");
+    return null;
+  }
   const exists = state.formulas.some((item) => item.id === formula.id);
   const url = exists ? `${API_BASE}/${encodeURIComponent(formula.id)}` : API_BASE;
   const res = await fetch(url, {
@@ -1607,6 +1651,7 @@ async function persistFormula(formula, { successMessage = "已保存到 SQLite �
 }
 
 async function saveCurrentFormula() {
+  if (!state.canEdit) return;
   const formula = normalizeFormulaFromForm();
   const missing = validateFormulaForm(formula);
   if (missing.length) {
@@ -1617,6 +1662,7 @@ async function saveCurrentFormula() {
 }
 
 async function autoSaveCurrentFormula() {
+  if (!state.canEdit) return;
   if (state.autoSaveInFlight) {
     state.autoSavePending = true;
     return;
@@ -1652,6 +1698,7 @@ function shouldAutoSaveOnBlur(target) {
 }
 
 async function toggleProofreadComplete() {
+  if (!state.canEdit) return;
   const formula = normalizeFormulaFromForm();
   const next = !formula.proofreadComplete;
   if (!formula.name || formula.name === "未命名方剂") {
@@ -1667,6 +1714,7 @@ async function toggleProofreadComplete() {
 }
 
 async function deleteCurrentFormula() {
+  if (!state.canEdit) return;
   const formula = normalizeFormulaFromForm();
   const formulaId = formula.id;
   const formulaName = formula.name || "当前方剂";
@@ -1696,6 +1744,7 @@ async function deleteCurrentFormula() {
 }
 
 function newFormula() {
+  if (!state.canEdit) return;
   const blank = {
     id: `formula-${Date.now()}`,
     name: "新方剂",
@@ -3090,7 +3139,12 @@ if (previewCardArea && typeof ResizeObserver !== "undefined") {
 window.addEventListener("resize", () => requestAnimationFrame(layoutLogicMapLines));
 window.addEventListener("resize", () => resizeAutoTextareas());
 
-loadData().catch((error) => {
+async function initializeFormulaCards() {
+  await resolveAccessMode();
+  await loadData();
+}
+
+initializeFormulaCards().catch((error) => {
   console.error(error);
   toast("网站数据加载失败");
 });

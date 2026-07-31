@@ -2026,3 +2026,54 @@ textarea:focus {
   overflow-x: hidden;
   overflow-y: auto;
 }
+
+/* 公开卡片馆：保留搜索、预览与下载，隐藏所有编辑入口。 */
+body.viewer-mode .main-workspace {
+  --list-col: 300px;
+  grid-template-columns: var(--list-col) minmax(0, 1fr);
+}
+
+body.viewer-mode .editor-panel,
+body.viewer-mode #new-formula,
+body.viewer-mode #filter-unproofread {
+  display: none !important;
+}
+
+body.viewer-mode .filter-card {
+  min-height: 100%;
+}
+
+body.viewer-mode .preview-panel {
+  padding-left: 14px;
+}
+
+body.viewer-mode .preview-card-area {
+  justify-content: center;
+}
+
+body.viewer-mode .main-workspace.list-collapsed {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+body.viewer-mode .main-workspace.list-collapsed .preview-panel {
+  grid-column: 1;
+}
+
+body.viewer-mode .main-workspace.list-collapsed .preview-card-area {
+  justify-content: center;
+}
+
+body.viewer-mode [data-edit-target] {
+  cursor: default;
+}
+
+@media (max-width: 760px) {
+  body.viewer-mode .main-workspace,
+  body.viewer-mode .main-workspace.list-collapsed {
+    grid-template-columns: 1fr;
+  }
+
+  body.viewer-mode .preview-panel {
+    padding-left: 0;
+  }
+}

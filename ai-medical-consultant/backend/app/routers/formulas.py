@@ -9,7 +9,7 @@ from urllib.parse import unquote
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from fastapi.responses import FileResponse
 
-from ..deps import get_current_user
+from ..deps import get_admin_user
 from ..models import User
 from ..services import jingfang_store
 from ..services.consult_knowledge import consult_knowledge
@@ -28,7 +28,7 @@ def list_formulas():
 
 
 @router.post("", status_code=status.HTTP_201_CREATED)
-def create_formula(payload: dict, _user: User = Depends(get_current_user)):
+def create_formula(payload: dict, _user: User = Depends(get_admin_user)):
     saved = jingfang_store.save_formula(payload)
     consult_knowledge.invalidate()
     return saved
@@ -38,7 +38,7 @@ def create_formula(payload: dict, _user: User = Depends(get_current_user)):
 def update_formula(
     formula_id: str,
     payload: dict,
-    _user: User = Depends(get_current_user),
+    _user: User = Depends(get_admin_user),
 ):
     payload["id"] = unquote(formula_id)
     saved = jingfang_store.save_formula(payload)
@@ -47,7 +47,7 @@ def update_formula(
 
 
 @router.delete("/{formula_id}")
-def remove_formula(formula_id: str, _user: User = Depends(get_current_user)):
+def remove_formula(formula_id: str, _user: User = Depends(get_admin_user)):
     deleted = jingfang_store.delete_formula(unquote(formula_id))
     if not deleted:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "formula not found")

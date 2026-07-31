@@ -27,3 +27,10 @@ def get_current_user(
     if user is None:
         raise HTTPException(status.HTTP_401_UNAUTHORIZED, "用户不存在")
     return user
+
+
+def get_admin_user(user: User = Depends(get_current_user)) -> User:
+    """仅允许管理员执行会改变方剂卡片数据的操作。"""
+    if user.role != "admin":
+        raise HTTPException(status.HTTP_403_FORBIDDEN, "仅管理员可以编辑方剂卡片")
+    return user

@@ -62,7 +62,7 @@
     <text x="374" y="256" font-size="26" font-weight="500" fill="#354b60">完成全部398条</text>
 
     <circle cx="43" cy="292" r="6" fill="#315f98"/>
-    <text x="67" y="302" font-size="24" font-weight="500" fill="#354b60">胡希恕、李冠杰老师《伤寒论》讲稿学习笔记</text>
+    <text x="67" y="302" font-size="24" font-weight="500" fill="#354b60">参考公开讲稿整理的个人学习笔记</text>
 
     <rect x="66" y="318" width="540" height="32" rx="16" fill="#edf3f9"/>
     <text x="336" y="342" text-anchor="middle" font-size="21" font-weight="700" fill="#315f98">条文内容 · 要点总结 · 讲解梳理</text>
@@ -80,26 +80,25 @@
     <rect width="990" height="414" rx="30" fill="#fff" stroke="#d6d3ca" stroke-width="2"/>
     <rect width="124" height="66" rx="25" fill="#315f98"/>
     <text class="num" x="62" y="45" text-anchor="middle">02</text>
-    <text class="head" x="158" y="46">购买相关</text>
+    <text class="head" x="158" y="46">购买说明</text>
     <line x1="159" y1="66" x2="936" y2="66" stroke="#d7d3c9" stroke-width="2"/>
 
     <circle cx="43" cy="108" r="6" fill="#c94a38"/>
-    <text class="body strong" x="67" y="118">商品链接自动发货</text>
-    <text class="body" x="306" y="118">，下单时可选择</text>
-    <text class="body strong" x="510" y="118">BD网盘 / KK网盘</text>
+    <text class="body strong" x="67" y="118">数字内容商品</text>
+    <text class="body" x="239" y="118">，请按商品页面提示下单</text>
 
     <circle cx="43" cy="169" r="6" fill="#315f98"/>
-    <text class="body" x="67" y="179">购买前请移步小红书主页合集</text>
-    <text class="body strong" x="67" y="220">查看样品展示</text>
+    <text class="body" x="67" y="179">购买前请先查看商品详情中的</text>
+    <text class="body strong" x="67" y="220">样品展示与更新说明</text>
 
     <circle cx="43" cy="267" r="6" fill="#315f98"/>
-    <text class="body" x="67" y="277">未更新完的笔记购买后，保存时点击</text>
-    <rect x="575" y="240" width="112" height="49" rx="24" fill="#c94a38"/>
-    <text x="631" y="274" text-anchor="middle" font-size="26" font-weight="800" fill="#fff">订阅</text>
-    <text class="body strong" x="67" y="324">即可同步更新</text>
+    <text class="body" x="67" y="277">购买后按商品页面说明</text>
+    <rect x="378" y="240" width="172" height="49" rx="24" fill="#c94a38"/>
+    <text x="464" y="274" text-anchor="middle" font-size="25" font-weight="800" fill="#fff">持续获取</text>
+    <text class="body strong" x="67" y="324">每周更新内容</text>
 
     <rect x="66" y="345" width="595" height="50" rx="25" fill="#e7eef6"/>
-    <text x="364" y="379" text-anchor="middle" font-size="25" font-weight="800" fill="#315f98">小红书ID：小小梦学中医</text>
+    <text x="364" y="379" text-anchor="middle" font-size="25" font-weight="800" fill="#315f98">每周同步更新汇总PDF</text>
 
     <g transform="translate(793 251)" fill="none" stroke="#6b91bd" stroke-width="5" stroke-linecap="round">
       <path d="M0 56 C24 17 68 5 109 27 C143 45 164 37 190 10"/>
@@ -119,17 +118,17 @@
     <text class="body strong" x="67" y="118">不含视频</text>
 
     <circle cx="43" cy="157" r="6" fill="#315f98"/>
-    <text x="67" y="167" font-size="25" font-weight="500" fill="#354b60">只供中医学习交流，不作为诊疗或处方依据</text>
+    <text x="67" y="167" font-size="25" font-weight="500" fill="#354b60">笔记仅供个人学习交流</text>
 
     <circle cx="43" cy="205" r="6" fill="#315f98"/>
-    <text x="67" y="215" font-size="25" font-weight="800" fill="#c94a38">虚拟商品，一经售出，不退不换</text>
+    <text x="67" y="215" font-size="25" font-weight="800" fill="#c94a38">数字内容商品，请确认说明后下单</text>
     <g transform="translate(838 125)">
       <circle cx="48" cy="48" r="46" fill="#edf3f9" stroke="#315f98" stroke-width="3"/>
       <path d="M28 49 l13 14 29 -33" fill="none" stroke="#315f98" stroke-width="7" stroke-linecap="round" stroke-linejoin="round"/>
     </g>
   </g>
 
-  <text x="621" y="1550" text-anchor="middle" font-size="24" font-weight="600" fill="#6c6961" letter-spacing="3">请确认商品说明后再下单</text>
+  <text x="621" y="1550" text-anchor="middle" font-size="22" font-weight="600" fill="#6c6961" letter-spacing="2">商品信息以发布页面实际说明为准</text>
   <g transform="translate(1035 1511)">
     <rect width="65" height="65" rx="5" fill="#b53c2e"/>
     <text x="32.5" y="28" text-anchor="middle" font-size="16" font-weight="800" fill="#f8f4e9">伤寒</text>

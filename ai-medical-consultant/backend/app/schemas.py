@@ -25,6 +25,7 @@ class UserOut(BaseModel):
     id: int
     username: str
     full_name: str
+    role: str = "viewer"
 
     class Config:
         from_attributes = True
