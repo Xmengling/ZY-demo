@@ -3,7 +3,7 @@
     <iframe
       v-if="ready"
       class="shanghan-frame"
-      src="/shanghan/index.html"
+      src="/shanghan/index.html?v=term-label-auto1"
       title="伤寒论条文解读"
     />
     <div v-else class="shanghan-loading">

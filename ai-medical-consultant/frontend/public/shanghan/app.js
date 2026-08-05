@@ -39,6 +39,7 @@ const state = {
   articles: [],
   selectedId: null,
   listCollapsed: false,
+  termDrag: null,
   autoSaveSnapshot: "",
   autoSaveInFlight: false,
   autoSavePending: false,
@@ -186,15 +187,77 @@ function getTermItemsFromForm() {
   })).filter((item) => item.label || item.text);
 }
 
+function termLabelInputWidth(value = "") {
+  const visualUnits = [...String(value)].reduce((total, char) => (
+    total + (/[^\u0000-\u00ff]/.test(char) ? 1 : 0.58)
+  ), 0);
+  return Math.min(260, Math.max(72, Math.ceil(visualUnits * 16 + 34)));
+}
+
+function resizeTermLabelInput(input) {
+  if (!(input instanceof HTMLInputElement)) return;
+  input.style.width = `${termLabelInputWidth(input.value)}px`;
+}
+
 function renderTermRows(items = []) {
   const rows = (items.length ? items : [{ label: "", text: "" }]);
   fields.terms.innerHTML = rows.map((item, index) => `
-    <div class="term-entry">
-      <input class="term-label-input" type="text" value="${escapeHtml(item.label || "")}" placeholder="词语" />
+    <div class="term-entry" data-term-index="${index}">
+      <button class="term-drag-handle" type="button" data-term-index="${index}" aria-label="拖拽调整词语${index + 1}顺序" title="按住拖拽调整顺序；也可用 Alt+上下方向键">
+        <span aria-hidden="true">⠿</span>
+      </button>
+      <input class="term-label-input" type="text" value="${escapeHtml(item.label || "")}" placeholder="词语" style="width:${termLabelInputWidth(item.label)}px" />
       <button class="term-remove-btn" type="button" data-term-index="${index}" aria-label="删除词语${index + 1}">×</button>
       <input class="term-text-input" type="text" value="${escapeHtml(item.text || "")}" placeholder="解析内容" />
     </div>
   `).join("");
+}
+
+function refreshTermRowIndexes() {
+  $$("#field-terms .term-entry").forEach((row, index) => {
+    row.dataset.termIndex = String(index);
+    const handle = row.querySelector(".term-drag-handle");
+    if (handle) {
+      handle.dataset.termIndex = String(index);
+      handle.setAttribute("aria-label", `拖拽调整词语${index + 1}顺序`);
+    }
+    const remove = row.querySelector(".term-remove-btn");
+    if (remove) {
+      remove.dataset.termIndex = String(index);
+      remove.setAttribute("aria-label", `删除词语${index + 1}`);
+    }
+  });
+}
+
+function finishTermReorder({ save = true } = {}) {
+  const drag = state.termDrag;
+  if (!drag) return;
+  drag.row.classList.remove("is-dragging");
+  fields.terms?.classList.remove("is-reordering");
+  try {
+    drag.handle.releasePointerCapture(drag.pointerId);
+  } catch (_) {
+    // 指针可能已由浏览器释放。
+  }
+  state.termDrag = null;
+  refreshTermRowIndexes();
+  renderPreview(normalizeArticleFromForm());
+  if (save && drag.moved) autoSaveCurrentArticle();
+}
+
+function moveTermRowByKeyboard(handle, direction) {
+  const row = handle.closest(".term-entry");
+  if (!row || !fields.terms) return;
+  const rows = [...fields.terms.querySelectorAll(".term-entry")];
+  const index = rows.indexOf(row);
+  const targetIndex = index + direction;
+  if (index < 0 || targetIndex < 0 || targetIndex >= rows.length) return;
+  if (direction < 0) fields.terms.insertBefore(row, rows[targetIndex]);
+  else fields.terms.insertBefore(row, rows[targetIndex].nextSibling);
+  refreshTermRowIndexes();
+  renderPreview(normalizeArticleFromForm());
+  handle.focus({ preventScroll: true });
+  autoSaveCurrentArticle();
 }
 
 function authHeaders(extra = {}) {
@@ -1647,7 +1710,10 @@ $$('input[name="article-level"]').forEach((input) => {
   input.addEventListener("change", syncEditorFromForm);
 });
 
-fields.terms?.addEventListener("input", () => renderPreview(normalizeArticleFromForm()));
+fields.terms?.addEventListener("input", (event) => {
+  if (event.target.classList?.contains("term-label-input")) resizeTermLabelInput(event.target);
+  renderPreview(normalizeArticleFromForm());
+});
 
 $("#article-form").addEventListener("input", (event) => {
   if (event.target instanceof HTMLTextAreaElement) autoResizeTextarea(event.target);
@@ -1672,6 +1738,50 @@ fields.terms?.addEventListener("click", (event) => {
   items.splice(index, 1);
   renderTermRows(items.length ? items : [{ label: "", text: "" }]);
   renderPreview(normalizeArticleFromForm());
+});
+
+fields.terms?.addEventListener("pointerdown", (event) => {
+  const handle = event.target.closest(".term-drag-handle");
+  if (!handle || event.button !== 0) return;
+  const row = handle.closest(".term-entry");
+  if (!row) return;
+  event.preventDefault();
+  handle.setPointerCapture(event.pointerId);
+  row.classList.add("is-dragging");
+  fields.terms.classList.add("is-reordering");
+  state.termDrag = {
+    pointerId: event.pointerId,
+    handle,
+    row,
+    moved: false,
+  };
+});
+
+fields.terms?.addEventListener("pointermove", (event) => {
+  const drag = state.termDrag;
+  if (!drag || drag.pointerId !== event.pointerId) return;
+  event.preventDefault();
+  const pointed = document.elementFromPoint(event.clientX, event.clientY)?.closest(".term-entry");
+  if (!pointed || pointed === drag.row || !fields.terms.contains(pointed)) return;
+  const rect = pointed.getBoundingClientRect();
+  const insertAfter = event.clientY > rect.top + rect.height / 2;
+  fields.terms.insertBefore(drag.row, insertAfter ? pointed.nextSibling : pointed);
+  drag.moved = true;
+});
+
+fields.terms?.addEventListener("pointerup", (event) => {
+  if (state.termDrag?.pointerId === event.pointerId) finishTermReorder();
+});
+
+fields.terms?.addEventListener("pointercancel", (event) => {
+  if (state.termDrag?.pointerId === event.pointerId) finishTermReorder();
+});
+
+fields.terms?.addEventListener("keydown", (event) => {
+  const handle = event.target.closest(".term-drag-handle");
+  if (!handle || !event.altKey || !["ArrowUp", "ArrowDown"].includes(event.key)) return;
+  event.preventDefault();
+  moveTermRowByKeyboard(handle, event.key === "ArrowUp" ? -1 : 1);
 });
 
 $("#search").addEventListener("input", renderArticleList);

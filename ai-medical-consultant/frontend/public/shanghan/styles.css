@@ -531,10 +531,10 @@ p {
 .term-entry {
   position: relative;
   display: grid;
-  grid-template-columns: auto 26px;
+  grid-template-columns: 26px auto 26px;
   grid-template-areas:
-    "label delete"
-    "text text";
+    "drag label delete"
+    "text text text";
   gap: 6px 8px;
   align-items: center;
   padding: 10px 12px 10px 14px;
@@ -542,7 +542,53 @@ p {
   border-radius: 12px;
   background: #fff;
   box-shadow: 0 1px 2px rgba(71, 124, 255, .04);
-  transition: border-color .16s ease, box-shadow .16s ease;
+  transition: border-color .16s ease, box-shadow .16s ease, transform .16s ease, opacity .16s ease;
+}
+
+.term-drag-handle {
+  grid-area: drag;
+  justify-self: start;
+  width: 26px;
+  height: 26px;
+  display: grid;
+  place-items: center;
+  padding: 0;
+  border: 1px solid #d9e5fb;
+  border-radius: 8px;
+  background: #f7faff;
+  color: #8197b8;
+  font-size: 18px;
+  line-height: 1;
+  cursor: grab;
+  touch-action: none;
+  user-select: none;
+  transition: border-color .15s ease, background .15s ease, color .15s ease, transform .15s ease;
+}
+
+.term-drag-handle:hover,
+.term-drag-handle:focus-visible {
+  border-color: #9dbbfa;
+  background: var(--blue-soft);
+  color: var(--blue-dark);
+  outline: none;
+}
+
+.term-drag-handle:active {
+  cursor: grabbing;
+  transform: scale(.96);
+}
+
+.term-entry.is-dragging {
+  z-index: 3;
+  border-color: var(--blue);
+  opacity: .78;
+  transform: scale(.992);
+  box-shadow: 0 12px 28px rgba(43, 94, 197, .2);
+}
+
+.term-panel.is-reordering {
+  cursor: grabbing;
+  user-select: none;
 }
 
 .term-entry::before {
@@ -564,21 +610,22 @@ p {
 .term-label-input {
   grid-area: label;
   justify-self: start;
-  width: 3em;
-  min-width: 32px;
-  max-width: 48px;
-  height: 20px;
-  padding: 0 2px;
-  border: 1px dotted #9eb8ff;
-  border-radius: 4px;
+  width: 72px;
+  min-width: 72px;
+  max-width: min(260px, 55vw);
+  height: 34px;
+  padding: 0 12px;
+  border: 1px solid #c9d9fb;
+  border-radius: 9px;
   background: #fff;
   color: var(--blue-dark);
-  font-size: 11px;
-  line-height: 18px;
+  font-size: 14px;
+  line-height: 32px;
   font-weight: 900;
   text-align: center;
   outline: none;
-  transition: border-color .15s ease, background .15s ease;
+  field-sizing: content;
+  transition: width .12s ease, border-color .15s ease, background .15s ease;
 }
 
 .term-label-input::placeholder {
