@@ -1067,6 +1067,39 @@ p {
   line-height: 1.42;
 }
 
+/* 康平本降格文字：一级正文保持原字号，二级旁注与三级补注依次缩小。 */
+.card-title-line--secondary .card-title-text {
+  font-size: 26px;
+  line-height: 1.48;
+  font-weight: 700;
+}
+
+.card-title-line--tertiary .card-title-text {
+  font-size: 23px;
+  line-height: 1.46;
+  font-weight: 700;
+}
+
+.card-article-title.title-density-compact .card-title-line--secondary .card-title-text {
+  font-size: 23px;
+  line-height: 1.44;
+}
+
+.card-article-title.title-density-compact .card-title-line--tertiary .card-title-text {
+  font-size: 20px;
+  line-height: 1.42;
+}
+
+.card-article-title.title-density-tight .card-title-line--secondary .card-title-text {
+  font-size: 20px;
+  line-height: 1.4;
+}
+
+.card-article-title.title-density-tight .card-title-line--tertiary .card-title-text {
+  font-size: 18px;
+  line-height: 1.38;
+}
+
 .callout h4,
 .ribbon {
   display: inline-flex;

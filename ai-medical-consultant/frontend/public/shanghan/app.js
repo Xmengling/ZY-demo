@@ -473,6 +473,25 @@ function titleTypography(article) {
   };
 }
 
+function titleSectionLevelClass(level) {
+  if (level === "二级") return "card-title-line--secondary";
+  if (level === "三级") return "card-title-line--tertiary";
+  return "card-title-line--primary";
+}
+
+function titleTypographyForLevel(typography, level) {
+  const scale = level === "三级" ? 0.74 : level === "二级" ? 0.84 : 1;
+  if (scale === 1) return typography;
+  const font = typography.font.replace(
+    /(\d+(?:\.\d+)?)px/,
+    (_, size) => `${Math.max(16, Math.round(Number(size) * scale))}px`,
+  ).replace(/^900\s+/, "700 ");
+  return {
+    font,
+    lineHeight: Math.max(24, Math.round(typography.lineHeight * (level === "三级" ? 0.8 : 0.88))),
+  };
+}
+
 function renderCardTitle(article) {
   const el = $("#card-title");
   if (!el) return;
@@ -483,7 +502,8 @@ function renderCardTitle(article) {
   if (sections.length) {
     el.innerHTML = sections.map((section) => {
       const levelMeta = LEVEL_BADGE[section.level] || LEVEL_BADGE["一级"];
-      return `<span class="card-title-line">
+      const levelClass = titleSectionLevelClass(section.level);
+      return `<span class="card-title-line ${levelClass}">
         ${levelBadgeHtml(levelMeta, "level-badge--lg")}
         <span class="card-title-text">${highlight(originalMarkupText(section.text))}</span>
       </span>`;
@@ -491,7 +511,8 @@ function renderCardTitle(article) {
     return;
   }
   const levelMeta = LEVEL_BADGE[articleLevel(article)] || LEVEL_BADGE["一级"];
-  el.innerHTML = `<span class="card-title-line">
+  const levelClass = titleSectionLevelClass(articleLevel(article));
+  el.innerHTML = `<span class="card-title-line ${levelClass}">
     ${levelBadgeHtml(levelMeta, "level-badge--lg")}
     <span class="card-title-text">${highlight(originalMarkupText(article.original || "未填写"))}</span>
   </span>`;
@@ -1400,6 +1421,10 @@ function drawCardHeadFromDom(ctx, coverImage, article, titleText, titleFont, tit
       const section = sections[index];
       if (!section || !lineLayout.titleText) return;
       const sectionMeta = LEVEL_BADGE[section.level] || LEVEL_BADGE["一级"];
+      const sectionTypography = titleTypographyForLevel(
+        { font: titleFont, lineHeight: titleLineHeight },
+        section.level,
+      );
       if (lineLayout.levelBadge) {
         drawLevelBadgeOnCanvas(
           ctx,
@@ -1418,8 +1443,8 @@ function drawCardHeadFromDom(ctx, coverImage, article, titleText, titleFont, tit
         lineLayout.titleText.left,
         lineLayout.titleText.top,
         lineLayout.titleText.width,
-        titleLineHeight,
-        { font: titleFont, color: "#172033" },
+        sectionTypography.lineHeight,
+        { font: sectionTypography.font, color: "#172033" },
       );
     });
     return head;
@@ -1439,14 +1464,18 @@ function drawCardHeadFromDom(ctx, coverImage, article, titleText, titleFont, tit
   }
 
   if (titleTextRect) {
+    const articleTypography = titleTypographyForLevel(
+      { font: titleFont, lineHeight: titleLineHeight },
+      articleLevel(article),
+    );
     drawMarkupText(
       ctx,
       titleText,
       titleTextRect.left,
       titleTextRect.top,
       titleTextRect.width,
-      titleLineHeight,
-      { font: titleFont, color: "#172033" },
+      articleTypography.lineHeight,
+      { font: articleTypography.font, color: "#172033" },
     );
   }
 
